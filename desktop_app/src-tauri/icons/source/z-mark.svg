@@ -1,0 +1,64 @@
+<!--
+  Z mark for findmesomedamnjobz.
+  - 1024×1024 source for Tauri icon generation (run `npx @tauri-apps/cli icon` on a PNG export).
+  - Bold geometric Z + small sparkle accent (top-right) hints at AI-powered.
+  - Purple gradient matches brand. Rounded square background matches OS app-icon conventions.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1024" y2="1024" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#a47cff"/>
+      <stop offset="0.55" stop-color="#8856ff"/>
+      <stop offset="1" stop-color="#5a2cd1"/>
+    </linearGradient>
+    <linearGradient id="zfill" x1="0" y1="0" x2="0" y2="1" gradientUnits="objectBoundingBox">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#f0e9ff"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="14"/>
+      <feComponentTransfer><feFuncA type="linear" slope="1.4"/></feComponentTransfer>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Rounded-square background (Apple/Windows icon proportions: 22% corner radius) -->
+  <rect x="0" y="0" width="1024" height="1024" rx="225" ry="225" fill="url(#bg)"/>
+
+  <!-- Subtle inner highlight for depth -->
+  <rect x="0" y="0" width="1024" height="1024" rx="225" ry="225"
+        fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="6"/>
+
+  <!-- The Z — geometric, bold, slightly tilted for energy -->
+  <g transform="translate(512 512) rotate(-3) translate(-512 -512)" filter="url(#glow)">
+    <!-- Top bar -->
+    <path d="M 280 296 L 740 296 L 740 412 L 530 412 Z"
+          fill="url(#zfill)"/>
+    <!-- Diagonal stroke -->
+    <path d="M 740 296 L 740 412 L 396 728 L 280 728 L 280 612 Z"
+          fill="url(#zfill)"/>
+    <!-- Bottom bar -->
+    <path d="M 280 612 L 280 728 L 740 728 L 740 612 Z"
+          fill="url(#zfill)"/>
+  </g>
+
+  <!-- Sparkle accent (top-right) — hints at AI-powered without being literal -->
+  <g transform="translate(800 200)" fill="#ffffff" opacity="0.95">
+    <path d="M 0 -64
+             C 4 -28 12 -20 48 -16
+             C 12 -12 4 -4 0 32
+             C -4 -4 -12 -12 -48 -16
+             C -12 -20 -4 -28 0 -64 Z"/>
+  </g>
+  <!-- Tiny secondary sparkle for asymmetric balance -->
+  <g transform="translate(870 290)" fill="#ffffff" opacity="0.7">
+    <path d="M 0 -22
+             C 2 -10 4 -8 16 -6
+             C 4 -4 2 -2 0 12
+             C -2 -2 -4 -4 -16 -6
+             C -4 -8 -2 -10 0 -22 Z"/>
+  </g>
+</svg>

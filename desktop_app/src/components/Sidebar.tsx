@@ -1,10 +1,11 @@
 import { NavLink, useLocation } from 'react-router-dom'
 import {
-  Sparkles, Compass, PlayCircle, Briefcase,
+  Compass, PlayCircle, Briefcase,
   History, Bookmark, BookmarkCheck, Settings,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { motion } from 'framer-motion'
+import { ZMark } from './ZMark'
 
 interface NavItem {
   to: string
@@ -26,14 +27,12 @@ export function Sidebar() {
 
   return (
     <aside className="glass-strong w-60 h-full flex flex-col border-r border-white/[0.06] relative z-10">
-      {/* Brand */}
+      {/* Brand — Z mark + product name. The mark matches the app icon
+          shipped in src-tauri/icons (Tauri reads those for taskbar/dock). */}
       <div className="px-5 pt-5 pb-5">
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-accent-400 to-accent-700
-                          flex items-center justify-center shadow-lg shadow-accent-900/40">
-            <Sparkles size={15} className="text-white" />
-          </div>
-          <span className="font-semibold text-sm tracking-tight">Job Search</span>
+          <ZMark size={28} className="shadow-lg shadow-accent-900/40 rounded-lg" />
+          <span className="font-semibold text-sm tracking-tight">findmesomedamnjobz</span>
         </div>
       </div>
 

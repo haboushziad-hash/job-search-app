@@ -21,13 +21,23 @@ const APP_SIZE = "107 MB";
     <!-- Top nav -->
     <nav class="max-w-6xl mx-auto px-6 pt-8 flex items-center justify-between">
       <div class="flex items-center gap-2.5">
-        <!-- Mark — gradient briefcase -->
-        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-accent-400 to-accent-700 flex items-center justify-center shadow-lg shadow-accent-900/40">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M9 11H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2h-4"/>
-            <polyline points="9 11 9 4 15 4 15 11"/>
-          </svg>
-        </div>
+        <!-- Z mark — matches the app icon (z-mark PNG shipped in src-tauri/icons) -->
+        <svg width="32" height="32" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" class="shadow-lg shadow-accent-900/40 rounded-lg">
+          <defs>
+            <linearGradient id="nav-zmark-bg" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+              <stop offset="0" stop-color="#a47cff"/>
+              <stop offset="0.55" stop-color="#8856ff"/>
+              <stop offset="1" stop-color="#5a2cd1"/>
+            </linearGradient>
+          </defs>
+          <rect x="0" y="0" width="64" height="64" rx="14" ry="14" fill="url(#nav-zmark-bg)"/>
+          <g transform="translate(32 32) rotate(-3) translate(-32 -32)">
+            <path d="M 18 18 L 46 18 L 46 25 L 33 25 Z" fill="#ffffff"/>
+            <path d="M 46 18 L 46 25 L 25 46 L 18 46 L 18 39 Z" fill="#ffffff"/>
+            <path d="M 18 39 L 18 46 L 46 46 L 46 39 Z" fill="#ffffff"/>
+          </g>
+          <path d="M 50 12 C 50.4 14.4 51 14.8 53.4 15.2 C 51 15.6 50.4 16 50 18.4 C 49.6 16 49 15.6 46.6 15.2 C 49 14.8 49.6 14.4 50 12 Z" fill="#ffffff" opacity="0.9"/>
+        </svg>
         <span class="font-semibold tracking-tight text-base-100 text-sm">findmesomedamnjobz</span>
       </div>
       <div class="hidden sm:flex items-center gap-1">
