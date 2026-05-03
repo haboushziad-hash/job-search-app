@@ -178,6 +178,36 @@ def filter_by_tag_overlap(
     return out
 
 
+def read_seed_contributions() -> list[dict]:
+    """Read the bundled seed market_contributions.jsonl that ships with
+    the .msi/.dmg. Populated from the dev's pre-launch validation runs
+    (Ziad/Zach/Ryan) so a fresh tester install has cross-tester learning
+    available on day one — before they've synced any audit folder.
+
+    Returns [] if the seed file isn't present (dev environment without
+    the bundled data file)."""
+    # Resolve relative to this module so it works both in dev and inside
+    # the PyInstaller bundle (where __file__ resolves to a temp dir).
+    seed_path = Path(__file__).resolve().parent.parent / "data" / "seed_market_contributions.jsonl"
+    if not seed_path.exists():
+        return []
+    out: list[dict] = []
+    try:
+        for line in seed_path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                entry = json.loads(line)
+                entry["_source_user"] = "_seed"
+                out.append(entry)
+            except Exception:
+                continue
+    except Exception:
+        pass
+    return out
+
+
 def market_titles_for_keyword_prompt(
     audit_folder: Path,
     *,
@@ -187,9 +217,12 @@ def market_titles_for_keyword_prompt(
     min_overlap: float = DEFAULT_MIN_OVERLAP,
 ) -> list[dict]:
     """Build the list of "real market titles" to inject into the keyword
-    generator's prompt. Combines OWN past contributions + sibling testers'
-    contributions, filtered to those from profiles with ≥ min_overlap
-    tag similarity. Returns top max_titles entries sorted by score desc.
+    generator's prompt. Combines:
+      1. OWN past contributions (no overlap filter — they're us)
+      2. Sibling tester contributions (cloud-synced — ≥ min_overlap filter)
+      3. Bundled seed contributions from pre-launch validation runs
+         (≥ min_overlap filter, same as siblings)
+    Returns top max_titles entries sorted by score desc.
     """
     pool: list[dict] = []
     # Own contributions: include all (no overlap filter — they're us)
@@ -199,6 +232,16 @@ def market_titles_for_keyword_prompt(
     siblings = read_sibling_contributions(audit_folder)
     pool.extend(filter_by_tag_overlap(
         siblings,
+        candidate_tags=candidate_tags,
+        min_overlap=min_overlap,
+    ))
+    # Bundled seed contributions: filter by overlap (same threshold as siblings).
+    # This ensures Day-1 testers benefit from pre-launch validation runs
+    # without leaking unrelated profile data — only matching-tag entries
+    # surface. Seed entries are always relevant when overlap meets threshold.
+    seed = read_seed_contributions()
+    pool.extend(filter_by_tag_overlap(
+        seed,
         candidate_tags=candidate_tags,
         min_overlap=min_overlap,
     ))

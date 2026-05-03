@@ -53,6 +53,13 @@ b_datas, b_binaries, b_hidden = collect_all('backend')
 datas.extend(b_datas)
 hidden_imports.extend(b_hidden)
 
+# Seed market contributions — pre-launch validation data baked into the
+# build so testers' first runs benefit from cross-tester learning before
+# they've synced any audit folder.
+seed_path = PROJECT_ROOT / "backend" / "data" / "seed_market_contributions.jsonl"
+if seed_path.exists():
+    datas.append((str(seed_path), "backend/data"))
+
 
 a = Analysis(
     ['backend/backend_main.py'],
