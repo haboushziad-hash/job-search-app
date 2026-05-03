@@ -182,10 +182,19 @@ export default function Dashboard() {
     ? lastRoles.filter((r) => r.final_tier === filterTier)
     : lastRoles
 
-  // Sort visible roles by score descending
-  const sortedRoles = [...visibleRoles].sort(
-    (a, b) => (b.final_score ?? 0) - (a.final_score ?? 0)
-  )
+  // Sort visible roles by score descending. Tiebreaker: when scores are
+  // within 3 points, prefer the role with salary disclosed — equivalent
+  // matches are more actionable when comp is known. Score difference > 3
+  // means the higher-scored role is genuinely a better fit, regardless of
+  // salary disclosure.
+  const sortedRoles = [...visibleRoles].sort((a, b) => {
+    const scoreDiff = (b.final_score ?? 0) - (a.final_score ?? 0)
+    if (Math.abs(scoreDiff) >= 3) return scoreDiff
+    const aHasSalary = a.salary_min != null || a.salary_max != null || !!a.salary_text
+    const bHasSalary = b.salary_min != null || b.salary_max != null || !!b.salary_text
+    if (aHasSalary !== bHasSalary) return aHasSalary ? -1 : 1
+    return scoreDiff
+  })
 
   // Apply per-company display cap: only top COMPANY_CAP roles per company are
   // shown by default. The rest collapse behind a "see N more from {company}"
