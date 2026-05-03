@@ -29,8 +29,12 @@ export default defineConfig({
   envPrefix: ['VITE_', 'TAURI_ENV_*'],
 
   build: {
+    // safari13 was Tauri's default but esbuild can't transpile modern
+    // destructuring (used by react-router etc.) down that far. Tauri 2 ships
+    // with WKWebView from macOS 12+ → at least Safari 15, so safari14 is
+    // a safe minimum that gives esbuild enough room.
     target:
-      process.env.TAURI_ENV_PLATFORM === 'windows' ? 'chrome105' : 'safari13',
+      process.env.TAURI_ENV_PLATFORM === 'windows' ? 'chrome105' : 'safari14',
     minify: !process.env.TAURI_ENV_DEBUG ? 'esbuild' : false,
     sourcemap: !!process.env.TAURI_ENV_DEBUG,
   },
