@@ -32,7 +32,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["msi", "nsis"],
+    "targets": ["msi", "nsis", "dmg", "app"],
     "publisher": "Ziad Haboush",
     "category": "Productivity",
     "shortDescription": "Find roles that actually match.",
