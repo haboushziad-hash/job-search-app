@@ -307,8 +307,8 @@ const APP_SIZE = "107 MB";
     // Hides the platform that matches the big button, so it isn't a duplicate.
     const prefixByPlatform: Record<Platform, string> = {
       "windows": "On a Mac?",
-      "mac-arm64": "Different machine?",
-      "mac-x64": "Different machine?",
+      "mac-arm64": "On Windows or Intel Mac?",
+      "mac-x64": "On Windows or Apple Silicon?",
     };
     const prefixEl = document.querySelector<HTMLElement>("[data-other-prefix]");
     if (prefixEl) prefixEl.textContent = prefixByPlatform[platform];
