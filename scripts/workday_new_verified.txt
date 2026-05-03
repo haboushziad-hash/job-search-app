@@ -1,0 +1,8 @@
+# New verified Workday tenants (auto-generated)
+    ('Marsh McLennan'              , 'https://mmc.wd1.myworkdayjobs.com'                         , 'Careers'),  # 542 jobs
+    ('AstraZeneca'                 , 'https://astrazeneca.wd3.myworkdayjobs.com'                 , 'Careers'),  # 488 jobs
+    ('Workday'                     , 'https://workday.wd5.myworkdayjobs.com'                     , 'Workday'),  # 413 jobs
+    ('Regeneron'                   , 'https://regeneron.wd1.myworkdayjobs.com'                   , 'Careers'),  # 411 jobs
+    ('KeyBank'                     , 'https://keybank.wd5.myworkdayjobs.com'                     , 'External_Career_Site'),  # 197 jobs
+    ('Simon Property Group'        , 'https://simon.wd1.myworkdayjobs.com'                       , 'Simon'),  # 159 jobs
+    ('Unum'                        , 'https://unum.wd1.myworkdayjobs.com'                        , 'External'),  # 63 jobs

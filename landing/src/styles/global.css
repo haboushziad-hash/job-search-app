@@ -1,0 +1,275 @@
+@import "tailwindcss";
+
+/* ------------------------------------------------------------------------ */
+/* Color tokens — match the desktop app's dark glass aesthetic               */
+/* ------------------------------------------------------------------------ */
+@theme {
+  /* Base — deep blacks with cool undertone */
+  --color-base-950: #07080c;
+  --color-base-900: #0c0e14;
+  --color-base-800: #161922;
+  --color-base-700: #232735;
+  --color-base-600: #38405a;
+  --color-base-500: #5b6480;
+  --color-base-400: #8b93ad;
+  --color-base-300: #b7bdd0;
+  --color-base-200: #d6dae5;
+  --color-base-100: #ebeef4;
+  --color-base-50:  #f7f8fb;
+
+  /* Accent — violet/purple gradient that matches the app */
+  --color-accent-300: #c8a6ff;
+  --color-accent-400: #a47cff;
+  --color-accent-500: #8856ff;
+  --color-accent-600: #6e3df0;
+  --color-accent-700: #5a2cd1;
+  --color-accent-800: #441fa3;
+
+  /* Tier colors (for any score-style chips on the page) */
+  --color-tier-strong: #5eead4;
+  --color-tier-good: #93c5fd;
+  --color-tier-maybe: #fcd34d;
+  --color-tier-stretch: #fda4af;
+
+  /* Geist Variable as the only font — preloaded in <head> */
+  --font-sans: 'Geist', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, 'Cascadia Code', monospace;
+}
+
+/* Self-host Geist Variable when present. Falls back to system stack until
+ * /public/fonts/Geist-Variable.woff2 is added. The font-display: swap
+ * means the system stack renders immediately — no FOIT, no CLS. */
+@font-face {
+  font-family: 'Geist';
+  src: url('/fonts/Geist-Variable.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ------------------------------------------------------------------------ */
+/* Body — black background, pre-set typography                                */
+/* ------------------------------------------------------------------------ */
+:root {
+  color-scheme: dark;
+}
+
+html, body {
+  /* Deep blue-to-near-black diagonal gradient — matches the desktop app's
+   * dashboard. Top-left vibrant blue, bottom-right almost black. The mesh
+   * blobs add depth on top of this. */
+  background:
+    radial-gradient(ellipse at top left, #18377a 0%, transparent 55%),
+    linear-gradient(135deg, #0a1730 0%, #06081a 35%, #04050d 70%, #020208 100%);
+  background-attachment: fixed;
+  min-height: 100vh;
+  color: var(--color-base-100);
+  font-family: var(--font-sans);
+  font-feature-settings: 'cv11', 'ss01', 'ss03';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
+}
+
+/* ------------------------------------------------------------------------ */
+/* CSS-only animated gradient mesh background.                                */
+/* Three radial blobs that slowly drift. Compositor-only (no main-thread     */
+/* cost during scroll). Each blob blurred 80px, ~0.5 opacity. Total cost:    */
+/* ~0KB JS, ~2KB CSS, runs on GPU.                                            */
+/* ------------------------------------------------------------------------ */
+.mesh {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  z-index: -2;
+  pointer-events: none;
+}
+
+.mesh::before,
+.mesh::after,
+.mesh > .blob {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  will-change: transform;
+  opacity: 0.45;
+}
+
+/* Top-left bright blue blob — anchors the gradient, matches the app */
+.mesh::before {
+  width: 60vw;
+  height: 60vw;
+  top: -20vw;
+  left: -10vw;
+  background: radial-gradient(circle, #2563eb 0%, transparent 70%);
+  animation: drift1 28s ease-in-out infinite alternate;
+}
+
+/* Bottom-right deep indigo blob — keeps the page from going pure black */
+.mesh::after {
+  width: 70vw;
+  height: 70vw;
+  bottom: -30vw;
+  right: -20vw;
+  background: radial-gradient(circle, #1e3a8a 0%, transparent 70%);
+  opacity: 0.30;
+  animation: drift2 36s ease-in-out infinite alternate;
+}
+
+/* Center-left subtle violet accent — keeps the brand color present */
+.mesh > .blob {
+  width: 45vw;
+  height: 45vw;
+  top: 35%;
+  left: -20vw;
+  background: radial-gradient(circle, #6366f140 0%, transparent 70%);
+  opacity: 0.35;
+  animation: drift3 42s ease-in-out infinite alternate;
+}
+
+@keyframes drift1 {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(8vw, 5vw, 0); }
+}
+@keyframes drift2 {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(-10vw, -7vw, 0); }
+}
+@keyframes drift3 {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(15vw, -10vw, 0); }
+}
+
+/* SVG-noise overlay — 200-byte filter, 4% opacity. Adds film-grain depth.  */
+.noise {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.04;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+}
+
+/* ------------------------------------------------------------------------ */
+/* Glass utility classes — match the desktop app                              */
+/* ------------------------------------------------------------------------ */
+.glass {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+}
+@supports not (backdrop-filter: blur(1px)) {
+  .glass {
+    background: rgba(15, 17, 24, 0.85);
+  }
+}
+
+.glass-strong {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  backdrop-filter: blur(28px) saturate(160%);
+  -webkit-backdrop-filter: blur(28px) saturate(160%);
+}
+
+.glass-subtle {
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* ------------------------------------------------------------------------ */
+/* Scroll-reveal — toggled by main.ts via IntersectionObserver               */
+/* ------------------------------------------------------------------------ */
+.reveal {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.6s ease, transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.reveal.in-view {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Stagger children on a reveal container */
+.reveal-stagger > *      { opacity: 0; transform: translateY(16px); transition: 0.5s; }
+.reveal-stagger.in-view > * { opacity: 1; transform: translateY(0); }
+.reveal-stagger.in-view > *:nth-child(1) { transition-delay: 0.0s; }
+.reveal-stagger.in-view > *:nth-child(2) { transition-delay: 0.08s; }
+.reveal-stagger.in-view > *:nth-child(3) { transition-delay: 0.16s; }
+.reveal-stagger.in-view > *:nth-child(4) { transition-delay: 0.24s; }
+.reveal-stagger.in-view > *:nth-child(5) { transition-delay: 0.32s; }
+.reveal-stagger.in-view > *:nth-child(6) { transition-delay: 0.40s; }
+
+/* ------------------------------------------------------------------------ */
+/* Buttons                                                                    */
+/* ------------------------------------------------------------------------ */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.875rem 1.5rem;
+  border-radius: 0.625rem;
+  background: linear-gradient(135deg, var(--color-accent-500), var(--color-accent-700));
+  color: white;
+  font-weight: 600;
+  font-size: 0.95rem;
+  letter-spacing: -0.01em;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 8px 24px -8px rgba(110, 61, 240, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1),
+              box-shadow 0.25s ease;
+  cursor: pointer;
+  text-decoration: none;
+}
+.btn-primary:hover {
+  transform: translateY(-1px) scale(1.015);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.12),
+    0 12px 32px -8px rgba(110, 61, 240, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+.btn-primary:active { transform: translateY(0) scale(0.99); }
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.875rem 1.25rem;
+  border-radius: 0.625rem;
+  color: var(--color-base-200);
+  font-weight: 500;
+  font-size: 0.95rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+  transition: background 0.2s ease, border-color 0.2s ease;
+  cursor: pointer;
+  text-decoration: none;
+}
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+/* ------------------------------------------------------------------------ */
+/* Section utility — tighter vertical rhythm so sections feel connected.      */
+/* ------------------------------------------------------------------------ */
+.section { padding: 4rem 1.5rem; }
+@media (min-width: 768px) { .section { padding: 5.5rem 2rem; } }
+
+/* ------------------------------------------------------------------------ */
+/* Reduced motion respect                                                     */
+/* ------------------------------------------------------------------------ */
+@media (prefers-reduced-motion: reduce) {
+  .mesh::before, .mesh::after, .mesh > .blob {
+    animation: none;
+  }
+  .reveal, .reveal-stagger > * {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}

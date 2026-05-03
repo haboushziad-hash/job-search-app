@@ -1,0 +1,52 @@
+DAVID CHEN
+Seattle, WA | david.chen@email.com | 425-555-0179 | github.com/davidchen-dev
+
+SUMMARY
+Backend software engineer with 7 years of experience building distributed systems
+at high-growth SaaS and fintech companies. Strong in Python, Go, AWS, and
+event-driven architectures. Looking for Staff or Senior Staff Engineer roles
+focused on platform/infra work, ideally at a Series B-D startup or a tier-1 tech
+company. Open to remote, hybrid in Seattle, or relocation to SF Bay Area.
+
+EDUCATION
+Carnegie Mellon University, BS Computer Science, 2018
+
+PROFESSIONAL EXPERIENCE
+
+Stripe - Senior Software Engineer, Payments Infrastructure (2022-Present)
+Seattle, WA (Remote)
+- Built and own the merchant payouts pipeline processing $1.2B/day across 8
+  Kafka topics with 99.99% delivery SLA
+- Migrated payout settlement engine from a monolithic PostgreSQL design to a
+  sharded TiDB architecture, reducing p99 latency from 4.2s to 380ms
+- Lead engineer on incident response for our team's on-call rotation; authored
+  the runbook for a class of cross-region replication failures
+- Mentor 3 junior engineers; review ~30 PRs/week across the team
+
+Plaid - Software Engineer (2020-2022)
+San Francisco, CA
+- Built the Account Verification microservice (Go) handling 2M+ requests/day
+- Owned the bank credentials encryption layer using AWS KMS + envelope encryption
+- Improved CI pipeline build times 8x by introducing layered Docker caching
+
+Microsoft - Software Engineer II (2018-2020)
+Redmond, WA
+- Worked on Azure Cosmos DB query engine — C# / .NET internals
+- Shipped a query plan optimizer for cross-partition queries
+
+TECHNICAL SKILLS
+- Languages: Python (expert), Go (expert), Rust (intermediate), TypeScript, SQL
+- Cloud: AWS (EC2, S3, Lambda, Kinesis, KMS, RDS), GCP basics, Terraform
+- Databases: PostgreSQL, TiDB, DynamoDB, Redis, Kafka
+- Distributed systems: Raft, gRPC, event sourcing, CQRS
+- Observability: Datadog, OpenTelemetry, Prometheus
+- Testing: pytest, table-driven tests, contract testing
+
+OPEN SOURCE
+- pyclickhouse-async: async Python driver for ClickHouse, 1.4k stars
+- gokafka-batch: batch consumer pattern for Sarama, 600 stars
+
+INTERESTS
+Distributed consensus algorithms, query optimization, latency engineering.
+Not interested in pure people-management roles or roles with significant
+on-site requirements outside Seattle/SF.

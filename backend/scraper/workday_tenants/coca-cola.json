@@ -1,0 +1,17 @@
+{
+  "display_name": "Coca-Cola",
+  "careers_url": "https://careers.coca-colacompany.com/jobs",
+  "status": "OK",
+  "reason": "",
+  "elapsed": 10.8,
+  "captured": {
+    "url": "https://bam.nr-data.net/events/1/49021e70cb?a=121917868&v=1.313.1&to=Z1NWNkIED0cDABAIWF4ZdQFEDA5aTRcBDEdcV0AHHRUAUwc%3D&rst=6740&ck=0&s=12be43f049e93dcb&ref=https://careers.coca-colacompany.com/jobs&ptid=f02d8e9af3f1ce3e",
+    "method": "POST",
+    "request_body": "bel.6;e,'lcp,1mw,f;6,'timeToFirstByte,1960.4000000059605;6,'resourceLoadDelay,78.09999999403954;6,'resourceLoadDuration,17.;6,'resourceLoadTime,17.;6,'elementRenderDelay,64.5;6,'size,280312.;5,'eid;5,'elTag,'IMG;5,'element,'span.fusion-imageframe.imageframe-none.imageframe-2.hover-type-none>img.img-responsive.wp-image-2870;5,'elUrl,'https://careers.coca-colacompany.com/wp-content/uploads/sites/3503/2025/08/21114035/Option-B-No-Text_2.jpg;5,'pageUrl,'https://careers.coca-colacompany.com/jobs;5,'net-etype,'4g;6,'net-dlink,10.;6,'cls,0.02740605197482639;7,'webdriverDetected;e,'fi,3nj,8;5,'type,'keydown;5,'eventTarget,'input#cws_quickjobsearch_keywords.text_input.keyword_suggest.ui-autocomplete-input;5,'loadState,'complete;5,e,f;5,g,h;6,i,10.;6,j,0.02740605197482639;7,k;e,'unload,577,5;5,e,f;5,g,h;6,i,10.;6,j,0.02740605197482639;7,k;e,j,r,9;5,'metricId,'v4-1777824202963-5962552635475;5,'largestShiftTarget,'#content>div.post-content;6,'largestShiftTime,2200.1000000089407;6,'largestShiftValue,0.02734375;5,q,'dom-content-loaded;5,e,f;5,g,h;6,i,10.;7,k;e,'pageHide,577,5;5,e,f;5,g,h;6,i,10.;6,j,0.02740605197482639;7,k;e,'inp,8,g;5,t,'v4-1777824202961-8398818196779;5,o,'#cws_quickjobsearch_keywords;6,'eventTime,4735.100000008941;5,'interactionTarget,13;6,'interactionTime,4735.100000008941;5,'interactionType,'keyboard;6,'inputDelay,0.29999999701976776;6,'nextPaintTime,4743.100000008941;6,'processingDuration,1.7000000029802322;6,'presentationDelay,6.;5,q,r;5,e,f;5,g,h;6,i,10.;6,j,0.02740605197482639;7,k",
+    "headers": {
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "input_selector_used": "input[placeholder*='earch' i]"
+  }
+}

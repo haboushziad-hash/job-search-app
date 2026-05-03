@@ -1,0 +1,11 @@
+---
+const { number, label } = Astro.props;
+---
+<div class="text-center">
+  <div class="text-3xl sm:text-4xl font-semibold tracking-tight text-base-50 tabular-nums">
+    {number}
+  </div>
+  <div class="text-[11px] uppercase tracking-widest text-base-500 mt-1.5">
+    {label}
+  </div>
+</div>

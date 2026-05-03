@@ -1,0 +1,19 @@
+{
+  "display_name": "Deloitte",
+  "careers_url": "https://apply.deloitte.com/careers",
+  "status": "OK",
+  "reason": "",
+  "elapsed": 7.4,
+  "captured": {
+    "url": "https://apply.deloitte.com/en_US/careers/_wizardPortalDatasetSingleColumnOptionsSearchApi",
+    "method": "POST",
+    "request_body": "{\"datasetFieldSchemaFieldId\":\"w4TyGyj0ezojLTuB0KZ63SH39IMsKJdjz8k2nmtAVpolOzxOCTIIZUWHKg==\",\"schemaFieldIdToUseForIndirectFiltering\":\"ci2M7+P1hUZRkJiCQvbVFwI+CC+DleuSeEECyKKTomKmxdhB7WFbiMhvJg==\",\"filters\":[{\"operator\":\"==\",\"datasetSpecIdFilter\":\"IzM8NpupNs7OFyQ8FRgDUQ1N22Xt/lcWZggNln5TMC7vSZDErFLqZVy/\",\"schemaFieldNumberFilter\":\"XyfkXyZt1SyTX4z86st9Rqp2uY1P8y6v2Si/Piq+KTsJBRpOnizaLg==\",\"value\":152,\"entityId\":null,\"type\":\"fixed\"},{\"operator\":\"==\",\"datasetSpecIdFilter\":\"eaZ1zCqFS75iaj0rIq7WiBclCztHfW5EA6QODglaBtfjMTTnXE1A5sxN\",\"schemaFieldNumberFilter\":\"pm3y7vRi1eQxCLFO8EeIYyiSTb2RHWUag6y5qmpydf2y2+nQgv7T0w==\",\"value\":637,\"entityId\":null,\"type\":\"fixed\"}],\"optionFormatComponents\":[{\"type\":\"field\",\"order\":0,\"fieldNumberOrText\":\"WuMVTk6QkOA866qR4y//ssUfUTU4PKSi3E85HB44lXC4YSDwvb1osw==\"}],\"searchIds\":null,\"currentOptionsIds\":[],\"page\":1,\"limit\":3,\"searchText\":\"manager\",\"exactMatch\":false,\"datasetSchemaSpecId\":\"LcidoK11jglTzpSI0MZyIF4cEhrd1DZOkItWe7Dn0d99I9U9XJRTyjQK\"}",
+    "headers": {
+      "x-requested-with": "XMLHttpRequest",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+      "accept": "application/json, text/javascript, */*; q=0.01",
+      "content-type": "application/x-www-form-urlencoded; charset=UTF-8"
+    },
+    "input_selector_used": "input[type='search']"
+  }
+}

@@ -1,0 +1,2035 @@
+[
+  {
+    "company": "JPMorgan Chase",
+    "input_url": "https://careers.jpmorgan.com/global/en/jobs",
+    "final_url": "https://www.jpmorganchase.com/careers?redirect=careers_jpm",
+    "primary_ats": "Unknown",
+    "ats_xhr_counts": {},
+    "total_xhrs_seen": 270,
+    "captured_search_xhrs": [],
+    "best_capture": null
+  },
+  {
+    "company": "Goldman Sachs",
+    "input_url": "https://www.goldmansachs.com/careers/professionals/jobs/index.html",
+    "final_url": "https://www.goldmansachs.com/careers/professionals/jobs",
+    "primary_ats": "Unknown",
+    "ats_xhr_counts": {},
+    "total_xhrs_seen": 109,
+    "captured_search_xhrs": [
+      {
+        "url": "https://www.goldmansachs.com/careers/professionals/jobs",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 404,
+        "job_count": null,
+        "post_body_preview": null
+      }
+    ],
+    "best_capture": null
+  },
+  {
+    "company": "Wells Fargo",
+    "input_url": "https://www.wellsfargojobs.com/en/jobs/",
+    "final_url": "https://www.wellsfargojobs.com/en/jobs/",
+    "primary_ats": "Proprietary",
+    "ats_xhr_counts": {
+      "Proprietary": 1
+    },
+    "total_xhrs_seen": 30,
+    "captured_search_xhrs": [
+      {
+        "url": "https://www.wellsfargojobs.com/en/jobs/",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      }
+    ],
+    "best_capture": {
+      "url": "https://www.wellsfargojobs.com/en/jobs/",
+      "method": "GET",
+      "ats": "Proprietary",
+      "status": 200,
+      "job_count": null,
+      "post_body_preview": null
+    }
+  },
+  {
+    "company": "PepsiCo",
+    "input_url": "https://www.pepsicojobs.com/main/jobs",
+    "final_url": "https://www.pepsicojobs.com/main/jobs",
+    "primary_ats": "Proprietary",
+    "ats_xhr_counts": {
+      "Proprietary": 10
+    },
+    "total_xhrs_seen": 132,
+    "captured_search_xhrs": [
+      {
+        "url": "https://app.jibecdn.com/prod/search/4.11.184/styles.css",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://click.appcast.io/pixels/icims-21719.js?ent=380&jsid=$T{Submittal}.$T{Person}.$F{PersonID}",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://www.pepsicojobs.com/main/jobs",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://app.jibecdn.com/prod/search/4.11.184/runtime-es2015.js",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://app.jibecdn.com/prod/search/4.11.184/polyfills-es2015.js",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://app.jibecdn.com/prod/search/4.11.184/main-es2015.js",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://app.jibecdn.com/prod/search/4.11.184/vendor-es2015.js",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://app.jibecdn.com/prod/search/4.11.184/assets/filter-icon.svg",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://app.jibecdn.com/prod/search/4.11.184/assets/distance-icon.svg",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://www.pepsicojobs.com/api/jobs?page=1&sortBy=relevance&descending=false&internal=false",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": 10,
+        "post_body_preview": null
+      }
+    ],
+    "best_capture": {
+      "url": "https://www.pepsicojobs.com/api/jobs?page=1&sortBy=relevance&descending=false&internal=false",
+      "method": "GET",
+      "ats": "Proprietary",
+      "status": 200,
+      "job_count": 10,
+      "post_body_preview": null
+    }
+  },
+  {
+    "company": "Coca-Cola",
+    "input_url": "https://careers.coca-colacompany.com/jobs",
+    "final_url": "https://careers.coca-colacompany.com/jobs",
+    "primary_ats": "Proprietary",
+    "ats_xhr_counts": {
+      "Proprietary": 6
+    },
+    "total_xhrs_seen": 83,
+    "captured_search_xhrs": [
+      {
+        "url": "https://careers.coca-colacompany.com/jobs",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 404,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://jobsapi-internal.m-cloud.io/api/job?callback=jQuery351012269921879298251_1777774062723&Organization=2110&Limit=3&offset=0&facet%5B%5D=ats_portalid%3ACocaCola-Workday-External&facet%5B%5D=is_internal%3Acoca-cola-careers&latitude=37.6719&longitude=-77.3259&LocationRadius=100",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://jobsapi-internal.m-cloud.io/api/job?callback=jQuery351012269921879298251_1777774062723&Organization=2110&Limit=3&offset=0&facet%5B%5D=ats_portalid%3ACocaCola-Workday-External&facet%5B%5D=is_internal%3Acoca-cola-careers&facet%5B%5D=primary_country%3AUS&LocationRadius=100&sortfield=open_date&sortorder=descending",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://bam.nr-data.net/1/49021e70cb?a=121917868&v=1.313.1&to=Z1NWNkIED0cDABAIWF4ZdQFEDA5aTRcBDEdcV0AHHRUAUwc%3D&rst=2683&ck=0&s=ae5fbf7812bc6b25&ref=https://careers.coca-colacompany.com/jobs&ptid=2cf3291c28c97101&af=err,spa,xhr,stn,ins&ap=2124&be=2211&fe=439&dc=212&at=SxRVQAoeHEk%3D&fsh=1&perf=%7B%22timing%22:%7B%22of%22:1777774060424,%22n%22:0,%22f%22:0,%22dn%22:0,%22dne%22:46,%22c%22:46,%22s%22:52,%22ce%22:64,%22rq%22:64,%22rp%22:2212,%22rpe%22:2239,%22di%22:2418,%22ds%22:2418,%22de%22:2423,%22dc%22:2644,%22l%22:2644,%22le%22:2650%7D,%22navigation%22:%7B%7D%7D&fp=2332&fcp=2364",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "{\"ja\":{\"webdriverDetected\":true}}"
+      },
+      {
+        "url": "https://bam.nr-data.net/events/1/49021e70cb?a=121917868&v=1.313.1&to=Z1NWNkIED0cDABAIWF4ZdQFEDA5aTRcBDEdcV0AHHRUAUwc%3D&rst=2929&ck=0&s=ae5fbf7812bc6b25&ref=https://careers.coca-colacompany.com/jobs&ptid=2cf3291c28c97101",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "bel.6;e,'fp,1ss,5;5,'pageUrl,'https://careers.coca-colacompany.com/jobs;5,'net-etype,'4g;6,'net-dlink,9.5;6,'cls,0.02739858127170139;7,'webdriverDetected;e,'fcp,1to,8;6,'timeToFirstByte,2211.5;6,'firs"
+      },
+      {
+        "url": "https://bam.nr-data.net/jserrors/1/49021e70cb?a=121917868&v=1.313.1&to=Z1NWNkIED0cDABAIWF4ZdQFEDA5aTRcBDEdcV0AHHRUAUwc%3D&rst=2930&ck=0&s=ae5fbf7812bc6b25&ref=https://careers.coca-colacompany.com/jobs&ptid=2cf3291c28c97101",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "{\"xhr\":[{\"params\":{\"method\":\"GET\",\"hostname\":\"cdn.cookielaw.org\",\"port\":\"443\",\"protocol\":\"https\",\"host\":\"cdn.cookielaw.org:443\",\"pathname\":\"/consent/69ef10c9-b75a-446e-ac96-348ce5a57858/69ef10c9-b75a-"
+      },
+      {
+        "url": "https://bam.nr-data.net/events/1/49021e70cb?a=121917868&v=1.313.1&to=Z1NWNkIED0cDABAIWF4ZdQFEDA5aTRcBDEdcV0AHHRUAUwc%3D&rst=2930&ck=0&s=ae5fbf7812bc6b25&ref=https://careers.coca-colacompany.com/jobs&ptid=2cf3291c28c97101",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "bel.7;1,e,,21l,,,'initialPageLoad,'https://careers.coca-colacompany.com/jobs,,1,,,,1n0,!!'976b8190-3201-4b14-b82d-1256f87f730d,'1,1ss,1to;7,'isFirstOfSession;7,'webdriverDetected;a,'SxRVQAoeHEk=;2,,1s"
+      }
+    ],
+    "best_capture": {
+      "url": "https://jobsapi-internal.m-cloud.io/api/job?callback=jQuery351012269921879298251_1777774062723&Organization=2110&Limit=3&offset=0&facet%5B%5D=ats_portalid%3ACocaCola-Workday-External&facet%5B%5D=is_internal%3Acoca-cola-careers&latitude=37.6719&longitude=-77.3259&LocationRadius=100",
+      "method": "GET",
+      "ats": "Proprietary",
+      "status": 200,
+      "job_count": null,
+      "post_body_preview": null
+    }
+  },
+  {
+    "company": "Procter & Gamble",
+    "input_url": "https://www.pgcareers.com/global/en/search-results",
+    "final_url": "https://www.pgcareers.com/global/en/search-results",
+    "primary_ats": "Proprietary",
+    "ats_xhr_counts": {
+      "Proprietary": 1,
+      "Phenom": 1
+    },
+    "total_xhrs_seen": 106,
+    "captured_search_xhrs": [
+      {
+        "url": "https://www.pgcareers.com/global/en/search-results",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://cdn.phenompeople.com/CareerConnectResources/pp/agWidgets/ph-search-results-v2-view5-30.js",
+        "method": "GET",
+        "ats": "Phenom",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      }
+    ],
+    "best_capture": {
+      "url": "https://www.pgcareers.com/global/en/search-results",
+      "method": "GET",
+      "ats": "Proprietary",
+      "status": 200,
+      "job_count": null,
+      "post_body_preview": null
+    }
+  },
+  {
+    "company": "Microsoft",
+    "input_url": "https://careers.microsoft.com/v2/global/en/search.html",
+    "final_url": "https://careers.microsoft.com/v2/global/en/errorPages/404.html",
+    "primary_ats": "Unknown",
+    "ats_xhr_counts": {},
+    "total_xhrs_seen": 43,
+    "captured_search_xhrs": [],
+    "best_capture": null
+  },
+  {
+    "company": "UnitedHealth",
+    "input_url": "https://careers.unitedhealthgroup.com/",
+    "final_url": "https://careers.unitedhealthgroup.com/",
+    "primary_ats": "Unknown",
+    "ats_xhr_counts": {},
+    "total_xhrs_seen": 195,
+    "captured_search_xhrs": [],
+    "best_capture": null
+  },
+  {
+    "company": "Johnson & Johnson",
+    "input_url": "https://jobs.jnj.com/en/jobs",
+    "final_url": "https://www.careers.jnj.com/en/jobs",
+    "primary_ats": "Proprietary",
+    "ats_xhr_counts": {
+      "Proprietary": 1
+    },
+    "total_xhrs_seen": 49,
+    "captured_search_xhrs": [
+      {
+        "url": "https://www.careers.jnj.com/en/jobs",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      }
+    ],
+    "best_capture": {
+      "url": "https://www.careers.jnj.com/en/jobs",
+      "method": "GET",
+      "ats": "Proprietary",
+      "status": 200,
+      "job_count": null,
+      "post_body_preview": null
+    }
+  },
+  {
+    "company": "Merck",
+    "input_url": "https://jobs.merck.com/us/en/search-results",
+    "final_url": "https://jobs.merck.com/us/en/search-results",
+    "primary_ats": "Proprietary",
+    "ats_xhr_counts": {
+      "Proprietary": 15,
+      "Phenom": 1
+    },
+    "total_xhrs_seen": 161,
+    "captured_search_xhrs": [
+      {
+        "url": "https://jobs.merck.com/us/en/search-results",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://jobs.merck.com/us/en/phenomtrack.min.js",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://jobs.merck.com/widgets",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "{\"widgetIds\":[\"short-header-default\",\"ph-cookie-popup-v2-default\",\"ph-hero-content-cc-view1-option1-theme2-savedView-1607541134862\",\"ph-hero-block-cc-view3-option1-theme1\",\"ph-page-state-data-v1-no-re"
+      },
+      {
+        "url": "https://jobs.merck.com/us/en/phenomapptrack.min.js",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://jobs.merck.com/widgets",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "{\"lang\":\"en_us\",\"deviceType\":\"desktop\",\"country\":\"us\",\"pageName\":\"search-results\",\"pageId\":\"page2-ds\",\"data\":[{\"widgetTag\":\"short-header\",\"view\":\"short-header\",\"instanceId\":\"l3x357\"},{\"widgetTag\":\"ph-"
+      },
+      {
+        "url": "https://jobs.merck.com/widgets",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "{\"data\":{\"l3x357\":\"short-header-default\",\"tyhff3\":\"short-header-default\",\"6h6fmn\":\"short-header-default\",\"fgos43\":\"short-header-default\",\"jkn0zo\":\"short-header-default\",\"yoPqqT\":\"ph-cookie-popup-v2-de"
+      },
+      {
+        "url": "https://pp-cdn.phenompeople.com/CareerConnectResources/pp/agWidgets/ph-search-results-v2-default-30.js",
+        "method": "GET",
+        "ats": "Phenom",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://jobs.merck.com/widgets",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "{\"deviceType\":\"desktop\",\"locale\":\"en_us\",\"pageId\":\"page2-ds\",\"refNum\":\"MERCUS\",\"siteVariant\":\"external\",\"ddoKey\":\"dynaData\"}"
+      },
+      {
+        "url": "https://jobs.merck.com/widgets",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "{\"lang\":\"en_us\",\"deviceType\":\"desktop\",\"country\":\"us\",\"pageName\":\"search-results\",\"pageId\":\"page2-ds\",\"data\":{\"l3x357\":\"short-header-short-header\",\"tyhff3\":\"ph-global-search-v3-default\",\"6h6fmn\":\"ph-l"
+      },
+      {
+        "url": "https://jobs.merck.com/widgets",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "{\"lang\":\"en_us\",\"deviceType\":\"desktop\",\"country\":\"us\",\"pageName\":\"search-results\",\"ddoKey\":\"validateJwtToken\"}"
+      },
+      {
+        "url": "https://jobs.merck.com/widgets",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "{\"lang\":\"en_us\",\"deviceType\":\"desktop\",\"country\":\"us\",\"pageName\":\"search-results\",\"ddoKey\":\"eagerLoadRefineSearchSession\",\"sortBy\":\"\",\"subsearch\":\"\",\"from\":0,\"irs\":false,\"jobs\":true,\"counts\":true,\"all"
+      },
+      {
+        "url": "https://jobs.merck.com/widgets",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "{\"lang\":\"en_us\",\"deviceType\":\"desktop\",\"country\":\"us\",\"pageName\":\"search-results\",\"ddoKey\":\"jobCartCountV2\",\"isEagerLoad\":true}"
+      },
+      {
+        "url": "https://jobs.merck.com/widgets",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "{\"lang\":\"en_us\",\"deviceType\":\"desktop\",\"country\":\"us\",\"pageName\":\"search-results\",\"ddoKey\":\"getChatbotConfigurations\",\"currentUrlPath\":\"https://jobs.merck.com/us/en/search-results\"}"
+      },
+      {
+        "url": "https://jobs.merck.com/widgets",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "{\"lang\":\"en_us\",\"deviceType\":\"desktop\",\"country\":\"us\",\"pageName\":\"search-results\",\"ddoKey\":\"getUrl\",\"reqPageName\":\"jointalentcommunity\"}"
+      },
+      {
+        "url": "https://jobs.merck.com/widgets",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "{\"lang\":\"en_us\",\"deviceType\":\"desktop\",\"country\":\"us\",\"pageName\":\"search-results\",\"ddoKey\":\"getLocationDetails\"}"
+      },
+      {
+        "url": "https://jobs.merck.com/widgets",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "{\"lang\":\"en_us\",\"deviceType\":\"desktop\",\"country\":\"us\",\"pageName\":\"search-results\",\"ddoKey\":\"chatbotLoadCX\",\"botObj\":{\"sender\":\"e6dd1a53-0f96-446b-9a87-9774b5656415\",\"message\":\"/bot_load\",\"type\":\"CHATB"
+      }
+    ],
+    "best_capture": {
+      "url": "https://jobs.merck.com/us/en/search-results",
+      "method": "GET",
+      "ats": "Proprietary",
+      "status": 200,
+      "job_count": null,
+      "post_body_preview": null
+    }
+  },
+  {
+    "company": "Liberty Mutual",
+    "input_url": "https://jobs.libertymutualgroup.com/search-jobs",
+    "final_url": "https://searchjobs.libertymutualgroup.com/careers",
+    "primary_ats": "Proprietary",
+    "ats_xhr_counts": {
+      "Proprietary": 39
+    },
+    "total_xhrs_seen": 250,
+    "captured_search_xhrs": [
+      {
+        "url": "https://searchjobs.libertymutualgroup.com/gen/css/pcsBase.8a6fcb9e5f3b03349cac.css",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://searchjobs.libertymutualgroup.com/gen/inspinia_animate.d6f644ff.css",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://searchjobs.libertymutualgroup.com/gen/font-awesome-5.7.1.783223d0.css",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://searchjobs.libertymutualgroup.com/gen/jquery.02f65749.css",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://searchjobs.libertymutualgroup.com/gen/polyfill.5231d666.js",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://searchjobs.libertymutualgroup.com/gen/inspinia.min.77f63808.css",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://searchjobs.libertymutualgroup.com/gen/bootstrap.screen.04e96e02.css",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://searchjobs.libertymutualgroup.com/gen/base.cee66930.css",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://searchjobs.libertymutualgroup.com/gen/css/coreCss.72e05c6daef4a0606774.css",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://searchjobs.libertymutualgroup.com/gen/inspinia.1451ccce.js",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://searchjobs.libertymutualgroup.com/gen/i18n_data_en.a8a0de36.js",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://searchjobs.libertymutualgroup.com/gen/bootstrap_v5.5ca2d4ac.js",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://searchjobs.libertymutualgroup.com/gen/jquery_ui_v2.ef124067.js",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://searchjobs.libertymutualgroup.com/gen/user_interaction.d05956ed.js",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://searchjobs.libertymutualgroup.com/gen/jquery_v3.4df69f02.js",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://searchjobs.libertymutualgroup.com/gen/inspinia_toastr.min.7f843b9c.css",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://searchjobs.libertymutualgroup.com/gen/base.7ee690e1.js",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://searchjobs.libertymutualgroup.com/careers",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://searchjobs.libertymutualgroup.com/gen/js/ef-5a94f17d.8bbe5b634f4cda39632c.js",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://searchjobs.libertymutualgroup.com/gen/js/ef-cdd60c62.0edde78d9d1abe0158b5.js",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://searchjobs.libertymutualgroup.com/gen/js/ef-229eafb5.2572a26c5ef16f8bd981.js",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://searchjobs.libertymutualgroup.com/gen/js/ef-a5ce148e.0b23f591cb83a4cfafdd.js",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://searchjobs.libertymutualgroup.com/gen/js/ef-49ceb22a.4c2d28810e7e5c9eae84.js",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://searchjobs.libertymutualgroup.com/gen/js/ef-49d0a293.3d8f4d66ab65f3b5fc31.js",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://searchjobs.libertymutualgroup.com/gen/js/ef-d2eb5610.2e3de63dceecc569dd61.js",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://searchjobs.libertymutualgroup.com/gen/js/ef-536eaa00.8bfb28f51bce0cf871ac.js",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://searchjobs.libertymutualgroup.com/gen/js/ef-bb3d84b5.c4b92f0ca4300c51ba5d.js",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://searchjobs.libertymutualgroup.com/gen/js/ef-2518c84c.ba566037dc6252287dcc.js",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://searchjobs.libertymutualgroup.com/gen/js/ef-0bc0478e.c0e6deae7ee23a1e2af9.js",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://searchjobs.libertymutualgroup.com/gen/js/ef-bcc0128f.c8c47c9421a82a8b40ae.js",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://searchjobs.libertymutualgroup.com/gen/js/ef-e5bca7e4.6003937fe480f348a21d.js",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://searchjobs.libertymutualgroup.com/gen/js/ef-27545368.d9f310c6ebb2c0b3dfe3.js",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://searchjobs.libertymutualgroup.com/gen/js/ef-b8dc5d2d.baece976ba3690df0c77.js",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://searchjobs.libertymutualgroup.com/gen/js/smartApply.40d2f6ed20d8927d02df.js",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://searchjobs.libertymutualgroup.com/api/apply/v2/jobs/618517080345/jobs?domain=libertymutual.com",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://searchjobs.libertymutualgroup.com/api/apply/v2/jobs/618517080345/insights?domain=libertymutual.com",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://searchjobs.libertymutualgroup.com/api/apply/v2/branding?pid=618517080345&domain=libertymutual.com&hl=en",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://searchjobs.libertymutualgroup.com/api/apply/v2/jobs/618517080345?domain=libertymutual.com",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://searchjobs.libertymutualgroup.com/vslog?event=pageInteractiveTime&namespace=job_details_page",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "{\"data_json\":{\"appName\":\"careers\",\"pageNamespace\":\"job_details_page\",\"path\":\"/careers\",\"visitCount\":1,\"pageVisitTs\":1777774115456,\"pageVisitTimeFromPageLoad\":2531.6999999955297,\"events\":[{\"eventName\":"
+      }
+    ],
+    "best_capture": {
+      "url": "https://searchjobs.libertymutualgroup.com/gen/css/pcsBase.8a6fcb9e5f3b03349cac.css",
+      "method": "GET",
+      "ats": "Proprietary",
+      "status": 200,
+      "job_count": null,
+      "post_body_preview": null
+    }
+  },
+  {
+    "company": "Honeywell",
+    "input_url": "https://careers.honeywell.com/us/en/search-results",
+    "final_url": "https://careers.honeywell.com/errors/404",
+    "primary_ats": "Unknown",
+    "ats_xhr_counts": {},
+    "total_xhrs_seen": 5,
+    "captured_search_xhrs": [],
+    "best_capture": null
+  },
+  {
+    "company": "ExxonMobil",
+    "input_url": "https://jobs.exxonmobil.com/search/",
+    "final_url": "https://jobs.exxonmobil.com/search/",
+    "primary_ats": "Proprietary",
+    "ats_xhr_counts": {
+      "Proprietary": 27
+    },
+    "total_xhrs_seen": 33,
+    "captured_search_xhrs": [
+      {
+        "url": "https://jobs.exxonmobil.com/platform/csb/css/customHeader.css?h=ab16cb6",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://jobs.exxonmobil.com/platform/css/j2w/min/bootstrapV3.global.responsive.min.css?h=ab16cb6",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://jobs.exxonmobil.com/platform/css/j2w/min/sitebuilderframework.min.css?h=ab16cb6",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://jobs.exxonmobil.com/platform/css/j2w/min/BS3ColumnizedSearch.min.css?h=ab16cb6",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://jobs.exxonmobil.com/search/",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://jobs.exxonmobil.com/platform/bootstrap/3.4.8_NES/css/bootstrap.min.css",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://jobs.exxonmobil.com/platform/fontawesome4.7/css/font-awesome-4.7.0.min.css?h=ab16cb6",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://jobs.exxonmobil.com/platform/js/jquery/jquery.watermark.js",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://jobs.exxonmobil.com/platform/js/j2w/min/j2w.cookiemanager.min.js?h=ab16cb6",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://jobs.exxonmobil.com/platform/js/j2w/min/j2w.cookiemanagershared.min.js?h=ab16cb6",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://jobs.exxonmobil.com/platform/bootstrap/3.4.8_NES/js/lib/dompurify/purify.min.js",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://jobs.exxonmobil.com/platform/bootstrap/3.4.8_NES/js/bootstrap.min.js",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://jobs.exxonmobil.com/platform/js/localized/strings_en_US.js?h=ab16cb6",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://jobs.exxonmobil.com/platform/js/j2w/min/j2w.core.min.js?h=ab16cb6",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://jobs.exxonmobil.com/platform/js/j2w/min/j2w.tc.min.js?h=ab16cb6",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://jobs.exxonmobil.com/platform/js/search/search.js?h=ab16cb6",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://jobs.exxonmobil.com/platform/js/j2w/min/j2w.user.min.js?h=ab16cb6",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://jobs.exxonmobil.com/platform/js/jquery/js.cookie-2.2.1.min.js",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://jobs.exxonmobil.com/platform/js/j2w/min/j2w.agent.min.js?h=ab16cb6",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://jobs.exxonmobil.com/platform/js/jquery/jquery.placeholder.2.0.7.min.js",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://jobs.exxonmobil.com/platform/js/jquery/jquery.lightbox_me.js",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://jobs.exxonmobil.com/js/override.js?locale=en_US&i=647914669",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://jobs.exxonmobil.com/platform/js/j2w/min/options-search.min.js?h=ab16cb6",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://jobs.exxonmobil.com/platform/js/j2w/min/j2w.apply.min.js?h=ab16cb6",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://jobs.exxonmobil.com/platform/js/jquery/jquery-migrate-1.4.1.js",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://jobs.exxonmobil.com/services/t/l?referrer=&ctid=be5b7c5e-a62a-4773-ab8a-0b30851bbff8&landing=https%3A%2F%2Fjobs.exxonmobil.com%2Fsearch%2F&brand=&_=1777774146882",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://jobs.exxonmobil.com/services/jobs/options/facetValues/",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "{\"page\":0,\"keywords\":\"\",\"locationsearch\":\"\",\"sortby\":\"referencedate\",\"sortdir\":\"desc\",\"sortfield\":\"title\",\"recordsperpage\":25,\"startrow\":0,\"facetquery\":{\"facet\":true,\"mincount\":1,\"limit\":5000,\"fields\""
+      }
+    ],
+    "best_capture": {
+      "url": "https://jobs.exxonmobil.com/platform/csb/css/customHeader.css?h=ab16cb6",
+      "method": "GET",
+      "ats": "Proprietary",
+      "status": 200,
+      "job_count": null,
+      "post_body_preview": null
+    }
+  },
+  {
+    "company": "IBM",
+    "input_url": "https://www.ibm.com/careers/search",
+    "final_url": "https://www.ibm.com/careers/search",
+    "primary_ats": "Proprietary",
+    "ats_xhr_counts": {
+      "Proprietary": 9
+    },
+    "total_xhrs_seen": 145,
+    "captured_search_xhrs": [
+      {
+        "url": "https://www.ibm.com/marketplace/static/components/search/embedded/v2.2/styles/styles.css",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://www.ibm.com/marketplace/static/components/search/insights/ibm-search-insights.js",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://www.ibm.com/marketplace/static/components/search/insights/r7insight.min.js",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://www.ibm.com/marketplace/static/components/search/embedded/v2.2/manifest/_buildManifest.js",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://www.ibm.com/marketplace/static/components/search/embedded/v2.2/runtime/main.js",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://www.ibm.com/marketplace/static/components/search/embedded/v2.2/pages/_app.js",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://www.ibm.com/marketplace/static/components/search/embedded/v2.2/pages/_error.js",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://www.ibm.com/marketplace/static/components/search/embedded/v2.2/pages/scoped-no-carbon.js",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://www-api.ibm.com/search/api/v2",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "{\"appId\":\"careers\",\"scopes\":[\"careers2\"],\"query\":{\"bool\":{\"must\":[]}},\"aggs\":{\"field_keyword_172\":{\"filter\":{\"match_all\":{}},\"aggs\":{\"field_keyword_17\":{\"terms\":{\"field\":\"field_keyword_17\",\"size\":6}},"
+      }
+    ],
+    "best_capture": {
+      "url": "https://www.ibm.com/marketplace/static/components/search/embedded/v2.2/styles/styles.css",
+      "method": "GET",
+      "ats": "Proprietary",
+      "status": 200,
+      "job_count": null,
+      "post_body_preview": null
+    }
+  },
+  {
+    "company": "Lockheed Martin",
+    "input_url": "https://www.lockheedmartinjobs.com/search-jobs",
+    "final_url": "https://www.lockheedmartinjobs.com/search-jobs",
+    "primary_ats": "Proprietary",
+    "ats_xhr_counts": {
+      "Proprietary": 2
+    },
+    "total_xhrs_seen": 121,
+    "captured_search_xhrs": [
+      {
+        "url": "https://cdn.jsdelivr.net/npm/instantsearch.js@4.75.5/dist/instantsearch.production.min.js",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://tbcdn.talentbrew.com/company/694/v1_0/css/lockheed-martin-provided/updated-2025_search-css-txt.css",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      }
+    ],
+    "best_capture": {
+      "url": "https://cdn.jsdelivr.net/npm/instantsearch.js@4.75.5/dist/instantsearch.production.min.js",
+      "method": "GET",
+      "ats": "Proprietary",
+      "status": 200,
+      "job_count": null,
+      "post_body_preview": null
+    }
+  },
+  {
+    "company": "SAIC",
+    "input_url": "https://jobs.saic.com/jobs/search",
+    "final_url": "https://jobs.saic.com/jobs/search",
+    "primary_ats": "Proprietary",
+    "ats_xhr_counts": {
+      "Proprietary": 3
+    },
+    "total_xhrs_seen": 15,
+    "captured_search_xhrs": [
+      {
+        "url": "https://jobs.saic.com/jobs/search",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 403,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://jobs.saic.com/cdn-cgi/challenge-platform/h/g/orchestrate/chl_page/v1?ray=9f5bb956799da6b3",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://jobs.saic.com/cdn-cgi/challenge-platform/h/g/flow/ov1/3070577502:1777770420:0xI3Puf3lDX3s0CMxaamRw_2_2_1PznIup1juWii45g/9f5bb956799da6b3/6XXk_gbhZeIbOSHDRfE9RBvdpr1m1gQ6wuLpPpqr4_c-1777774170-1.2.1.1-dLhL3WoY8ZNhr_H3.rGgSfXbEArfb85ITwU5opRzxFzL0XWcepQKMUUzpGeTSTW5",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "b$7SboOoCj28z+99okpqG+-5Lt3eSmXlskH+dusRSwnDrpi5Lrx8s+KWNUVHYSFsJcsyvk-m8pt0qYpo8VAeX9AHnhiN$UwszV+lq+MYASudnzzRd-ST4g$Gnvx7ULOtY9LPLW+WfxFDbP7mpebIsXYuJ80UkLUVDth4cj2Ncvzmy0IAXnE3422MrpsIPoggjLl41KH6"
+      },
+      {
+        "url": "blob:https://jobs.saic.com/98eef857-441a-4928-a6eb-0f068f7b7c12",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      }
+    ],
+    "best_capture": {
+      "url": "https://jobs.saic.com/cdn-cgi/challenge-platform/h/g/orchestrate/chl_page/v1?ray=9f5bb956799da6b3",
+      "method": "GET",
+      "ats": "Proprietary",
+      "status": 200,
+      "job_count": null,
+      "post_body_preview": null
+    }
+  },
+  {
+    "company": "Northrop Grumman",
+    "input_url": "https://www.northropgrumman.com/careers/career-search",
+    "final_url": "https://www.northropgrumman.com/careers/career-search",
+    "primary_ats": "Unknown",
+    "ats_xhr_counts": {},
+    "total_xhrs_seen": 39,
+    "captured_search_xhrs": [],
+    "best_capture": null
+  },
+  {
+    "company": "McDonald's",
+    "input_url": "https://careers.mcdonalds.com/main/jobs",
+    "final_url": "https://careers.mcdonalds.com/main/jobs",
+    "primary_ats": "Proprietary",
+    "ats_xhr_counts": {
+      "Proprietary": 1
+    },
+    "total_xhrs_seen": 77,
+    "captured_search_xhrs": [
+      {
+        "url": "https://careers.mcdonalds.com/main/jobs",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 404,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://olivia.paradox.ai/api/widget/srqyoqvshdxjgxdgudxa?request_language_code=&source=2&widget_target_id=166991&conversation_id=0&kb_on=1&ec_on=0&rating_on=0&job_search_on=1&start_interaction_type=4&referrer=&widget_apply_type=0&widget_page_url=https:%2F%2Fcareers.mcdonalds.com%2Fmain%2Fjobs&campaign_code=&init_widget=1&widget_label_external_data=[%7B%22label_id%22:155952,%22label_name%22:%22Page+URL%22,%22default_value%22:%22%22,%22token%22:%22%23widget-page-url%22,%22mapping_value%22:%22https:%2F%2Fcareers.mcdonalds.com%2Fmain%2Fjobs%22%7D,%7B%22label_id%22:155953,%22label_name%22:%22Referring+URL%22,%22default_value%22:%22%22,%22token%22:%22%23widget-referring-url%22,%22mapping_value%22:%22%22%7D,%7B%22label_id%22:155954,%22label_name%22:%22IsLandingPage%22,%22default_value%22:%22%22,%22token%22:%22%23widget-islandingpage%22,%22mapping_value%22:%22%22%7D]",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      }
+    ],
+    "best_capture": {
+      "url": "https://olivia.paradox.ai/api/widget/srqyoqvshdxjgxdgudxa?request_language_code=&source=2&widget_target_id=166991&conversation_id=0&kb_on=1&ec_on=0&rating_on=0&job_search_on=1&start_interaction_type=4&referrer=&widget_apply_type=0&widget_page_url=https:%2F%2Fcareers.mcdonalds.com%2Fmain%2Fjobs&campaign_code=&init_widget=1&widget_label_external_data=[%7B%22label_id%22:155952,%22label_name%22:%22Page+URL%22,%22default_value%22:%22%22,%22token%22:%22%23widget-page-url%22,%22mapping_value%22:%22https:%2F%2Fcareers.mcdonalds.com%2Fmain%2Fjobs%22%7D,%7B%22label_id%22:155953,%22label_name%22:%22Referring+URL%22,%22default_value%22:%22%22,%22token%22:%22%23widget-referring-url%22,%22mapping_value%22:%22%22%7D,%7B%22label_id%22:155954,%22label_name%22:%22IsLandingPage%22,%22default_value%22:%22%22,%22token%22:%22%23widget-islandingpage%22,%22mapping_value%22:%22%22%7D]",
+      "method": "GET",
+      "ats": "Proprietary",
+      "status": 200,
+      "job_count": null,
+      "post_body_preview": null
+    }
+  },
+  {
+    "company": "EY",
+    "input_url": "https://www.ey.com/en_us/careers/job-search",
+    "final_url": "https://www.ey.com/en_us/careers/job-search",
+    "primary_ats": "Proprietary",
+    "ats_xhr_counts": {
+      "Proprietary": 1
+    },
+    "total_xhrs_seen": 63,
+    "captured_search_xhrs": [
+      {
+        "url": "https://www.ey.com/en_us/careers/job-search",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      }
+    ],
+    "best_capture": {
+      "url": "https://www.ey.com/en_us/careers/job-search",
+      "method": "GET",
+      "ats": "Proprietary",
+      "status": 200,
+      "job_count": null,
+      "post_body_preview": null
+    }
+  },
+  {
+    "company": "KPMG",
+    "input_url": "https://kpmg.recsolu.com/jobs",
+    "final_url": "https://kpmg.recsolu.com/jobs",
+    "primary_ats": "Unknown",
+    "ats_xhr_counts": {},
+    "total_xhrs_seen": 0,
+    "captured_search_xhrs": [],
+    "best_capture": null
+  },
+  {
+    "company": "Deloitte",
+    "input_url": "https://apply.deloitte.com/en_US/careers/SearchJobs",
+    "final_url": "https://apply.deloitte.com/en_US/careers/SearchJobs",
+    "primary_ats": "Proprietary",
+    "ats_xhr_counts": {
+      "Proprietary": 2
+    },
+    "total_xhrs_seen": 116,
+    "captured_search_xhrs": [
+      {
+        "url": "https://apply.deloitte.com/en_US/careers/SearchJobs",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://sstats.deloitte.com/b/ss/deloittecomnewplatformprod/10/JS-2.22.3-LEWM/s89901589508025?AQB=1&ndh=1&pf=1&callback=s_c_il[1].doPostbacks&et=1&t=2%2F4%2F2026%2022%3A10%3A3%206%20240&d.&nsid=0&jsonv=1&.d&mid=75228955475503952360899265144054464626&aamlh=7&ce=UTF-8&ns=deloitte&fpCookieDomainPeriods=2&pageName=%2Fus%2Fen%2Fsearchjobs&g=https%3A%2F%2Fapply.deloitte.com%2Fen_US%2Fcareers%2FSearchJobs&c.&ssf=yes&Launch=yes&getPreviousValue=3.0&.c&cc=USD&events=event33%2Cevent166%2Cevent23&products=%3B&aamb=RKhpRz8krg2tLO6pguXWp5olkAcUniQYPHaMWWgdJ3xzPWQmdj0y&c1=us&c2=en&c3=us%3Ben&c5=job-search&c6=not%20logged%20in&v7=%2Fus%2Fen%2Fsearchjobs&c10=apply.deloitte.com&v10=10%3A00PM&v11=Saturday&c50=v2.22.3%7CAppMeasurement%3A2.22.3&c52=Job_Search_Template&c69=Launch-TMS&v195=%2Fus%2Fen%2Fsearchjobs&s=1280x900&c=24&j=1.6&v=N&k=Y&bw=1280&bh=900&mcorgid=5742550D515CABFF0A490D44%40AdobeOrg&AQE=1",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      }
+    ],
+    "best_capture": {
+      "url": "https://apply.deloitte.com/en_US/careers/SearchJobs",
+      "method": "GET",
+      "ats": "Proprietary",
+      "status": 200,
+      "job_count": null,
+      "post_body_preview": null
+    }
+  },
+  {
+    "company": "Aflac",
+    "input_url": "https://careers.aflac.com/us/en/search-results",
+    "final_url": "https://careers.aflac.com/errorpage/?errortype=404",
+    "primary_ats": "Proprietary",
+    "ats_xhr_counts": {
+      "Proprietary": 2
+    },
+    "total_xhrs_seen": 90,
+    "captured_search_xhrs": [
+      {
+        "url": "https://careers.aflac.com/platform/js/search/search.js?h=ab16cb6",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://olivia.paradox.ai/api/widget/geqghimofxupiyltsyld?request_language_code=&source=2&widget_target_id=130204&conversation_id=0&kb_on=1&ec_on=0&rating_on=0&job_search_on=1&start_interaction_type=4&referrer=&widget_apply_type=0&widget_page_url=https:%2F%2Fcareers.aflac.com%2Ferrorpage%2F%3Ferrortype%3D404&campaign_code=&init_widget=1&widget_label_external_data=[%7B%22label_id%22:98939,%22label_name%22:%22Page+URL%22,%22default_value%22:%22%22,%22token%22:%22%23widget-page-url%22,%22mapping_value%22:%22https:%2F%2Fcareers.aflac.com%2Ferrorpage%2F%3Ferrortype%3D404%22%7D,%7B%22label_id%22:98940,%22label_name%22:%22Referring+URL%22,%22default_value%22:%22%22,%22token%22:%22%23widget-referring-url%22,%22mapping_value%22:%22%22%7D]",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      }
+    ],
+    "best_capture": {
+      "url": "https://careers.aflac.com/platform/js/search/search.js?h=ab16cb6",
+      "method": "GET",
+      "ats": "Proprietary",
+      "status": 200,
+      "job_count": null,
+      "post_body_preview": null
+    }
+  },
+  {
+    "company": "Allstate",
+    "input_url": "https://www.allstate.jobs/search/",
+    "final_url": "https://www.allstate.jobs/search/",
+    "primary_ats": "Proprietary",
+    "ats_xhr_counts": {
+      "Proprietary": 6
+    },
+    "total_xhrs_seen": 147,
+    "captured_search_xhrs": [
+      {
+        "url": "https://www.allstate.jobs/search/",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 404,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://bam.nr-data.net/1/49021e70cb?a=121917868&v=1.313.1&to=Z1NWNkIED0cDABAIWF4ZdQFEDA5aTRcBDEdcV0AHHQcUXQ4HARM%3D&rst=1607&ck=0&s=c5bbe965a27230ee&ref=https://www.allstate.jobs/search/&ptid=4eec28ae445db9de&af=err,spa,xhr,stn,ins&ap=1098&be=1171&fe=398&dc=172&at=SxRVQAoeHEk%3D&fsh=1&perf=%7B%22timing%22:%7B%22of%22:1777774219337,%22n%22:0,%22f%22:0,%22dn%22:1,%22dne%22:36,%22c%22:36,%22s%22:42,%22ce%22:54,%22rq%22:54,%22rp%22:1171,%22rpe%22:1182,%22di%22:1340,%22ds%22:1340,%22de%22:1343,%22dc%22:1568,%22l%22:1568,%22le%22:1569%7D,%22navigation%22:%7B%7D%7D&fp=1340&fcp=1340",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "{\"ja\":{\"webdriverDetected\":true}}"
+      },
+      {
+        "url": "https://bam.nr-data.net/events/1/49021e70cb?a=121917868&v=1.313.1&to=Z1NWNkIED0cDABAIWF4ZdQFEDA5aTRcBDEdcV0AHHQcUXQ4HARM%3D&rst=1759&ck=0&s=c5bbe965a27230ee&ref=https://www.allstate.jobs/search/&ptid=4eec28ae445db9de",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "bel.6;e,'fp,118,5;5,'pageUrl,'https://www.allstate.jobs/search/;5,'net-etype,'4g;6,'net-dlink,10.;6,'cls,0.047918439335293245;7,'webdriverDetected;e,'fcp,118,8;6,'timeToFirstByte,1171.2999999970198;6,"
+      },
+      {
+        "url": "https://bam.nr-data.net/jserrors/1/49021e70cb?a=121917868&v=1.313.1&to=Z1NWNkIED0cDABAIWF4ZdQFEDA5aTRcBDEdcV0AHHQcUXQ4HARM%3D&rst=1760&ck=0&s=c5bbe965a27230ee&ref=https://www.allstate.jobs/search/&ptid=4eec28ae445db9de",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "{\"xhr\":[{\"params\":{\"method\":\"GET\",\"hostname\":\"cdn.cookielaw.org\",\"port\":\"443\",\"protocol\":\"https\",\"host\":\"cdn.cookielaw.org:443\",\"pathname\":\"/consent/018ea9cf-adbf-7785-a647-6f5ca1683c0d/018ea9cf-adbf-"
+      },
+      {
+        "url": "https://bam.nr-data.net/events/1/49021e70cb?a=121917868&v=1.313.1&to=Z1NWNkIED0cDABAIWF4ZdQFEDA5aTRcBDEdcV0AHHQcUXQ4HARM%3D&rst=1760&ck=0&s=c5bbe965a27230ee&ref=https://www.allstate.jobs/search/&ptid=4eec28ae445db9de",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "bel.7;1,g,,17l,,,'initialPageLoad,'https://www.allstate.jobs/search/,,1,,,,ui,!!'e700d57e-951a-434d-ab4e-5b1a1bbe79b0,'1,118,118;7,'isFirstOfSession;7,'webdriverDetected;a,'SxRVQAoeHEk=;2,,yk,1e,,,'GE"
+      },
+      {
+        "url": "https://bam.nr-data.net/events/1/49021e70cb?a=121917868&v=1.313.1&to=Z1NWNkIED0cDABAIWF4ZdQFEDA5aTRcBDEdcV0AHHQcUXQ4HARM%3D&rst=1761&ck=0&s=c5bbe965a27230ee&ref=https://www.allstate.jobs/search/&ptid=4eec28ae445db9de",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "bel.7;2,,182,25,,,'POST,,'www.google.com:443,'/ccm/collect,,,1,'0,!!!;2,,18,x,,,0,5k,'www.google-analytics.com:443,'/j/collect,,3,,3,!!!;2,,d,1t,,,0,5o,'l.clarity.ms:443,'/collect,b5xm,,,3,!!!;2,,18,1"
+      },
+      {
+        "url": "https://olivia.paradox.ai/api/widget/yyspietzcpvytjyhmqte?request_language_code=en-us&source=2&widget_target_id=170320&conversation_id=0&kb_on=1&ec_on=0&rating_on=0&job_search_on=1&start_interaction_type=2&referrer=&widget_apply_type=0&widget_page_url=https:%2F%2Fwww.allstate.jobs%2Fsearch%2F&campaign_code=&init_widget=1&widget_label_external_data=[%7B%22label_id%22:161553,%22label_name%22:%22Page+URL%22,%22default_value%22:%22%22,%22token%22:%22%23widget-page-url%22,%22mapping_value%22:%22https:%2F%2Fwww.allstate.jobs%2Fsearch%22%7D,%7B%22label_id%22:161554,%22label_name%22:%22Referring+URL%22,%22default_value%22:%22%22,%22token%22:%22%23widget-referring-url%22,%22mapping_value%22:%22%22%7D]",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      }
+    ],
+    "best_capture": {
+      "url": "https://bam.nr-data.net/1/49021e70cb?a=121917868&v=1.313.1&to=Z1NWNkIED0cDABAIWF4ZdQFEDA5aTRcBDEdcV0AHHQcUXQ4HARM%3D&rst=1607&ck=0&s=c5bbe965a27230ee&ref=https://www.allstate.jobs/search/&ptid=4eec28ae445db9de&af=err,spa,xhr,stn,ins&ap=1098&be=1171&fe=398&dc=172&at=SxRVQAoeHEk%3D&fsh=1&perf=%7B%22timing%22:%7B%22of%22:1777774219337,%22n%22:0,%22f%22:0,%22dn%22:1,%22dne%22:36,%22c%22:36,%22s%22:42,%22ce%22:54,%22rq%22:54,%22rp%22:1171,%22rpe%22:1182,%22di%22:1340,%22ds%22:1340,%22de%22:1343,%22dc%22:1568,%22l%22:1568,%22le%22:1569%7D,%22navigation%22:%7B%7D%7D&fp=1340&fcp=1340",
+      "method": "POST",
+      "ats": "Proprietary",
+      "status": 200,
+      "job_count": null,
+      "post_body_preview": "{\"ja\":{\"webdriverDetected\":true}}"
+    }
+  },
+  {
+    "company": "MetLife",
+    "input_url": "https://careers.metlife.com/global/en/search-results",
+    "final_url": "https://careers.metlife.com/global/en/search-results",
+    "primary_ats": "Unknown",
+    "ats_xhr_counts": {},
+    "total_xhrs_seen": 0,
+    "captured_search_xhrs": [],
+    "best_capture": null
+  },
+  {
+    "company": "CVS Health",
+    "input_url": "https://jobs.cvshealth.com/us/en/search-results",
+    "final_url": "https://jobs.cvshealth.com/us/en/search-results",
+    "primary_ats": "Proprietary",
+    "ats_xhr_counts": {
+      "Proprietary": 33,
+      "Phenom": 1
+    },
+    "total_xhrs_seen": 187,
+    "captured_search_xhrs": [
+      {
+        "url": "https://jobs.cvshealth.com/us/en/search-results",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://jobs.cvshealth.com/us/en/phenomtrack.min.js",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://jobs.cvshealth.com/widgets",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "{\"deviceType\":\"desktop\",\"locale\":\"en_us\",\"pageId\":\"page10\",\"refNum\":\"CVSCHLUS\",\"siteVariant\":\"external\",\"ddoKey\":\"dynaData\"}"
+      },
+      {
+        "url": "https://jobs.cvshealth.com/us/en/phenomapptrack.min.js",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://jobs.cvshealth.com/widgets",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "{\"widgetIds\":[\"zk5Thu\",\"KZFVv6\",\"gbobHe\",\"fmAme4\",\"q1abxJ\",\"hl5Fa2\",\"9kLaVI\",\"88wGuc\",\"DIhox8\",\"BJcYTG\",\"rmKYz5\",\"vP2Utb\",\"Zi1VfX\",\"yJRVvh5N\",\"n0eRec\",\"JRBIts\",\"Xifioj\",\"BgxJYk\",\"0tOMrd\",\"m5IDBJ\"],\"re"
+      },
+      {
+        "url": "https://jobs.cvshealth.com/widgets",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "{\"data\":{\"EF1HEy\":\"zk5Thu\",\"hf-bluetech-header\":\"KZFVv6\",\"hf-bluetech-header$$z4HDz3vS\":\"gbobHe\",\"hf-bluetech-header$$4HDz3vS\":\"fmAme4\",\"hf-bluetech-header$$Aq1abxJ\":\"q1abxJ\",\"hf-bluetech-header$$Ahl5"
+      },
+      {
+        "url": "https://jobs.cvshealth.com/widgets",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "{\"currentUrlPath\":\"https://jobs.cvshealth.com/us/en/search-results\",\"lang\":\"en_us\",\"deviceType\":\"desktop\",\"country\":\"us\",\"pageName\":\"search-results\",\"refNum\":\"CVSCHLUS\",\"siteType\":\"external\",\"pageId\":"
+      },
+      {
+        "url": "https://cdn.phenompeople.com/CareerConnectResources/canvas/common/widgets/scripts/1776944335766_phw-search-results-default-default-v1.umd.js",
+        "method": "GET",
+        "ats": "Phenom",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://jobs.cvshealth.com/widgets",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "{\"lang\":\"en_us\",\"deviceType\":\"desktop\",\"country\":\"us\",\"pageName\":\"search-results\",\"refNum\":\"CVSCHLUS\",\"siteType\":\"external\",\"pageId\":\"page10\",\"ddoKey\":\"validateJwtToken\"}"
+      },
+      {
+        "url": "https://jobs.cvshealth.com/widgets",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "{\"lang\":\"en_us\",\"deviceType\":\"desktop\",\"country\":\"us\",\"pageName\":\"search-results\",\"refNum\":\"CVSCHLUS\",\"siteType\":\"external\",\"pageId\":\"page10\",\"ddoKey\":\"getPrivacyConsentsConfig\"}"
+      },
+      {
+        "url": "https://jobs.cvshealth.com/widgets",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "{\"isEagerLoad\":true,\"lang\":\"en_us\",\"deviceType\":\"desktop\",\"country\":\"us\",\"pageName\":\"search-results\",\"refNum\":\"CVSCHLUS\",\"siteType\":\"external\",\"pageId\":\"page10\",\"ddoKey\":\"canvasAudiencePxWidgetConfig\""
+      },
+      {
+        "url": "https://jobs.cvshealth.com/widgets",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "{\"lang\":\"en_us\",\"deviceType\":\"desktop\",\"country\":\"us\",\"pageName\":\"search-results\",\"refNum\":\"CVSCHLUS\",\"siteType\":\"external\",\"pageId\":\"page10\",\"ddoKey\":\"validateJwtToken\"}"
+      },
+      {
+        "url": "https://jobs.cvshealth.com/widgets",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "{\"sortBy\":\"\",\"subsearch\":\"\",\"from\":0,\"jobs\":true,\"counts\":true,\"all_fields\":[\"category\",\"subCategory\",\"country\",\"state\",\"city\",\"type\",\"remote\",\"businessUnit\",\"phLocSlider\"],\"pageName\":\"search-results\""
+      },
+      {
+        "url": "https://jobs.cvshealth.com/widgets",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "{\"sortBy\":\"\",\"subsearch\":\"\",\"from\":0,\"jobs\":true,\"counts\":true,\"all_fields\":[\"category\",\"subCategory\",\"country\",\"state\",\"city\",\"type\",\"remote\",\"businessUnit\",\"phLocSlider\"],\"pageName\":\"search-results\""
+      },
+      {
+        "url": "https://jobs.cvshealth.com/widgets",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "{\"lang\":\"en_us\",\"deviceType\":\"desktop\",\"country\":\"us\",\"pageName\":\"search-results\",\"refNum\":\"CVSCHLUS\",\"siteType\":\"external\",\"pageId\":\"page10\",\"ddoKey\":\"validateJwtToken\"}"
+      },
+      {
+        "url": "https://jobs.cvshealth.com/widgets",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "{\"keywords\":null,\"categories\":null,\"jobsViewed\":null,\"jobsApplied\":null,\"locations\":null,\"types\":[],\"userProfile\":null,\"landingPages\":null,\"department\":\"\",\"recoSize\":18,\"lang\":\"en_us\",\"deviceType\":\"de"
+      },
+      {
+        "url": "https://jobs.cvshealth.com/widgets",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "{\"isEagerLoad\":true,\"lang\":\"en_us\",\"deviceType\":\"desktop\",\"country\":\"us\",\"pageName\":\"search-results\",\"refNum\":\"CVSCHLUS\",\"siteType\":\"external\",\"pageId\":\"page10\",\"ddoKey\":\"latestJobs\"}"
+      },
+      {
+        "url": "https://jobs.cvshealth.com/widgets",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "{\"sendEmailValidationStatus\":true,\"lang\":\"en_us\",\"deviceType\":\"desktop\",\"country\":\"us\",\"pageName\":\"search-results\",\"refNum\":\"CVSCHLUS\",\"siteType\":\"external\",\"pageId\":\"page10\",\"ddoKey\":\"mergedProfile\"}"
+      },
+      {
+        "url": "https://jobs.cvshealth.com/widgets",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "{\"lang\":\"en_us\",\"deviceType\":\"desktop\",\"country\":\"us\",\"pageName\":\"search-results\",\"refNum\":\"CVSCHLUS\",\"siteType\":\"external\",\"pageId\":\"page10\",\"ddoKey\":\"getPrivacyConsentsConfig\"}"
+      },
+      {
+        "url": "https://jobs.cvshealth.com/widgets",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "{\"sendEmailValidationStatus\":true,\"lang\":\"en_us\",\"deviceType\":\"desktop\",\"country\":\"us\",\"pageName\":\"search-results\",\"refNum\":\"CVSCHLUS\",\"siteType\":\"external\",\"pageId\":\"page10\",\"ddoKey\":\"mergedProfile\"}"
+      },
+      {
+        "url": "https://jobs.cvshealth.com/widgets",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "{\"avoidWidgetHideOnFail\":true,\"lang\":\"en_us\",\"deviceType\":\"desktop\",\"country\":\"us\",\"pageName\":\"search-results\",\"refNum\":\"CVSCHLUS\",\"siteType\":\"external\",\"pageId\":\"page10\",\"ddoKey\":\"getSiteGlobalLabels"
+      },
+      {
+        "url": "https://jobs.cvshealth.com/widgets",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "{\"lang\":\"en_us\",\"deviceType\":\"desktop\",\"country\":\"us\",\"pageName\":\"search-results\",\"refNum\":\"CVSCHLUS\",\"siteType\":\"external\",\"pageId\":\"page10\",\"ddoKey\":\"jobCartCountV2\"}"
+      },
+      {
+        "url": "https://jobs.cvshealth.com/widgets",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "{\"jobSeqNos\":[\"CVSCHLUSR0849950EXTERNALENUS\",\"CVSCHLUSR0900237EXTERNALENUS\",\"CVSCHLUSR0902793EXTERNALENUS\",\"CVSCHLUSR0902789EXTERNALENUS\",\"CVSCHLUSR0876133EXTERNALENUS\",\"CVSCHLUSR0882477EXTERNALENUS\","
+      },
+      {
+        "url": "https://jobs.cvshealth.com/widgets",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "{\"isEagerLoad\":true,\"lang\":\"en_us\",\"deviceType\":\"desktop\",\"country\":\"us\",\"pageName\":\"search-results\",\"refNum\":\"CVSCHLUS\",\"siteType\":\"external\",\"pageId\":\"page10\",\"ddoKey\":\"validateJwtToken\"}"
+      },
+      {
+        "url": "https://jobs.cvshealth.com/widgets",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "{\"jobSeqNos\":[\"CVSCHLUSR0849950EXTERNALENUS\",\"CVSCHLUSR0900237EXTERNALENUS\",\"CVSCHLUSR0902793EXTERNALENUS\",\"CVSCHLUSR0902789EXTERNALENUS\",\"CVSCHLUSR0876133EXTERNALENUS\",\"CVSCHLUSR0882477EXTERNALENUS\","
+      },
+      {
+        "url": "https://jobs.cvshealth.com/widgets",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "{\"field\":\"category\",\"sub_field\":\"internalCategoryId\",\"ddoKey\":\"categories\",\"lang\":\"en_us\",\"deviceType\":\"desktop\",\"country\":\"us\",\"pageName\":\"search-results\",\"refNum\":\"CVSCHLUS\",\"siteType\":\"external\",\"p"
+      },
+      {
+        "url": "https://jobs.cvshealth.com/widgets",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "{\"isEagerLoad\":true,\"lang\":\"en_us\",\"deviceType\":\"desktop\",\"country\":\"us\",\"pageName\":\"search-results\",\"refNum\":\"CVSCHLUS\",\"siteType\":\"external\",\"pageId\":\"page10\",\"ddoKey\":\"leastAppliedJobs\"}"
+      },
+      {
+        "url": "https://jobs.cvshealth.com/widgets",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "{\"lang\":\"en_us\",\"deviceType\":\"desktop\",\"country\":\"us\",\"pageName\":\"search-results\",\"refNum\":\"CVSCHLUS\",\"siteType\":\"external\",\"pageId\":\"page10\",\"ddoKey\":\"userAlertSettings\"}"
+      },
+      {
+        "url": "https://jobs.cvshealth.com/widgets",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "{\"lang\":\"en_us\",\"deviceType\":\"desktop\",\"country\":\"us\",\"pageName\":\"search-results\",\"refNum\":\"CVSCHLUS\",\"siteType\":\"external\",\"pageId\":\"page10\",\"ddoKey\":\"userAlertSettings\"}"
+      },
+      {
+        "url": "https://jobs.cvshealth.com/widgets",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "{\"reqPageName\":\"jointalentcommunity\",\"lang\":\"en_us\",\"deviceType\":\"desktop\",\"country\":\"us\",\"pageName\":\"search-results\",\"refNum\":\"CVSCHLUS\",\"siteType\":\"external\",\"pageId\":\"page10\",\"ddoKey\":\"getUrl\"}"
+      },
+      {
+        "url": "https://jobs.cvshealth.com/widgets",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "{\"botObj\":{\"sender\":\"19deb99f74d2316-119400-813c-19deb99f74e2daf\",\"message\":\"/bot_load\",\"type\":\"CHATBOT_LOAD\",\"data\":{\"messageType\":\"CHATBOT_LOAD\",\"message\":\"/bot_load\",\"userMessage\":\"\",\"botMessageId\""
+      },
+      {
+        "url": "https://jobs.cvshealth.com/widgets",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "{\"lang\":\"en_us\",\"deviceType\":\"desktop\",\"country\":\"us\",\"pageName\":\"search-results\",\"refNum\":\"CVSCHLUS\",\"siteType\":\"external\",\"pageId\":\"page10\",\"ddoKey\":\"getLocationDetails\"}"
+      },
+      {
+        "url": "blob:https://jobs.cvshealth.com/dc2d163b-703a-4a68-b081-b4ed56aacdfe",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "blob:https://jobs.cvshealth.com/58f86753-c58f-4b51-8c71-4c716b7c9f09",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      }
+    ],
+    "best_capture": {
+      "url": "https://jobs.cvshealth.com/us/en/search-results",
+      "method": "GET",
+      "ats": "Proprietary",
+      "status": 200,
+      "job_count": null,
+      "post_body_preview": null
+    }
+  },
+  {
+    "company": "Walgreens",
+    "input_url": "https://jobs.walgreens.com/en/search-jobs",
+    "final_url": "https://jobs.walgreens.com/en/search-jobs",
+    "primary_ats": "Proprietary",
+    "ats_xhr_counts": {
+      "Proprietary": 5
+    },
+    "total_xhrs_seen": 116,
+    "captured_search_xhrs": [
+      {
+        "url": "https://jobs.walgreens.com/en/search-jobs",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://jobs.walgreens.com/tracking/RemoveUnconsentedCookies",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://jobs.walgreens.com/en/search-jobs/SetSearchRequestGeoLocation?lat=null&lon=null&IsUsingGeolocation=true&hasHtml5GeoError=false&geoType=ipambientonly",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://jobs.walgreens.com/en/module/postmodule?siteReferrer=jobs.walgreens.com",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "name=Global+-+Tabbed+-+Featured+Jobs&type=JobList"
+      },
+      {
+        "url": "https://jobs.walgreens.com/en/module/postmodule",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "name=Global+-+Tabbed+-+Saved+Jobs&type=RecentlyViewedJobList"
+      }
+    ],
+    "best_capture": {
+      "url": "https://jobs.walgreens.com/en/search-jobs",
+      "method": "GET",
+      "ats": "Proprietary",
+      "status": 200,
+      "job_count": null,
+      "post_body_preview": null
+    }
+  },
+  {
+    "company": "Kroger",
+    "input_url": "https://www.thekrogerco.com/careers/",
+    "final_url": "https://www.krogerfamilycareers.com/en/sites/CX_2001",
+    "primary_ats": "Unknown",
+    "ats_xhr_counts": {},
+    "total_xhrs_seen": 103,
+    "captured_search_xhrs": [],
+    "best_capture": null
+  },
+  {
+    "company": "Costco",
+    "input_url": "https://www.costco.com/jobs.html",
+    "final_url": "https://www.costco.com/jobs.html",
+    "primary_ats": "Unknown",
+    "ats_xhr_counts": {},
+    "total_xhrs_seen": 0,
+    "captured_search_xhrs": [],
+    "best_capture": null
+  },
+  {
+    "company": "Home Depot",
+    "input_url": "https://careers.homedepot.com/job-search-results/",
+    "final_url": "https://careers.homedepot.com/job-search-results/",
+    "primary_ats": "Proprietary",
+    "ats_xhr_counts": {
+      "Proprietary": 10
+    },
+    "total_xhrs_seen": 116,
+    "captured_search_xhrs": [
+      {
+        "url": "https://careers.homedepot.com/job-search-results/",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://cdn-static.findly.com/wp-content/uploads/sites/2825/2023/08/25033920/Store_Search.svg",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://dev.visualwebsiteoptimizer.com/j.php?a=252029&u=https%3A%2F%2Fcareers.homedepot.com%2Fjob-search-results%2F&f=1&vn=1.5",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://jobsapi-google.m-cloud.io/api/job/search?callback=CWS.jobs.jobCallback&pageSize=10&offset=0&companyName=companies%2F8454851f-07b7-4e4c-9b5f-00e0ffbfcb09&customAttributeFilter=(ats_portalid%3D%22KBR-5032%22%20OR%20ats_portalid%3D%22Workday%22%20OR%20ats_portalid%3D%22Paycom%22)&customRankingInfo=%7B%22importanceLevel%22%3A%22EXTREME%22%2C%22rankingExpression%22%3A%22importance%22%7D",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://jobsapi-internal.m-cloud.io/api/job?callback=storesCallback&Limit=0&Organization=1814&FacetList%5B%5D=store_id&_=1777774251793",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://jobsapi-internal.m-cloud.io/api/map?callback=CWS.map.mapCallback&facet%5B%5D=ats_portalid%3AKBR-5032~Workday~Paycom&sortfield=open_date&sortorder=descending&Limit=0&Organization=1814&useBooleanKeywordSearch=true&facetlist=coordinates",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://bat.bing.com/action/0?ti=21007907&tm=gtm002&Ver=2&mid=97beea60-2dbd-4913-9ac6-5eb23329cc87&bo=1&sid=4fa2c780469511f191a2379d48b51d3b&vid=4fa2d440469511f18c735793180dde0c&vids=1&msclkid=N&uach=pv%3D10.0&pi=0&lg=en-US&sw=1280&sh=900&sc=24&nwd=1&tl=Search%20Jobs%20%7C%20The%20Home%20Depot%20Careers%20%7C%20Search%20for%20Jobs%20Near%20You&p=https%3A%2F%2Fcareers.homedepot.com%2Fjob-search-results%2F&r=&lt=239&mtp=10&evt=pageLoad&sv=2&cdb=AQAQ&rn=473789",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 204,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://bam.nr-data.net/1/49021e70cb?a=121917868&v=1.313.1&to=Z1NWNkIED0cDABAIWF4ZdQFEDA5aTVJUURpHX1AWWA%3D%3D&rst=1024&ck=0&s=2ddbff6fa5dd7877&ref=https://careers.homedepot.com/job-search-results/&ptid=687d340f5a1ae2b5&af=err,spa,xhr,stn,ins&ap=1193&be=57&fe=952&dc=182&at=SxRVQAoeHEk%3D&fsh=1&perf=%7B%22timing%22:%7B%22of%22:1777774251673,%22n%22:0,%22dn%22:0,%22dne%22:28,%22c%22:28,%22s%22:34,%22ce%22:45,%22rq%22:45,%22rp%22:58,%22rpe%22:73,%22di%22:239,%22ds%22:239,%22de%22:239,%22dc%22:988,%22l%22:988,%22le%22:1009%7D,%22navigation%22:%7B%7D%7D&fp=216&fcp=336",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "{\"ja\":{\"webdriverDetected\":true}}"
+      },
+      {
+        "url": "https://bam.nr-data.net/events/1/49021e70cb?a=121917868&v=1.313.1&to=Z1NWNkIED0cDABAIWF4ZdQFEDA5aTVJUURpHX1AWWA%3D%3D&rst=1182&ck=0&s=2ddbff6fa5dd7877&ref=https://careers.homedepot.com/job-search-results/&ptid=687d340f5a1ae2b5",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "bel.6;e,'fp,60,5;5,'pageUrl,'https://careers.homedepot.com/job-search-results/;5,'net-etype,'4g;6,'net-dlink,9.7;6,'cls,0.031704394986894396;7,'webdriverDetected;e,'fcp,9c,8;6,'timeToFirstByte,57.8999"
+      },
+      {
+        "url": "https://bam.nr-data.net/jserrors/1/49021e70cb?a=121917868&v=1.313.1&to=Z1NWNkIED0cDABAIWF4ZdQFEDA5aTVJUURpHX1AWWA%3D%3D&rst=1182&ck=0&s=2ddbff6fa5dd7877&ref=https://careers.homedepot.com/job-search-results/&ptid=687d340f5a1ae2b5&pve=1",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "{\"err\":[{\"params\":{\"stackHash\":-733065391,\"exceptionClass\":\"TypeError\",\"request_uri\":\"/job-search-results/\",\"message\":\"Cannot read properties of undefined (reading 'ats_portalid')\",\"stack_trace\":\"Type"
+      },
+      {
+        "url": "https://bam.nr-data.net/events/1/49021e70cb?a=121917868&v=1.313.1&to=Z1NWNkIED0cDABAIWF4ZdQFEDA5aTVJUURpHX1AWWA%3D%3D&rst=1183&ck=0&s=2ddbff6fa5dd7877&ref=https://careers.homedepot.com/job-search-results/&ptid=687d340f5a1ae2b5",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": "bel.7;1,a,,s1,,,'initialPageLoad,'https://careers.homedepot.com/job-search-results/,,1,,,,x5,!!'7c71ea05-e475-4e6d-8733-275140b48f60,'1,60,9c;7,'isFirstOfSession;7,'webdriverDetected;a,'SxRVQAoeHEk=;2"
+      }
+    ],
+    "best_capture": {
+      "url": "https://careers.homedepot.com/job-search-results/",
+      "method": "GET",
+      "ats": "Proprietary",
+      "status": 200,
+      "job_count": null,
+      "post_body_preview": null
+    }
+  },
+  {
+    "company": "Lowe's",
+    "input_url": "https://talent.lowes.com/us/en/search-results",
+    "final_url": "https://talent.lowes.com/us/en/search-results",
+    "primary_ats": "Proprietary",
+    "ats_xhr_counts": {
+      "Proprietary": 5,
+      "Phenom": 1
+    },
+    "total_xhrs_seen": 151,
+    "captured_search_xhrs": [
+      {
+        "url": "https://talent.lowes.com/us/en/search-results",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://pp-cdn.phenompeople.com/CareerConnectResources/pp/agWidgets/ph-search-results-v2-default-30.js",
+        "method": "GET",
+        "ats": "Phenom",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://bat.bing.com/action/0?ti=109001181&Ver=2&mid=337d0a76-58fa-4156-a376-2a296ac0139b&bo=1&sid=54864bb0469511f19a622ffa018c6adc&vid=54866de0469511f194f741bc0a7e560e&vids=1&msclkid=N&uach=pv%3D10.0&pi=0&lg=en-US&sw=1280&sh=900&sc=24&nwd=1&tl=Search%20%26%20Apply%20%7C%20Lowe%E2%80%99s%20Careers&kw=search%20for%20a%20job,%20jobs%20at%20lowes,%20lowes%20jobs,%20lowes%20career%20opportunities,%20search%20jobs,%20apply%20for%20a%20job%20at%20lowes,%20how%20to%20apply%20for%20a%20job%20at%20lowes,%20lowes%20job%20openings,%20lowes%20online%20application,%20lowes%20job%20alerts,%20lowes%20resume%20submission&p=https%3A%2F%2Ftalent.lowes.com%2Fus%2Fen%2Fsearch-results&r=&lt=1591&mtp=10&evt=pageLoad&sv=2&cdb=AQAQ&rn=988501",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 204,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://px.ads.linkedin.com/attribution_trigger?pid=4418402&time=1777774260685&url=https%3A%2F%2Ftalent.lowes.com%2Fus%2Fen%2Fsearch-results",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://px.ads.linkedin.com/collect?v=2&fmt=js&pid=4418402&time=1777774260685&li_adsId=de5fab69-cadc-48b9-baa7-e50bdace7a34&url=https%3A%2F%2Ftalent.lowes.com%2Fus%2Fen%2Fsearch-results&cookiesTest=true&liSync=true",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://powerview8.talentegy.com/matomo.php?action_name=talent.lowes.com%20%7C%20Search%20%26%20Apply%20%7C%20Lowe%E2%80%99s%20Careers&idsite=4&rec=1&r=611151&h=22&m=11&s=2&url=https%3A%2F%2Ftalent.lowes.com%2Fus%2Fen%2Fsearch-results&_id=c33a74bd70cf4cc0&_idn=1&send_image=0&_refts=0&dimension1=9b6993af-c1a7-4e8f-821b-4d85431ccefe&dimension2=9b6993af-c1a7-4e8f-821b-4d85431ccefe_992320929737634800&pv_id=NtbNDZ&fa_pv=1&fa_fp[0][fa_vid]=KtFIh6&fa_fp[0][fa_fv]=1&fa_fp[1][fa_vid]=5yxR1Z&fa_fp[1][fa_fv]=1&pf_net=41&pf_srv=1313&pf_tfr=5&pf_dm1=144&pf_dm2=1767&pf_onl=3&uadata=%7B%22formFactors%22%3A%5B%22Desktop%22%5D%2C%22fullVersionList%22%3A%5B%7B%22brand%22%3A%22HeadlessChrome%22%2C%22version%22%3A%22147.0.7727.15%22%7D%2C%7B%22brand%22%3A%22Not.A%2FBrand%22%2C%22version%22%3A%228.0.0.0%22%7D%2C%7B%22brand%22%3A%22Chromium%22%2C%22version%22%3A%22147.0.7727.15%22%7D%5D%2C%22mobile%22%3Afalse%2C%22model%22%3A%22%22%2C%22platform%22%3A%22Windows%22%2C%22platformVersion%22%3A%2210.0%22%7D&cookie=1&res=1280x900",
+        "method": "POST",
+        "ats": "Proprietary",
+        "status": 204,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://lowes.paradox.ai/api/widget/ulljbowdiqloamhgenut/rules?referrer=&widget_page_url=https:%2F%2Ftalent.lowes.com%2Fus%2Fen%2Fsearch-results",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      },
+      {
+        "url": "https://lowes.paradox.ai/api/widget/ulljbowdiqloamhgenut?request_language_code=&source=2&candidateToken=eyJhbGciOiJIUzI1NiJ9.eyJyZWZOdW0iOiJMT1dFVVMiLCJ0aGlyZFBhcnR5UmFuZG9tSWQiOiIxZGM3ZjAxZTlkNDI0ZGQzYmE0YjBlMzlkOGZlY2I4MyIsImlzcyI6ImF1dGgwIiwiZXhwIjoxNzgwMzY2MjYwLCJpYXQiOjE3Nzc3NzQyNjB9.fkyzGSU3W6Azs1W6qMswU7fFHHgLCjVAQJvfkkyNk0w&job_req_id=&is_mapping_job_req_id=false&widget_target_id=584&conversation_id=0&kb_on=1&ec_on=0&rating_on=0&job_search_on=1&start_interaction_type=2&referrer=&widget_apply_type=0&widget_page_url=https:%2F%2Ftalent.lowes.com%2Fus%2Fen%2Fsearch-results&campaign_code=&init_widget=1&widget_label_external_data=[%7B%22label_id%22:16311,%22label_name%22:%22Page+URL%22,%22default_value%22:%22%22,%22token%22:%22%23widget-page-url%22,%22mapping_value%22:%22https:%2F%2Ftalent.lowes.com%2Fus%2Fen%2Fsearch-results%22%7D,%7B%22label_id%22:16312,%22label_name%22:%22Referring+URL%22,%22default_value%22:%22%22,%22token%22:%22%23widget-referring-url%22,%22mapping_value%22:%22%22%7D,%7B%22label_id%22:16313,%22label_name%22:%22Job+Req+ID+(WD)%22,%22default_value%22:%22%22,%22token%22:%22%23widget-job-req-id-wd-%22,%22mapping_value%22:%22%22%7D,%7B%22label_id%22:16314,%22label_name%22:%22Job+Req+ID+(investis)%22,%22default_value%22:%22%22,%22token%22:%22%23widget-job-req-id-investis-%22,%22mapping_value%22:%22%22%7D,%7B%22label_id%22:16315,%22label_name%22:%22Job+Req+ID%22,%22default_value%22:%22%22,%22token%22:%22%23widget-job-req-id%22,%22mapping_value%22:%22%22%7D]",
+        "method": "GET",
+        "ats": "Proprietary",
+        "status": 200,
+        "job_count": null,
+        "post_body_preview": null
+      }
+    ],
+    "best_capture": {
+      "url": "https://talent.lowes.com/us/en/search-results",
+      "method": "GET",
+      "ats": "Proprietary",
+      "status": 200,
+      "job_count": null,
+      "post_body_preview": null
+    }
+  }
+]

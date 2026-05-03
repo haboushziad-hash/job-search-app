@@ -1,0 +1,19 @@
+{
+  "display_name": "Microsoft",
+  "careers_url": "https://jobs.careers.microsoft.com/global/en/search",
+  "status": "OK",
+  "reason": "",
+  "elapsed": 7.7,
+  "captured": {
+    "url": "https://apply.careers.microsoft.com/vslog?domain=microsoft.com&pid=",
+    "method": "POST",
+    "request_body": "{\"data_json\":{\"position_id\":\"\",\"utm_parameters\":{\"utm_source\":null,\"utm_campaign\":null}},\"event\":\"careers_view\",\"namespace\":\"pcsx_app\"}",
+    "headers": {
+      "x-csrf-token": "IjRhY2MzZGVhNzMwMzMyOWY3NWY1MDRjOTBjMGY5MjMxMGM5YTJhNWMi.HNkDow.mLybeiXaDq3EW7wOajU-3g87d6Q",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+      "accept": "application/json, text/plain, */*",
+      "content-type": "application/json"
+    },
+    "input_selector_used": "input[placeholder*='earch' i]"
+  }
+}

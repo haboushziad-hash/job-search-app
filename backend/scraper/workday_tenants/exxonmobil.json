@@ -1,0 +1,20 @@
+{
+  "display_name": "ExxonMobil",
+  "careers_url": "https://jobs.exxonmobil.com/jobs/search",
+  "status": "OK",
+  "reason": "",
+  "elapsed": 9.9,
+  "captured": {
+    "url": "https://jobs.exxonmobil.com/services/jobs/options/facetValues/",
+    "method": "POST",
+    "request_body": "{\"page\":0,\"keywords\":\"\",\"locationsearch\":\"\",\"sortby\":\"referencedate\",\"sortdir\":\"desc\",\"sortfield\":\"title\",\"recordsperpage\":25,\"startrow\":0,\"facetquery\":{\"facet\":true,\"mincount\":1,\"limit\":5000,\"fields\":[\"department\",\"shifttype\",\"country\"],\"sort\":\"index\",\"showPicklistAllLocales\":false},\"filterquery\":{}}",
+    "headers": {
+      "x-csrf-token": "18a4e67d-498b-4897-8400-daf59d74b5cb",
+      "x-requested-with": "XMLHttpRequest",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+      "accept": "application/json, text/javascript, */*; q=0.01",
+      "content-type": "application/json"
+    },
+    "input_selector_used": "input[aria-label*='earch' i]"
+  }
+}

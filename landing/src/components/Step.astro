@@ -1,0 +1,14 @@
+---
+const { n, title, desc } = Astro.props;
+---
+<div class="glass rounded-xl p-7 hover:border-white/[0.12] transition-colors">
+  <!-- Step number badge -->
+  <div class="inline-flex items-center justify-center w-9 h-9 rounded-lg
+              bg-gradient-to-br from-accent-500/20 to-accent-700/20
+              border border-accent-500/30 text-accent-300 font-mono font-medium
+              text-sm mb-5">
+    {n}
+  </div>
+  <h3 class="text-lg font-semibold tracking-tight text-base-50 mb-2.5">{title}</h3>
+  <p class="text-sm text-base-300 leading-relaxed">{desc}</p>
+</div>

@@ -1,0 +1,45 @@
+name = "fmsdj-worker"
+main = "src/index.ts"
+compatibility_date = "2026-04-01"
+
+# R2 bucket for audit JSON storage
+[[r2_buckets]]
+binding = "AUDIT_R2"
+bucket_name = "fmsdj-audits"
+
+# R2 bucket for installer files (.msi / .dmg). Streamed via origin-locked
+# /v1/dl/<platform> endpoints — bucket is private; files never have a
+# direct-public URL.
+[[r2_buckets]]
+binding = "INSTALLERS_R2"
+bucket_name = "fmsdj-installers"
+
+# KV for per-tester counters and run-list indexes
+[[kv_namespaces]]
+binding = "TESTER_KV"
+id = "f0d5bb532bb144a8816b4248bb2277f1"
+
+# Environment variables (non-secret defaults)
+[vars]
+ENV = "production"
+# Origin allowlist for /v1/dl/* downloads — requests without a matching
+# Origin or Referer header are rejected with 403. Set to "" to disable
+# the check (NOT recommended for production).
+ALLOWED_DOWNLOAD_ORIGIN = "https://findmesomedamnjobz.com"
+
+# Observability — logs go to dashboard
+[observability]
+enabled = true
+
+# To deploy:
+#   1. wrangler login
+#   2. wrangler kv namespace create TESTER_KV
+#      → copy the id into kv_namespaces above
+#   3. wrangler r2 bucket create fmsdj-audits
+#   4. wrangler secret put GOOGLE_API_KEY        (paste Ziad's Gemini key)
+#      wrangler secret put GOOGLE_API_KEY_2     (optional, second key)
+#      wrangler secret put ANTHROPIC_API_KEY    (paste Ziad's Anthropic key)
+#      wrangler secret put ADMIN_TOKEN          (random string for admin endpoints)
+#   5. wrangler deploy
+#   → URL printed: https://fmsdj-worker.<your-subdomain>.workers.dev
+#   6. Set this URL as LLM_PROXY_URL in tester app .env (or bake into build)

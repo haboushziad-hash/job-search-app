@@ -1,0 +1,18 @@
+{
+  "display_name": "Merck",
+  "careers_url": "https://msd.wd5.myworkdayjobs.com/SearchJobs",
+  "status": "OK",
+  "reason": "",
+  "elapsed": 7.7,
+  "captured": {
+    "url": "https://msd.wd5.myworkdayjobs.com/wday/cxs/msd/SearchJobs/jobs",
+    "method": "POST",
+    "request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+    "headers": {
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+      "accept": "application/json",
+      "content-type": "application/json"
+    },
+    "input_selector_used": "input[placeholder*='earch' i]"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "display_name": "P&G",
+  "careers_url": "https://www.pgcareers.com/global/en/search-results",
+  "status": "OK",
+  "reason": "",
+  "elapsed": 7.2,
+  "captured": {
+    "url": "https://www.pgcareers.com/widgets",
+    "method": "POST",
+    "request_body": "{\"lang\":\"en_global\",\"deviceType\":\"desktop\",\"country\":\"global\",\"pageName\":\"search-results\",\"ddoKey\":\"eagerLoadRefineSearchSession\",\"sortBy\":\"\",\"subsearch\":\"\",\"from\":0,\"irs\":false,\"jobs\":true,\"counts\":true,\"all_fields\":[\"category\",\"country\",\"state\",\"city\",\"type\",\"subCategory\",\"experienceLevel\",\"phLocSlider\"],\"size\":10,\"clearAll\":false,\"jdsource\":\"facets\",\"isSliderEnable\":true,\"pageId\":\"page16-ds\",\"siteType\":\"external\",\"keywords\":\"\",\"global\":true,\"selected_fields\":{},\"locationData\":{\"sliderRadius\":50,\"aboveMaxRadius\":true,\"LocationUnit\":\"miles\"}}",
+    "headers": {
+      "x-csrf-token": "2d7b3e7a85aa40458c031c04552b20a7",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+      "content-type": "application/json"
+    },
+    "input_selector_used": "input[type='search']"
+  }
+}

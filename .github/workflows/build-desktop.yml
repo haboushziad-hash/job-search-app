@@ -1,0 +1,152 @@
+name: Build desktop installers
+
+# Builds the .msi (Windows) and .dmg (macOS) for every push to main.
+# Uploads them as workflow artifacts. The user downloads each platform's
+# installer from the Actions tab.
+#
+# Required setup (one-time):
+#   1. Push this repo to GitHub (public or private — both work, free for ~2000 min/mo)
+#   2. The workflow runs automatically on push to main
+#   3. Each successful run produces "windows-installer" and "macos-installer" artifacts
+#   4. Send testers the artifact download URLs (or attach to GitHub releases)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: windows
+            artifact_pattern: "**/*.msi"
+            artifact_name: windows-installer
+            r2_key: "current/job-search-app.msi"
+          - os: macos-latest                  # Apple Silicon (arm64)
+            target: macos-arm64
+            artifact_pattern: "**/*.dmg"
+            artifact_name: macos-arm64-installer
+            r2_key: "current/job-search-app-aarch64.dmg"
+          - os: macos-13                       # Intel (x86_64) — last Intel-supporting runner
+            target: macos-x64
+            artifact_pattern: "**/*.dmg"
+            artifact_name: macos-x64-installer
+            r2_key: "current/job-search-app-x64.dmg"
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ---- Frontend (React + Vite + Tauri shell) ----
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install desktop dependencies
+        working-directory: desktop_app
+        run: npm install
+
+      # ---- Backend (Python + PyInstaller) ----
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install backend dependencies (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          python -m venv backend\venv
+          backend\venv\Scripts\python.exe -m pip install -r backend\requirements.txt
+          backend\venv\Scripts\python.exe -m pip install pyinstaller playwright
+          backend\venv\Scripts\python.exe -m playwright install chromium
+
+      - name: Install backend dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          python -m venv backend/venv
+          backend/venv/bin/python -m pip install -r backend/requirements.txt
+          backend/venv/bin/python -m pip install pyinstaller playwright
+          backend/venv/bin/python -m playwright install chromium
+
+      - name: Bundle backend with PyInstaller (Windows)
+        if: matrix.os == 'windows-latest'
+        run: backend\venv\Scripts\python.exe -m PyInstaller backend.spec
+
+      - name: Bundle backend with PyInstaller (macOS)
+        if: runner.os == 'macOS'
+        run: backend/venv/bin/python -m PyInstaller backend.spec
+
+      # ---- Tauri build (Rust + sidecar packaging) ----
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            desktop_app/src-tauri/target
+          key: ${{ matrix.os }}-cargo-${{ hashFiles('desktop_app/src-tauri/Cargo.lock') }}
+
+      - name: Build Tauri (Windows)
+        if: matrix.os == 'windows-latest'
+        working-directory: desktop_app
+        run: npm run tauri build
+
+      - name: Build Tauri (macOS)
+        if: runner.os == 'macOS'
+        working-directory: desktop_app
+        env:
+          # Mac unsigned build — testers will see "unidentified developer"
+          # warning. Apple Developer Program ($99/yr) needed for signed
+          # builds. For tester pilot, document the warning + how to bypass:
+          # right-click → Open → Open Anyway.
+          TAURI_SIGNING_PRIVATE_KEY: ""
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
+        run: npm run tauri build
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: desktop_app/src-tauri/target/release/bundle/${{ matrix.artifact_pattern }}
+          if-no-files-found: warn
+          retention-days: 30
+
+      # ---- Auto-publish installer to Cloudflare R2 ----
+      # Uploads to keys that the Worker's /v1/dl/<platform> route streams from.
+      # The Worker's origin lock keeps the file from being downloaded except
+      # via the landing page.
+      #
+      # Required GHA secret: CLOUDFLARE_API_TOKEN — same token used to deploy
+      # the Worker (must include R2:Edit and Workers:Edit permissions).
+
+      - name: Install wrangler
+        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+        run: npm install -g wrangler
+
+      - name: Publish installer to R2
+        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        shell: bash
+        run: |
+          BUNDLE_DIR="desktop_app/src-tauri/target/release/bundle"
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            FILE=$(find "$BUNDLE_DIR/msi" -name "*.msi" | head -1)
+          else
+            FILE=$(find "$BUNDLE_DIR/dmg" -name "*.dmg" | head -1)
+          fi
+          if [ -z "$FILE" ]; then echo "no installer found"; exit 1; fi
+          echo "Uploading $FILE to R2 key: ${{ matrix.r2_key }}"
+          wrangler r2 object put "fmsdj-installers/${{ matrix.r2_key }}" --file "$FILE" --content-type "application/octet-stream" --remote

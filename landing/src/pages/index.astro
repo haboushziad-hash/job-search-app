@@ -1,0 +1,319 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Stat from "../components/Stat.astro";
+import Step from "../components/Step.astro";
+import Feature from "../components/Feature.astro";
+import PrivacyChip from "../components/PrivacyChip.astro";
+
+// Production downloads stream through the Cloudflare Worker, which checks
+// the request Origin/Referer is findmesomedamnjobz.com before serving the
+// .msi/.dmg from a private R2 bucket. The bare URLs are not directly
+// shareable — pasting them into a fresh tab returns 403.
+const MSI_URL = import.meta.env.PUBLIC_MSI_URL || "https://api.findmesomedamnjobz.com/v1/dl/windows";
+const DMG_ARM64_URL = import.meta.env.PUBLIC_DMG_ARM64_URL || "https://api.findmesomedamnjobz.com/v1/dl/mac-arm64";
+const DMG_X64_URL = import.meta.env.PUBLIC_DMG_X64_URL || "https://api.findmesomedamnjobz.com/v1/dl/mac-x64";
+const VERSION = "0.1.0";
+const APP_SIZE = "107 MB";
+---
+<BaseLayout>
+  <!-- ======================================================== HERO -->
+  <header class="relative overflow-hidden">
+    <!-- Top nav -->
+    <nav class="max-w-6xl mx-auto px-6 pt-8 flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <!-- Mark — gradient briefcase -->
+        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-accent-400 to-accent-700 flex items-center justify-center shadow-lg shadow-accent-900/40">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 11H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2h-4"/>
+            <polyline points="9 11 9 4 15 4 15 11"/>
+          </svg>
+        </div>
+        <span class="font-semibold tracking-tight text-base-100 text-sm">findmesomedamnjobz</span>
+      </div>
+      <div class="hidden sm:flex items-center gap-1">
+        <a href="#how-it-works" class="px-3 py-1.5 text-sm text-base-300 hover:text-base-100 transition-colors">How it works</a>
+        <a href="#features" class="px-3 py-1.5 text-sm text-base-300 hover:text-base-100 transition-colors">Features</a>
+        <a href="#privacy" class="px-3 py-1.5 text-sm text-base-300 hover:text-base-100 transition-colors">Privacy</a>
+      </div>
+      <a href="#download" class="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-md bg-white/[0.06] border border-white/[0.08] text-sm text-base-100 hover:bg-white/[0.10] transition-colors">
+        Download
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+      </a>
+    </nav>
+
+    <!-- Hero content -->
+    <div class="max-w-5xl mx-auto px-6 pt-16 sm:pt-24 pb-20 text-center">
+      <!-- Eyebrow chip -->
+      <div class="reveal inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.08] text-[11px] text-base-300 mb-7 tracking-wide">
+        <span class="w-1.5 h-1.5 rounded-full bg-tier-strong animate-pulse"></span>
+        Local-first · No telemetry · Multi-industry
+      </div>
+
+      <!-- Headline -->
+      <h1 class="reveal text-5xl sm:text-7xl md:text-8xl font-semibold tracking-tighter leading-[0.95] mb-7 max-w-4xl mx-auto">
+        Find me some <span class="bg-gradient-to-r from-accent-300 via-accent-400 to-accent-600 bg-clip-text text-transparent">damn jobz</span>.
+      </h1>
+
+      <!-- Subhead -->
+      <p class="reveal text-lg sm:text-xl text-base-300 max-w-2xl mx-auto leading-relaxed mb-10">
+        AI-powered job search that actually fits. Pulls <strong class="text-base-100">thousands of roles</strong> from major job boards, scores each one against <strong class="text-base-100">your resume</strong>, and surfaces the matches worth your time. Built for any industry — tax, ops, engineering, healthcare, real estate, you name it.
+      </p>
+
+      <!-- CTAs — primary button label/href is swapped client-side by the
+           platform-detect script at the bottom of this file. SSR default
+           is Windows so search-engine crawlers + JS-disabled visitors still
+           see a working button. -->
+      <div class="reveal flex items-center justify-center gap-3 flex-wrap">
+        <a id="hero-download" href={MSI_URL}
+           data-url-windows={MSI_URL}
+           data-url-mac-arm64={DMG_ARM64_URL}
+           data-url-mac-x64={DMG_X64_URL}
+           class="btn-primary">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+          <span data-download-label>Download for Windows</span>
+          <span class="text-[11px] opacity-70 font-normal">{APP_SIZE}</span>
+        </a>
+        <a href="#how-it-works" class="btn-secondary">See how it works</a>
+      </div>
+
+      <!-- "Wrong machine?" escape hatch — always visible. The auto-detect
+           script hides whichever option matches the primary CTA. -->
+      <div id="other-downloads" class="reveal mt-5 text-[12px] text-base-500 flex items-center justify-center gap-3 flex-wrap">
+        <span class="text-base-600">Other downloads:</span>
+        <a href={MSI_URL} data-platform="windows" class="hover:text-base-300 transition-colors underline-offset-4 hover:underline">Windows</a>
+        <span class="text-base-700">·</span>
+        <a href={DMG_ARM64_URL} data-platform="mac-arm64" class="hover:text-base-300 transition-colors underline-offset-4 hover:underline">Mac (Apple Silicon)</a>
+        <span class="text-base-700">·</span>
+        <a href={DMG_X64_URL} data-platform="mac-x64" class="hover:text-base-300 transition-colors underline-offset-4 hover:underline">Mac (Intel)</a>
+      </div>
+
+      <!-- Stats strip -->
+      <div class="reveal-stagger mt-14 grid grid-cols-3 gap-3 sm:gap-6 max-w-3xl mx-auto">
+        <Stat number="Thousands" label="of roles per search" />
+        <Stat number="≈11 min" label="per fresh search" />
+        <Stat number="4 models" label="AI scoring cascade" />
+      </div>
+
+      <div class="mt-10 text-[12px] text-base-500 uppercase tracking-widest">
+        ↓ Windows 10/11 · macOS 12+
+      </div>
+    </div>
+  </header>
+
+  <!-- ================================================== HOW IT WORKS -->
+  <section id="how-it-works" class="section relative">
+    <div class="max-w-5xl mx-auto">
+      <div class="reveal text-center mb-12">
+        <div class="text-[11px] uppercase tracking-widest text-accent-400 mb-3 font-medium">How it works</div>
+        <h2 class="text-4xl sm:text-5xl font-semibold tracking-tight">Three steps. No spam-applying.</h2>
+      </div>
+      <div class="reveal-stagger grid md:grid-cols-3 gap-5">
+        <Step n="1" title="Upload your background"
+              desc="Resumes, cover letters, paste-in JDs you like, raw text — drop in whatever shows your story. Three AI models read everything in parallel and build your personalized search profile in 60-90 seconds." />
+        <Step n="2" title="Run the search"
+              desc="Scrapes major job boards (Greenhouse, Lever, Ashby, Workday) for thousands of roles. Filters by location, salary, and your stated red-flags. Scores each role with a multi-stage AI cascade." />
+        <Step n="3" title="Triage with confidence"
+              desc="Tiered dashboard: STRONG, GOOD, MAYBE, STRETCH. Each role comes with scoring rationale, application strategy, and a 2-sentence summary. Mark what you applied to. The tool learns." />
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================== FEATURES -->
+  <section id="features" class="section relative">
+    <div class="max-w-6xl mx-auto">
+      <div class="reveal text-center mb-12">
+        <div class="text-[11px] uppercase tracking-widest text-accent-400 mb-3 font-medium">Built for serious job seekers</div>
+        <h2 class="text-4xl sm:text-5xl font-semibold tracking-tight max-w-3xl mx-auto leading-tight">Not another job board scraper.</h2>
+      </div>
+
+      <div class="reveal-stagger grid md:grid-cols-2 gap-4">
+        <Feature title="Scoring that's actually accurate"
+                 desc="Three-stage AI cascade — embedding pre-filter, Flash triage, Pro deep eval. Each role gets a score and detailed reasoning. Tiered into STRONG / GOOD / MAYBE / STRETCH so you know what's worth your time." />
+        <Feature title="Multi-industry by design"
+                 desc="Tax accountants, software engineers, nurses, marketing directors, real estate analysts — same tool, different keyword universe. The AI builds your search around your resume, not a generic template." />
+        <Feature title="Fast and lean"
+                 desc="A full search runs in ~11 minutes. Cached repeat searches return in under a minute. No subscriptions, no marketing email — just the .msi and your local SQLite archive." />
+        <Feature title="Cross-tester learning"
+                 desc="When users share an audit folder via cloud drive, the keyword generator quietly learns from titles seen across similar profiles. The more it gets used, the smarter it gets — for everyone." />
+        <Feature title="Honest tier labels"
+                 desc="No 'top match!' marketing. STRONG = score ≥85 with substantive evidence. GOOD = 70-84. MAYBE = 55-69 worth reading. STRETCH = 40-54. If a role doesn't qualify, it doesn't show up." />
+        <Feature title="Built for triage at scale"
+                 desc="60+ qualifying roles per search. The dashboard caps each company to 3 in the top 25, expandable on click. Score + tier + salary + summary visible at a glance. Skim 70 results in 5 minutes." />
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================== PRIVACY -->
+  <section id="privacy" class="section relative">
+    <div class="max-w-3xl mx-auto text-center">
+      <div class="reveal">
+        <div class="text-[11px] uppercase tracking-widest text-accent-400 mb-3 font-medium">Privacy</div>
+        <h2 class="text-4xl sm:text-5xl font-semibold tracking-tight mb-6">Your resume never leaves your machine.</h2>
+        <p class="text-lg text-base-300 leading-relaxed mb-10">
+          Local-first. Your runs save to a folder you choose — typically OneDrive or Google Drive (so you have a backup). The backend speaks only to <code class="px-1.5 py-0.5 rounded bg-white/[0.05] text-base-200 text-[0.85em]">127.0.0.1</code>. No telemetry, no analytics, no remote logging.
+        </p>
+        <div class="reveal-stagger grid sm:grid-cols-3 gap-3 text-sm">
+          <PrivacyChip label="Local SQLite archive" />
+          <PrivacyChip label="No telemetry by default" />
+          <PrivacyChip label="You own your audit folder" />
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================== DOWNLOAD CTA -->
+  <section id="download" class="section relative">
+    <div class="max-w-3xl mx-auto">
+      <div class="reveal glass-strong rounded-2xl p-10 sm:p-14 text-center">
+        <h2 class="text-3xl sm:text-4xl font-semibold tracking-tight mb-4" data-cta-headline>Download for Windows</h2>
+        <p class="text-base-300 mb-8 max-w-md mx-auto" data-cta-subhead>Version {VERSION} · {APP_SIZE} installer · Windows 10 or 11.</p>
+
+        <a id="cta-download" href={MSI_URL}
+           data-url-windows={MSI_URL}
+           data-url-mac-arm64={DMG_ARM64_URL}
+           data-url-mac-x64={DMG_X64_URL}
+           class="btn-primary text-base px-7 py-4">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+          Get the installer
+        </a>
+
+        <!-- Same escape hatch on the bottom CTA — covers users who scroll
+             down without seeing the hero "Other downloads" row. -->
+        <div class="mt-6 text-[12px] text-base-500 flex items-center justify-center gap-3 flex-wrap">
+          <span class="text-base-600">Other downloads:</span>
+          <a href={MSI_URL} data-platform="windows" class="hover:text-base-300 transition-colors underline-offset-4 hover:underline">Windows</a>
+          <span class="text-base-700">·</span>
+          <a href={DMG_ARM64_URL} data-platform="mac-arm64" class="hover:text-base-300 transition-colors underline-offset-4 hover:underline">Mac (Apple Silicon)</a>
+          <span class="text-base-700">·</span>
+          <a href={DMG_X64_URL} data-platform="mac-x64" class="hover:text-base-300 transition-colors underline-offset-4 hover:underline">Mac (Intel)</a>
+        </div>
+
+        <div class="mt-8 text-[12px] text-base-500 leading-relaxed max-w-md mx-auto">
+          Tested on Windows 10/11 and macOS 12+. Linux build planned. <br/>
+          Built by an indie maker; bring your own Google AI Studio + Anthropic API keys (the free tiers cover most use).
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================== FOOTER -->
+  <footer class="border-t border-white/[0.05] mt-12">
+    <div class="max-w-6xl mx-auto px-6 py-10 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="text-[12px] text-base-500">
+        © 2026 findmesomedamnjobz. Built by Z. Ship hard, apply less.
+      </div>
+      <div class="flex items-center gap-5 text-[12px] text-base-500">
+        <a href="#" class="hover:text-base-200 transition-colors">Setup help</a>
+        <a href="#" class="hover:text-base-200 transition-colors">Feedback</a>
+        <a href="#" class="hover:text-base-200 transition-colors">Changelog</a>
+      </div>
+    </div>
+  </footer>
+</BaseLayout>
+
+<style>
+  /* Ensure gradient text doesn't wrap weirdly on small screens */
+  h1 span { display: inline-block; }
+</style>
+
+<script>
+  // Platform auto-detect for download CTAs.
+  //
+  // Detection precedence:
+  //   1. Windows  — userAgent contains "Win"
+  //   2. Mac arm64 — userAgentData.architecture === "arm" (Chromium only)
+  //   3. Mac      — userAgent contains "Mac" but architecture unknown.
+  //                 Default to arm64 (covers ~95% of 2020+ Macs); Intel
+  //                 users click the visible "Mac (Intel)" escape hatch.
+  //   4. Other    — leave SSR Windows default in place (linux/mobile users
+  //                 typically know what they want; the "Other" row is visible).
+  //
+  // Why we don't hide the alternatives:
+  //   Browsers lie about Mac arch — Safari always says "Intel Mac". The
+  //   only reliable arm-vs-x64 signal is userAgentData.getHighEntropyValues
+  //   which is Chrome/Edge only. So Safari users on Apple Silicon get a
+  //   guess + a visible escape hatch. Hiding it = breaking Intel Macs.
+  type Platform = "windows" | "mac-arm64" | "mac-x64";
+
+  async function detectPlatform(): Promise<Platform> {
+    const ua = navigator.userAgent || "";
+    if (/Win/i.test(ua)) return "windows";
+    if (/Mac/i.test(ua)) {
+      // Best-effort arch sniff via Chromium client hints. Returns null
+      // on Safari/Firefox — we fall back to arm64 since 2020+ Macs are.
+      const uaData = (navigator as any).userAgentData;
+      if (uaData?.getHighEntropyValues) {
+        try {
+          const hints = await uaData.getHighEntropyValues(["architecture"]);
+          if (hints?.architecture === "x86") return "mac-x64";
+          if (hints?.architecture === "arm") return "mac-arm64";
+        } catch {
+          /* ignore — fall through to default */
+        }
+      }
+      return "mac-arm64";
+    }
+    return "windows"; // unknown — keep SSR default
+  }
+
+  function applyPlatform(platform: Platform) {
+    const labelByPlatform: Record<Platform, string> = {
+      "windows": "Download for Windows",
+      "mac-arm64": "Download for Mac",
+      "mac-x64": "Download for Mac (Intel)",
+    };
+    const headlineByPlatform: Record<Platform, string> = {
+      "windows": "Download for Windows",
+      "mac-arm64": "Download for Mac",
+      "mac-x64": "Download for Mac (Intel)",
+    };
+    const subheadByPlatform: Record<Platform, string> = {
+      "windows": "Version 0.1.0 · Windows 10 or 11.",
+      "mac-arm64": "Version 0.1.0 · macOS 12+ (Apple Silicon).",
+      "mac-x64": "Version 0.1.0 · macOS 12+ (Intel).",
+    };
+
+    // Primary buttons — swap href + label
+    document.querySelectorAll<HTMLAnchorElement>("#hero-download, #cta-download").forEach((btn) => {
+      const url = btn.dataset[`url${platform.replace(/-/g, "_")}` as any]
+        || btn.dataset.urlWindows
+        || btn.dataset[
+          platform === "mac-arm64" ? "urlMacArm64" :
+          platform === "mac-x64" ? "urlMacX64" :
+          "urlWindows"
+        ];
+      if (url) btn.href = url;
+    });
+
+    // Hero label
+    document.querySelectorAll<HTMLSpanElement>("[data-download-label]").forEach((el) => {
+      el.textContent = labelByPlatform[platform];
+    });
+
+    // Bottom CTA section copy
+    document.querySelectorAll<HTMLElement>("[data-cta-headline]").forEach((el) => {
+      el.textContent = headlineByPlatform[platform];
+    });
+    document.querySelectorAll<HTMLElement>("[data-cta-subhead]").forEach((el) => {
+      el.textContent = subheadByPlatform[platform];
+    });
+
+    // Hide the "Other downloads" link that matches the auto-pick — keep
+    // the alternatives visible so users on the wrong machine can switch.
+    document.querySelectorAll<HTMLElement>(`[data-platform="${platform}"]`).forEach((link) => {
+      const sep = link.previousElementSibling;
+      if (sep && sep.tagName === "SPAN" && sep.textContent?.trim() === "·") {
+        (sep as HTMLElement).style.display = "none";
+      } else {
+        // First link — hide the separator AFTER it instead
+        const after = link.nextElementSibling;
+        if (after && after.tagName === "SPAN" && after.textContent?.trim() === "·") {
+          (after as HTMLElement).style.display = "none";
+        }
+      }
+      link.style.display = "none";
+    });
+  }
+
+  detectPlatform().then(applyPlatform);
+</script>
