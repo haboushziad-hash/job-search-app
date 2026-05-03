@@ -43,15 +43,25 @@ const APP_SIZE = "107 MB";
 
     <!-- Hero content -->
     <div class="max-w-5xl mx-auto px-6 pt-16 sm:pt-24 pb-20 text-center">
+      <!-- Built-by credit (animated gradient) -->
+      <div class="reveal mb-8 flex justify-center">
+        <span class="text-[11px] sm:text-xs font-medium uppercase tracking-[0.2em]
+                     bg-gradient-to-r from-accent-300 via-accent-400 via-50% to-accent-200
+                     bg-[length:200%_auto] bg-clip-text text-transparent
+                     animate-[shine_4s_linear_infinite]">
+          Built by Ziad Haboush
+        </span>
+      </div>
+
       <!-- Eyebrow chip -->
       <div class="reveal inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.08] text-[11px] text-base-300 mb-7 tracking-wide">
         <span class="w-1.5 h-1.5 rounded-full bg-tier-strong animate-pulse"></span>
         Local-first · No telemetry · Multi-industry
       </div>
 
-      <!-- Headline -->
+      <!-- Headline — only "damn" gets the gradient; "jobz" stays white. -->
       <h1 class="reveal text-5xl sm:text-7xl md:text-8xl font-semibold tracking-tighter leading-[0.95] mb-7 max-w-4xl mx-auto">
-        Find me some <span class="bg-gradient-to-r from-accent-300 via-accent-400 to-accent-600 bg-clip-text text-transparent">damn jobz</span>.
+        Find me some <span class="bg-gradient-to-r from-accent-300 via-accent-400 to-accent-600 bg-clip-text text-transparent">damn</span> jobz.
       </h1>
 
       <!-- Subhead -->
@@ -93,7 +103,7 @@ const APP_SIZE = "107 MB";
       <div class="reveal-stagger mt-14 grid grid-cols-3 gap-3 sm:gap-6 max-w-3xl mx-auto">
         <Stat number="Thousands" label="of roles per search" />
         <Stat number="≈11 min" label="per fresh search" />
-        <Stat number="4 models" label="AI scoring cascade" />
+        <Stat number="4-Stage" label="AI cascade · 4 cross-validated models" />
       </div>
 
       <div class="mt-10 text-[12px] text-base-500 uppercase tracking-widest">
@@ -111,7 +121,7 @@ const APP_SIZE = "107 MB";
       </div>
       <div class="reveal-stagger grid md:grid-cols-3 gap-5">
         <Step n="1" title="Upload your background"
-              desc="Resumes, cover letters, paste-in JDs you like, raw text — drop in whatever shows your story. Three AI models read everything in parallel and build your personalized search profile in 60-90 seconds." />
+              desc="Resumes, cover letters, paste-in JDs you like, raw text — drop in whatever shows your story. Four AI models read everything in parallel and cross-validate your personalized search profile in 60-90 seconds." />
         <Step n="2" title="Run the search"
               desc="Scrapes major job boards (Greenhouse, Lever, Ashby, Workday) for thousands of roles. Filters by location, salary, and your stated red-flags. Scores each role with a multi-stage AI cascade." />
         <Step n="3" title="Triage with confidence"
@@ -130,7 +140,7 @@ const APP_SIZE = "107 MB";
 
       <div class="reveal-stagger grid md:grid-cols-2 gap-4">
         <Feature title="Scoring that's actually accurate"
-                 desc="Three-stage AI cascade — embedding pre-filter, Flash triage, Pro deep eval. Each role gets a score and detailed reasoning. Tiered into STRONG / GOOD / MAYBE / STRETCH so you know what's worth your time." />
+                 desc="Four-stage AI cascade — embedding pre-filter, Flash triage, Pro deep eval, and an LLM salary-extraction backfill. Every role gets a score, a reasoning trail, and an application strategy. Tiered into STRONG / GOOD / MAYBE / STRETCH so you know what's worth your time." />
         <Feature title="Multi-industry by design"
                  desc="Tax accountants, software engineers, nurses, marketing directors, real estate analysts — same tool, different keyword universe. The AI builds your search around your resume, not a generic template." />
         <Feature title="Fast and lean"
@@ -191,8 +201,7 @@ const APP_SIZE = "107 MB";
         </div>
 
         <div class="mt-8 text-[12px] text-base-500 leading-relaxed max-w-md mx-auto">
-          Tested on Windows 10/11 and macOS 12+. Linux build planned. <br/>
-          Built by an indie maker; bring your own Google AI Studio + Anthropic API keys (the free tiers cover most use).
+          Tested on Windows 10/11 and macOS 12+. Linux build planned.
         </div>
       </div>
     </div>
@@ -202,7 +211,7 @@ const APP_SIZE = "107 MB";
   <footer class="border-t border-white/[0.05] mt-12">
     <div class="max-w-6xl mx-auto px-6 py-10 flex flex-col sm:flex-row items-center justify-between gap-4">
       <div class="text-[12px] text-base-500">
-        © 2026 findmesomedamnjobz. Built by Z. Ship hard, apply less.
+        © 2026 findmesomedamnjobz · Less searching, more applying.
       </div>
       <div class="flex items-center gap-5 text-[12px] text-base-500">
         <a href="#" class="hover:text-base-200 transition-colors">Setup help</a>

@@ -28,13 +28,39 @@ export default defineConfig({
   // Tauri uses these env vars to know what features to enable
   envPrefix: ['VITE_', 'TAURI_ENV_*'],
 
+  // Top-level esbuild target — applies to per-file transform pass (TS/JSX).
+  // Must match build.target so esbuild doesn't downlevel modern syntax.
+  esbuild: {
+    target: 'esnext',
+  },
+
+  // Vite 8 pre-bundles deps with rolldown (NOT esbuild). The hook is
+  // optimizeDeps.rolldownOptions.transform.target, not the legacy
+  // optimizeDeps.esbuildOptions.target.
+  optimizeDeps: {
+    rolldownOptions: {
+      transform: {
+        target: 'esnext',
+      },
+    },
+  },
+
   build: {
-    // safari13 was Tauri's default but esbuild can't transpile modern
-    // destructuring (used by react-router etc.) down that far. Tauri 2 ships
-    // with WKWebView from macOS 12+ → at least Safari 15, so safari14 is
-    // a safe minimum that gives esbuild enough room.
-    target:
-      process.env.TAURI_ENV_PLATFORM === 'windows' ? 'chrome105' : 'safari14',
+    // Tauri 2 webviews: WebView2 (Chromium 120+) on Windows, WKWebView
+    // on macOS 12+ (Safari 15+), WebKitGTK on Linux. All support every
+    // modern syntax we use, so let esbuild emit code as-is rather than
+    // downlevel. Earlier safari13/safari14 attempts triggered esbuild's
+    // "destructuring not supported yet" error because (a) some
+    // destructuring sub-patterns aren't lowered by esbuild yet, and
+    // (b) Vite 8's CSS pipeline merged additional older entries into
+    // the JS target list, producing the "safari14 + 2 overrides" signature.
+    target: 'esnext',
+    // Match JS target so lightningcss/postcss don't down-target CSS
+    // and pull a multi-entry list back into the JS pipeline.
+    cssTarget: 'esnext',
+    // Vite 8's default minifier is now 'oxc'. Keep esbuild for now —
+    // with target=esnext esbuild does a pure minify pass with no
+    // syntax lowering (the source of all our prior failures).
     minify: !process.env.TAURI_ENV_DEBUG ? 'esbuild' : false,
     sourcemap: !!process.env.TAURI_ENV_DEBUG,
   },

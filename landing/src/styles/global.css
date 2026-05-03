@@ -141,6 +141,12 @@ html, body {
   to   { transform: translate3d(15vw, -10vw, 0); }
 }
 
+/* Shimmering gradient text — used for the "Built by Ziad Haboush" credit. */
+@keyframes shine {
+  0%   { background-position: 0% center; }
+  100% { background-position: 200% center; }
+}
+
 /* SVG-noise overlay — 200-byte filter, 4% opacity. Adds film-grain depth.  */
 .noise {
   position: fixed;
