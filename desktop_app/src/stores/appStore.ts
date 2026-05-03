@@ -71,6 +71,13 @@ interface AppState {
   cacheMaxAgeDays: number
   setCacheMaxAgeDays: (days: number) => void
 
+  // Dashboard preferences
+  // Hides roles with no disclosed salary from the dashboard. Off by default
+  // because some testers want to see all matches and trust their own judgment;
+  // testers who only want fully-disclosed roles can flip this on in Settings.
+  hideSalarylessRoles: boolean
+  setHideSalarylessRoles: (v: boolean) => void
+
   // Role tracking
   roleStatuses: Record<string, RoleStatusEntry>
   saveRole: (role: Role) => void
@@ -94,12 +101,14 @@ export const useAppStore = create<AppState>()(
       lastSummary: null,
       roleStatuses: {},
       cacheMaxAgeDays: 7,
+      hideSalarylessRoles: false,
 
       setProfile: (p) => set({ profile: p }),
       setActiveRunId: (id) => set({ activeRunId: id }),
       setLastResults: (roles, summary) =>
         set({ lastRoles: roles, lastSummary: summary }),
       setCacheMaxAgeDays: (days) => set({ cacheMaxAgeDays: days }),
+      setHideSalarylessRoles: (v) => set({ hideSalarylessRoles: v }),
 
       saveRole: (role) => {
         syncToArchive(role, 'saved')

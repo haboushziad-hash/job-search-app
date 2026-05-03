@@ -178,9 +178,14 @@ export default function Dashboard() {
     STRETCH: lastRoles.filter((r) => r.final_tier === 'STRETCH').length,
   }
 
-  const visibleRoles = filterTier
+  const hideSalarylessRoles = useAppStore((s) => s.hideSalarylessRoles)
+
+  const tierFiltered = filterTier
     ? lastRoles.filter((r) => r.final_tier === filterTier)
     : lastRoles
+  const visibleRoles = hideSalarylessRoles
+    ? tierFiltered.filter((r) => r.salary_min != null || r.salary_max != null || !!r.salary_text)
+    : tierFiltered
 
   // Sort visible roles by score descending. Tiebreaker: when scores are
   // within 3 points, prefer the role with salary disclosed — equivalent

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Folder, Clock, RotateCcw, Check } from 'lucide-react'
+import { Folder, Clock, RotateCcw, Check, DollarSign } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAppStore } from '@/stores/appStore'
 import { getAuditFolder, setAuditFolder } from '@/services/api'
@@ -8,6 +8,8 @@ import { getAuditFolder, setAuditFolder } from '@/services/api'
 export default function Settings() {
   const cacheMaxAgeDays = useAppStore((s) => s.cacheMaxAgeDays)
   const setCacheMaxAgeDays = useAppStore((s) => s.setCacheMaxAgeDays)
+  const hideSalarylessRoles = useAppStore((s) => s.hideSalarylessRoles)
+  const setHideSalarylessRoles = useAppStore((s) => s.setHideSalarylessRoles)
 
   const [folderPath, setFolderPath] = useState<string>('')
   const [folderInput, setFolderInput] = useState<string>('')
@@ -120,6 +122,41 @@ export default function Settings() {
           <p className="text-[11px] text-base-500 mt-2">
             Cache invalidates automatically if your profile, keywords, or preferences change.
           </p>
+        </div>
+
+        {/* Salary visibility toggle */}
+        <div className="glass rounded-xl p-6">
+          <div className="flex items-center gap-2 mb-3">
+            <DollarSign size={16} className="text-accent-400" />
+            <h2 className="text-sm font-medium">Hide roles without salary disclosed</h2>
+          </div>
+          <p className="text-xs text-base-400 mb-4 leading-relaxed">
+            By default the dashboard shows all qualifying roles, including ones where the
+            employer didn't publish a salary range. Some companies (Big 4, Microsoft, federal)
+            consistently leave compensation off the JD. Flip this on to only see roles with
+            an explicit pay range.
+          </p>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                const next = !hideSalarylessRoles
+                setHideSalarylessRoles(next)
+                toast.success(next ? 'Hiding roles without salary' : 'Showing all roles')
+              }}
+              role="switch"
+              aria-checked={hideSalarylessRoles}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors
+                ${hideSalarylessRoles ? 'bg-accent-500' : 'bg-white/10'}`}
+            >
+              <span
+                className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform
+                  ${hideSalarylessRoles ? 'translate-x-5' : 'translate-x-0.5'}`}
+              />
+            </button>
+            <span className="text-sm text-base-300">
+              {hideSalarylessRoles ? 'On — only showing roles with salary disclosed' : 'Off — showing all qualifying roles'}
+            </span>
+          </div>
         </div>
 
         {/* Cross-tester learning info */}

@@ -68,6 +68,21 @@ and why.
 Score from 0 to 100 using the same rubric as Stage 2:
   85-100 STRONG / 70-84 GOOD / 55-69 MAYBE / 40-54 STRETCH / 0-39 SKIP
 
+SALARY EXTRACTION:
+If structured salary fields (salary_min/salary_max) are missing or null, scan the
+JD body for compensation language and extract a range. Watch for:
+  - Explicit ranges: "$130,000 - $165,000", "$130K-$165K"
+  - Single anchors with "starting at", "minimum", "up to"
+  - Geo-conditional ranges (US base / NYC band / etc.)
+  - Hourly rates with annual context ($65/hr ≈ $135K)
+  - GS-grade tables for federal roles ("GS-13" → ~$103-134K)
+  - Total comp callouts ("Total Target Compensation: $X-$Y")
+If you find a range, return integers in extracted_salary_min/max (annual USD).
+If only one number is given, return it as both min AND max so the dashboard can
+display it. If genuinely no salary signal exists, return nulls and salary_text="".
+Do NOT guess from job title, company, or seniority — only extract what the JD
+explicitly states.
+
 Respond with strict JSON:
 {
   "score": <integer 0-100>,
@@ -77,7 +92,10 @@ Respond with strict JSON:
   "application_strategy": "<2-3 sentences: what to emphasize in the application>",
   "best_resume_match": "<filename of best-fitting resume, or 'unified'>",
   "best_resume_reason": "<one sentence on why this resume>",
-  "summary": "<EXACTLY 2 sentences. First sentence: what this role IS in plain English. Second sentence: the most important match signal or concern. Used as the dashboard card preview — keep it concrete and skimmable.>"
+  "summary": "<EXACTLY 2 sentences. First sentence: what this role IS in plain English. Second sentence: the most important match signal or concern. Used as the dashboard card preview — keep it concrete and skimmable.>",
+  "extracted_salary_text": "<the literal compensation text from the JD, or empty string>",
+  "extracted_salary_min": <integer or null — annual USD>,
+  "extracted_salary_max": <integer or null — annual USD>
 }
 """
 
@@ -94,6 +112,11 @@ _RESPONSE_SCHEMA = {
         # AI-C: short headline summary shown on the dashboard card so the
         # user can triage 70+ roles quickly without reading full reasoning.
         "summary": {"type": "string"},
+        # LLM-extracted salary — backfills when regex missed it. Stage 3
+        # already reads the full JD, so this is essentially free.
+        "extracted_salary_text": {"type": "string"},
+        "extracted_salary_min": {"type": ["integer", "null"]},
+        "extracted_salary_max": {"type": ["integer", "null"]},
     },
     "required": ["score", "match_analysis", "application_strategy", "summary"],
 }
@@ -258,6 +281,20 @@ async def _score_one(
                 summary_str = str(data.get("summary", ""))[:400]
                 if summary_str:
                     role.summary = summary_str
+
+                # LLM-extracted salary backfill — only fills fields that
+                # were missing. Never overwrites scraper-provided structured
+                # data (which is more reliable than free-text extraction).
+                ext_text = data.get("extracted_salary_text") or ""
+                ext_min = data.get("extracted_salary_min")
+                ext_max = data.get("extracted_salary_max")
+                if (ext_min is not None or ext_max is not None) and isinstance(ext_min, (int, type(None))) and isinstance(ext_max, (int, type(None))):
+                    if role.salary_min is None and ext_min is not None:
+                        role.salary_min = int(ext_min)
+                    if role.salary_max is None and ext_max is not None:
+                        role.salary_max = int(ext_max)
+                    if not role.salary_text and ext_text:
+                        role.salary_text = str(ext_text)[:200]
         except Exception as e:
             # Real errors (network, auth, etc.) — null out Stage 3 fields so
             # _finalize_score uses Stage 2 cleanly. Stash the error in
