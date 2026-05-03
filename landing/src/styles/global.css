@@ -147,6 +147,153 @@ html, body {
   100% { background-position: 200% center; }
 }
 
+/* ------------------------------------------------------------------------ */
+/* Headline stagger reveal — hero h1 words appear one at a time, with        */
+/* "DAMN" shouted dramatically (scale punch + glow burst). Triggers when     */
+/* main.ts adds .in-view to the parent .h1-stagger element.                  */
+/* ------------------------------------------------------------------------ */
+.h1-word {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.5s cubic-bezier(0.2, 0.8, 0.2, 1),
+              transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.h1-stagger.in-view .h1-word { opacity: 1; transform: translateY(0); }
+.h1-stagger.in-view .h1-word:nth-child(1) { transition-delay: 0.05s; }
+.h1-stagger.in-view .h1-word:nth-child(2) { transition-delay: 0.20s; }
+.h1-stagger.in-view .h1-word:nth-child(3) { transition-delay: 0.35s; }
+.h1-stagger.in-view .h1-word:nth-child(4) { transition-delay: 1.20s; } /* after damn-shout */
+
+/* The DAMN shout — punches up dramatically, glows, settles. Plays once
+ * after the previous words have arrived (delay set on parent .in-view). */
+.h1-damn {
+  display: inline-block;
+  opacity: 0;
+  transform: scale(0.4);
+  filter: blur(4px);
+  text-shadow: 0 0 0 transparent;
+}
+.h1-stagger.in-view .h1-damn {
+  animation: damn-shout 1.0s cubic-bezier(0.16, 1.2, 0.3, 1.0) 0.55s forwards;
+}
+@keyframes damn-shout {
+  0%   { opacity: 0;    transform: scale(0.4)  rotate(-3deg); filter: blur(4px); text-shadow: 0 0 0 transparent; }
+  35%  { opacity: 1;    transform: scale(1.35) rotate(2deg);  filter: blur(0);   text-shadow: 0 0 40px var(--color-accent-400), 0 0 80px var(--color-accent-500); }
+  60%  { opacity: 1;    transform: scale(0.92) rotate(-1deg); filter: blur(0);   text-shadow: 0 0 24px var(--color-accent-400); }
+  80%  { opacity: 1;    transform: scale(1.06) rotate(0.5deg); filter: blur(0);  text-shadow: 0 0 12px var(--color-accent-500); }
+  100% { opacity: 1;    transform: scale(1)    rotate(0);     filter: blur(0);   text-shadow: 0 0 0 transparent; }
+}
+
+/* When the DAMN punch fires, briefly shake the surrounding line so the
+ * shout feels physical — like the page itself reacted. ~120ms, very subtle. */
+.h1-stagger.in-view {
+  animation: page-shake 0.18s ease-out 0.85s 1;
+}
+@keyframes page-shake {
+  0%, 100% { transform: translateX(0); }
+  25%      { transform: translateX(-2px); }
+  75%      { transform: translateX(2px); }
+}
+
+/* ------------------------------------------------------------------------ */
+/* Hero cursor-spotlight — soft purple glow tracks the mouse behind the      */
+/* hero text. Position is set via CSS variables --mx and --my updated by JS  */
+/* in the layout. Falls back gracefully when JS doesn't run.                 */
+/* ------------------------------------------------------------------------ */
+.cursor-spotlight {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    600px circle at var(--mx, 50%) var(--my, 30%),
+    rgba(136, 86, 255, 0.18),
+    rgba(136, 86, 255, 0.06) 30%,
+    transparent 60%
+  );
+  transition: background 0.18s ease-out;
+  z-index: 0;
+  mix-blend-mode: screen;
+  opacity: 0;
+}
+.cursor-spotlight.armed { opacity: 1; }
+
+/* ------------------------------------------------------------------------ */
+/* Counter animation — used on stats. The number element starts at the      */
+/* final value but JS replaces it with a roll-up sequence on .in-view.       */
+/* ------------------------------------------------------------------------ */
+.counter {
+  display: inline-block;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------------------------ */
+/* Logo marquee — slow horizontal scroll showing job-board logos.            */
+/* ------------------------------------------------------------------------ */
+.marquee {
+  position: relative;
+  overflow: hidden;
+  mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
+}
+.marquee-track {
+  display: flex;
+  gap: 3.5rem;
+  width: max-content;
+  animation: marquee-scroll 38s linear infinite;
+}
+.marquee:hover .marquee-track { animation-play-state: paused; }
+@keyframes marquee-scroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+/* ------------------------------------------------------------------------ */
+/* Feature card hover-lift — subtle vertical movement + shadow on hover.     */
+/* ------------------------------------------------------------------------ */
+.feature-card {
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1),
+              border-color 0.3s ease,
+              box-shadow 0.3s ease;
+  will-change: transform;
+}
+.feature-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 16px 40px -12px rgba(110, 61, 240, 0.25);
+}
+
+/* ------------------------------------------------------------------------ */
+/* Active nav highlight — toggled by IntersectionObserver in main script.    */
+/* ------------------------------------------------------------------------ */
+.nav-link {
+  position: relative;
+  transition: color 0.2s ease;
+}
+.nav-link.active {
+  color: var(--color-base-50);
+}
+.nav-link.active::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 4px;
+  transform: translateX(-50%);
+  width: 16px;
+  height: 1.5px;
+  border-radius: 1px;
+  background: var(--color-accent-400);
+  box-shadow: 0 0 8px var(--color-accent-400);
+}
+
+/* ------------------------------------------------------------------------ */
+/* Tier badge mini-cards — used in the optional "what tiers look like" row.  */
+/* ------------------------------------------------------------------------ */
+.tier-pill-strong  { background: rgba(94, 234, 212, 0.13); color: var(--color-tier-strong); border: 1px solid rgba(94, 234, 212, 0.35); }
+.tier-pill-good    { background: rgba(147, 197, 253, 0.13); color: var(--color-tier-good);  border: 1px solid rgba(147, 197, 253, 0.35); }
+.tier-pill-maybe   { background: rgba(252, 211, 77, 0.13);  color: var(--color-tier-maybe); border: 1px solid rgba(252, 211, 77, 0.30); }
+.tier-pill-stretch { background: rgba(58, 64, 90, 0.55);    color: var(--color-base-300);   border: 1px solid rgba(255, 255, 255, 0.08); }
+
 /* SVG-noise overlay — 200-byte filter, 4% opacity. Adds film-grain depth.  */
 .noise {
   position: fixed;
@@ -261,10 +408,12 @@ html, body {
 }
 
 /* ------------------------------------------------------------------------ */
-/* Section utility — tighter vertical rhythm so sections feel connected.      */
+/* Section utility — tighter vertical rhythm. Sections used to feel
+ * disconnected with too much air between them; pulled in significantly so
+ * the page reads as one continuous flow rather than disjoint cards.        */
 /* ------------------------------------------------------------------------ */
-.section { padding: 4rem 1.5rem; }
-@media (min-width: 768px) { .section { padding: 5.5rem 2rem; } }
+.section { padding: 2.5rem 1.5rem; }
+@media (min-width: 768px) { .section { padding: 3.5rem 2rem; } }
 
 /* ------------------------------------------------------------------------ */
 /* Reduced motion respect                                                     */

@@ -257,7 +257,8 @@ class RunSummary(BaseModel):
 
     # Data quality
     jd_coverage_pct: float = 0.0
-    salary_coverage_pct: float = 0.0
+    salary_coverage_pct: float = 0.0          # % of all scraped roles
+    salary_coverage_qualifying_pct: float = 0.0  # % of qualifying roles (≥40 final score)
     location_coverage_pct: float = 0.0
     self_heal_triggered: bool = False
 

@@ -215,6 +215,15 @@ async def run_search(
     summary.salary_coverage_pct = _pct(raw_roles, lambda r: r.salary_max is not None)
     summary.location_coverage_pct = _pct(raw_roles, lambda r: bool(r.location or r.location_type))
 
+    # Salary coverage on the roles testers ACTUALLY see (qualifying ≥ 40).
+    # The all-roles % above is misleading — it dilutes with thousands of
+    # filtered-out roles and makes us think the dashboard has poor coverage.
+    qualifying_for_coverage = [r for r in scored if (getattr(r, "final_score", None) or 0) >= 40]
+    summary.salary_coverage_qualifying_pct = _pct(
+        qualifying_for_coverage,
+        lambda r: r.salary_max is not None or r.salary_min is not None or bool(r.salary_text),
+    ) if qualifying_for_coverage else 0.0
+
     # Coverage gap signal — surface "your sector under-represented" warning
     # when target_industries don't match what scrapers actually return.
     try:
@@ -243,7 +252,8 @@ async def run_search(
         print(f"    STRETCH:  {summary.tier_stretch}")
         print(f"  Coverage:")
         print(f"    JD:       {summary.jd_coverage_pct:.0f}%")
-        print(f"    Salary:   {summary.salary_coverage_pct:.0f}%")
+        print(f"    Salary:   {summary.salary_coverage_pct:.0f}% of all scraped · "
+              f"{summary.salary_coverage_qualifying_pct:.0f}% of qualifying (what testers see)")
         print(f"    Location: {summary.location_coverage_pct:.0f}%")
         print(f"{'='*70}\n")
 
