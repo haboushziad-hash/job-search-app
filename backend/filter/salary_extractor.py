@@ -252,9 +252,24 @@ def enrich_salaries(roles: list[Role], log: bool = True) -> list[Role]:
     """Run salary extraction on every role missing structured salary data.
     Mutates roles in place. Returns the same list."""
     enriched = 0
+    enriched_from_text = 0
     for role in roles:
-        if role.salary_min is not None or role.salary_max is not None:
-            continue  # already has structured salary
+        if role.salary_min is not None and role.salary_max is not None:
+            continue  # already has full structured salary
+
+        # Two-pass: first try salary_text (scrapers often populate this with
+        # a human-readable range like "$130K-$165K" but skip parsing min/max).
+        # Then fall back to scanning the JD body.
+        if role.salary_text and (role.salary_min is None or role.salary_max is None):
+            _, smin, smax = extract_salary_from_jd(role.salary_text)
+            if smin is not None:
+                role.salary_min = role.salary_min or smin
+            if smax is not None:
+                role.salary_max = role.salary_max or smax
+            if smin is not None or smax is not None:
+                enriched_from_text += 1
+                continue
+
         if not role.job_description_full:
             continue
         text, smin, smax = extract_salary_from_jd(role.job_description_full)

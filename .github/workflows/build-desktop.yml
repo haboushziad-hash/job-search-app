@@ -29,16 +29,19 @@ jobs:
             artifact_pattern: "**/*.msi"
             artifact_name: windows-installer
             r2_key: "current/job-search-app.msi"
+            target_triple: "x86_64-pc-windows-msvc"
           - os: macos-latest                  # Apple Silicon (arm64)
             target: macos-arm64
             artifact_pattern: "**/*.dmg"
             artifact_name: macos-arm64-installer
             r2_key: "current/job-search-app-aarch64.dmg"
+            target_triple: "aarch64-apple-darwin"
           - os: macos-13                       # Intel (x86_64) — last Intel-supporting runner
             target: macos-x64
             artifact_pattern: "**/*.dmg"
             artifact_name: macos-x64-installer
             r2_key: "current/job-search-app-x64.dmg"
+            target_triple: "x86_64-apple-darwin"
 
     runs-on: ${{ matrix.os }}
 
@@ -84,6 +87,26 @@ jobs:
       - name: Bundle backend with PyInstaller (macOS)
         if: runner.os == 'macOS'
         run: backend/venv/bin/python -m PyInstaller backend.spec
+
+      # PyInstaller drops the binary at dist/backend(.exe). Tauri's externalBin
+      # config expects it at desktop_app/src-tauri/binaries/backend-<target-triple>(.exe)
+      # — so we copy + rename here. The binaries/ dir is gitignored (binaries
+      # are 100+ MB; rebuilt fresh per CI run).
+      - name: Stage backend binary for Tauri (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: bash
+        run: |
+          mkdir -p desktop_app/src-tauri/binaries
+          cp dist/backend.exe "desktop_app/src-tauri/binaries/backend-${{ matrix.target_triple }}.exe"
+          ls -la desktop_app/src-tauri/binaries/
+
+      - name: Stage backend binary for Tauri (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          mkdir -p desktop_app/src-tauri/binaries
+          cp dist/backend "desktop_app/src-tauri/binaries/backend-${{ matrix.target_triple }}"
+          chmod +x "desktop_app/src-tauri/binaries/backend-${{ matrix.target_triple }}"
+          ls -la desktop_app/src-tauri/binaries/
 
       # ---- Tauri build (Rust + sidecar packaging) ----
       - name: Setup Rust

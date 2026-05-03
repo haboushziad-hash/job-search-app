@@ -292,12 +292,30 @@ class WorkdayScraper(BaseScraper):
 
         # bulletFields sometimes contains salary/job-id
         salary_text = None
+        salary_min = None
+        salary_max = None
         for field in (posting.get("bulletFields") or []):
             if not field:
                 continue
             field_str = str(field)
             if "$" in field_str:
                 salary_text = field_str
+                # Parse $ amounts so the dashboard shows a range, not just text
+                import re as _re
+                nums = _re.findall(
+                    r"\$?(\d{2,3}(?:,\d{3})+|\d{2,3}[Kk])", field_str,
+                )
+                parsed: list[int] = []
+                for n in nums[:2]:
+                    n2 = n.replace(",", "")
+                    if n2.lower().endswith("k"):
+                        parsed.append(int(float(n2[:-1]) * 1000))
+                    else:
+                        parsed.append(int(float(n2)))
+                if parsed:
+                    salary_min = parsed[0]
+                    if len(parsed) > 1:
+                        salary_max = parsed[1]
                 break
 
         return Role(
@@ -309,6 +327,8 @@ class WorkdayScraper(BaseScraper):
             job_description_full="",   # JD is fetched lazily — search results don't include
             jd_completeness="Missing",
             salary_text=salary_text,
+            salary_min=salary_min,
+            salary_max=salary_max,
             posted_date=posted_iso,
             primary_source=self.source_name,
             date_first_seen=datetime.now(timezone.utc).date().isoformat(),

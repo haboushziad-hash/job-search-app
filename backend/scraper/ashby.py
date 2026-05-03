@@ -228,23 +228,36 @@ class AshbyScraper(BaseScraper):
             sr = comp.get("compensationTierSummary") or ""
             if sr:
                 salary_text = sr
+            import re as _re
+            def _parse_amounts(text: str) -> list[int]:
+                if not text:
+                    return []
+                nums = _re.findall(r"\$?(\d{2,3}(?:,\d{3})+|\d{2,3}[Kk])", text)
+                out: list[int] = []
+                for n in nums[:2]:
+                    n2 = n.replace(",", "")
+                    if n2.lower().endswith("k"):
+                        out.append(int(float(n2[:-1]) * 1000))
+                    else:
+                        out.append(int(float(n2)))
+                return out
+
+            # Try component summaries first (more granular)
             for tier in (comp.get("compensationTiers") or []):
-                comp_data = tier.get("componentSummary") or ""
-                # Try to extract numbers
-                import re as _re
-                nums = _re.findall(r"\$?(\d{2,3}(?:,\d{3})+|\d{2,3}[Kk])", comp_data)
-                if nums:
-                    parsed = []
-                    for n in nums[:2]:
-                        n2 = n.replace(",", "")
-                        if n2.lower().endswith("k"):
-                            parsed.append(int(float(n2[:-1]) * 1000))
-                        else:
-                            parsed.append(int(float(n2)))
-                    if parsed:
-                        salary_min = salary_min or parsed[0]
-                        if len(parsed) > 1:
-                            salary_max = salary_max or parsed[1]
+                parsed = _parse_amounts(tier.get("componentSummary") or "")
+                if parsed:
+                    salary_min = salary_min or parsed[0]
+                    if len(parsed) > 1:
+                        salary_max = salary_max or parsed[1]
+
+            # Fallback — parse the human-readable tier summary
+            # (some Ashby tenants only populate the summary, not tiers)
+            if salary_min is None and salary_max is None and sr:
+                parsed = _parse_amounts(sr)
+                if parsed:
+                    salary_min = parsed[0]
+                    if len(parsed) > 1:
+                        salary_max = parsed[1]
 
         return Role(
             job_title=title,
