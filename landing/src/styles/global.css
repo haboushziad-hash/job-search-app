@@ -141,10 +141,18 @@ html, body {
   to   { transform: translate3d(15vw, -10vw, 0); }
 }
 
-/* Shimmering gradient text — used for the "Built by Ziad Haboush" credit. */
+/* Shimmering gradient text — used for the "Built by Ziad Haboush" credit.
+ * Sweep direction is left-to-right (reading direction) for natural feel. */
 @keyframes shine {
-  0%   { background-position: 0% center; }
-  100% { background-position: 200% center; }
+  0%   { background-position: 200% center; }
+  100% { background-position: 0% center; }
+}
+
+/* Twinkle effect — pairs with the shimmer credit. Tiny dot/accent that
+ * subtly pulses brightness so the eye is drawn to the credit. */
+@keyframes twinkle {
+  0%, 100% { opacity: 0.3; transform: scale(0.85); }
+  50%      { opacity: 1;   transform: scale(1.1); }
 }
 
 /* ------------------------------------------------------------------------ */

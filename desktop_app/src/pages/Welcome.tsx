@@ -1,8 +1,9 @@
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
-import { ArrowRight, Sparkles, Target, Compass, Compass as CompassFill, type LucideIcon } from 'lucide-react'
+import { ArrowRight, Target, Compass, Compass as CompassFill, type LucideIcon } from 'lucide-react'
 import { VantaBackground } from '@/components/VantaBackground'
 import { useAppStore } from '@/stores/appStore'
+import { ZMark } from '@/components/ZMark'
 
 export default function Welcome() {
   const navigate = useNavigate()
@@ -33,34 +34,70 @@ export default function Welcome() {
       {/* Content — flex layout reserves space for credit at bottom */}
       <div className="relative z-10 h-full flex flex-col px-8 py-12">
         <div className="flex-1 flex flex-col items-center justify-center min-h-0">
-        {/* Brand mark */}
+        {/* Brand mark — Z mark matching the app icon */}
         <motion.div
           initial={{ opacity: 0, scale: 0.92 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.6, ease: 'easeOut' }}
           className="mb-8"
         >
-          <div className="w-16 h-16 rounded-2xl
-                          bg-gradient-to-br from-accent-400 to-accent-700
-                          flex items-center justify-center
-                          shadow-2xl shadow-accent-900/50
-                          border border-white/10">
-            <Sparkles size={28} className="text-white" />
-          </div>
+          <ZMark
+            size={64}
+            className="rounded-2xl shadow-2xl shadow-accent-900/50 border border-white/10"
+          />
         </motion.div>
 
-        {/* Headline */}
+        {/* Headline — staggered word reveal with DAMN doing a shout
+            (scale punch + glow burst). The framer variants below stagger
+            each word and the damn span fires its own punch animation. */}
         <motion.h1
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.15, ease: 'easeOut' }}
-          className="text-[64px] leading-[1.05] font-semibold tracking-tight text-balance text-center
-                     bg-gradient-to-b from-white to-base-300 bg-clip-text text-transparent
-                     max-w-3xl"
+          initial="hidden"
+          animate="visible"
+          variants={{ visible: { transition: { delayChildren: 0.15, staggerChildren: 0.12 } } }}
+          className="text-[64px] leading-[1.05] font-semibold tracking-tight text-balance text-center max-w-3xl flex flex-wrap justify-center gap-x-3 gap-y-1"
         >
-          Find roles that
-          <br />
-          actually match.
+          {['Find', 'me', 'some'].map((word) => (
+            <motion.span
+              key={word}
+              variants={{
+                hidden: { opacity: 0, y: 20 },
+                visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.2, 0.8, 0.2, 1] } },
+              }}
+              className="bg-gradient-to-b from-white to-base-300 bg-clip-text text-transparent"
+            >
+              {word}
+            </motion.span>
+          ))}
+          <motion.span
+            variants={{
+              hidden: { opacity: 0, scale: 0.4, rotate: -3, filter: 'blur(4px)' },
+              visible: {
+                opacity: 1,
+                scale: [0.4, 1.3, 0.94, 1.05, 1],
+                rotate: [-3, 2, -1, 0.5, 0],
+                filter: ['blur(4px)', 'blur(0px)', 'blur(0px)', 'blur(0px)', 'blur(0px)'],
+                transition: {
+                  duration: 1.0,
+                  ease: [0.16, 1.2, 0.3, 1.0],
+                  delay: 0.4,
+                  times: [0, 0.35, 0.6, 0.8, 1],
+                },
+              },
+            }}
+            className="bg-gradient-to-r from-accent-300 via-accent-400 to-accent-600 bg-clip-text text-transparent inline-block"
+            style={{ textShadow: '0 0 32px rgba(164, 124, 255, 0.4)' }}
+          >
+            damn
+          </motion.span>
+          <motion.span
+            variants={{
+              hidden: { opacity: 0, y: 20 },
+              visible: { opacity: 1, y: 0, transition: { duration: 0.5, delay: 1.1, ease: [0.2, 0.8, 0.2, 1] } },
+            }}
+            className="bg-gradient-to-b from-white to-base-300 bg-clip-text text-transparent"
+          >
+            jobz.
+          </motion.span>
         </motion.h1>
 
         <motion.p

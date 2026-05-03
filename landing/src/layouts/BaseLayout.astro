@@ -45,22 +45,116 @@ const { title = "Find me some damn jobz", description = "AI-powered job search t
 
     <slot />
 
-    <!-- Tiny script: scroll-reveal via IntersectionObserver. ~15 lines, no library. -->
+    <!-- Polish bundle: scroll-reveal, cursor-spotlight, counter animation,
+         active-nav highlight. All vanilla JS, no library, ~80 lines. -->
     <script>
-      const obs = new IntersectionObserver(
+      // 1) Scroll-reveal (also covers .h1-stagger which uses the same trigger)
+      const revealObs = new IntersectionObserver(
         (entries) => {
           for (const entry of entries) {
             if (entry.isIntersecting) {
               entry.target.classList.add("in-view");
-              obs.unobserve(entry.target);
+              revealObs.unobserve(entry.target);
             }
           }
         },
         { rootMargin: "0px 0px -10% 0px", threshold: 0.05 }
       );
       document
-        .querySelectorAll(".reveal, .reveal-stagger")
-        .forEach((el) => obs.observe(el));
+        .querySelectorAll(".reveal, .reveal-stagger, .h1-stagger")
+        .forEach((el) => revealObs.observe(el));
+
+      // 2) Hero cursor-spotlight — soft purple glow tracks the mouse
+      const spotlight = document.getElementById("hero-spotlight");
+      const header = spotlight?.closest("header");
+      if (spotlight && header) {
+        const onMove = (e: MouseEvent) => {
+          const rect = header.getBoundingClientRect();
+          const x = e.clientX - rect.left;
+          const y = e.clientY - rect.top;
+          spotlight.style.setProperty("--mx", `${x}px`);
+          spotlight.style.setProperty("--my", `${y}px`);
+          spotlight.classList.add("armed");
+        };
+        const onLeave = () => spotlight.classList.remove("armed");
+        header.addEventListener("mousemove", onMove);
+        header.addEventListener("mouseleave", onLeave);
+      }
+
+      // 3) Counter animation — for stats with `data-counter-target`. If the
+      // target is purely numeric (e.g. "11"), it rolls from 0 to that number.
+      // If the target contains text (e.g. "Thousands", "4-Stage"), the text
+      // fades in instead — no point animating non-numeric content.
+      const formatLikeTarget = (n: number, target: string): string => {
+        // Preserve target's prefix/suffix around the number
+        const m = target.match(/^([^\d]*)(\d+(?:\.\d+)?)([^\d]*)$/);
+        if (!m) return target;
+        const [, prefix, , suffix] = m;
+        return `${prefix}${Math.round(n)}${suffix}`;
+      };
+      const counterObs = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            if (!entry.isIntersecting) continue;
+            const el = entry.target as HTMLElement;
+            counterObs.unobserve(el);
+            const target = el.dataset.counterTarget || "";
+            const numMatch = target.match(/(\d+(?:\.\d+)?)/);
+            if (!numMatch) {
+              // Non-numeric — quick fade-in
+              el.style.opacity = "0";
+              el.style.transition = "opacity 0.6s ease";
+              requestAnimationFrame(() => (el.style.opacity = "1"));
+              continue;
+            }
+            const finalValue = parseFloat(numMatch[1]);
+            const duration = 1100;
+            const start = performance.now();
+            const tick = (t: number) => {
+              const elapsed = t - start;
+              const pct = Math.min(1, elapsed / duration);
+              // Ease-out quart for a satisfying snap at the end
+              const eased = 1 - Math.pow(1 - pct, 4);
+              const val = finalValue * eased;
+              el.textContent = formatLikeTarget(val, target);
+              if (pct < 1) requestAnimationFrame(tick);
+              else el.textContent = target;
+            };
+            // Start at 0 right before animating to avoid initial flash
+            el.textContent = formatLikeTarget(0, target);
+            requestAnimationFrame(tick);
+          }
+        },
+        { rootMargin: "0px 0px -15% 0px", threshold: 0.3 }
+      );
+      document.querySelectorAll<HTMLElement>(".counter").forEach((el) => counterObs.observe(el));
+
+      // 4) Active-nav highlight — scrolls activate the right anchor link.
+      // Uses IntersectionObserver to track which section is in view.
+      const navLinks = Array.from(document.querySelectorAll<HTMLAnchorElement>(".nav-link"));
+      const sectionMap = new Map<string, HTMLAnchorElement>();
+      navLinks.forEach((a) => {
+        const t = a.dataset.navTarget;
+        if (t) sectionMap.set(t, a);
+      });
+      const sectionObs = new IntersectionObserver(
+        (entries) => {
+          // Pick the entry with the largest visible area as the active section
+          let best: IntersectionObserverEntry | null = null;
+          for (const entry of entries) {
+            if (!entry.isIntersecting) continue;
+            if (!best || entry.intersectionRatio > best.intersectionRatio) best = entry;
+          }
+          if (!best) return;
+          const id = (best.target as HTMLElement).id;
+          navLinks.forEach((a) => a.classList.toggle("active", a.dataset.navTarget === id));
+        },
+        { rootMargin: "-30% 0px -55% 0px", threshold: [0, 0.25, 0.5, 0.75] }
+      );
+      sectionMap.forEach((_, id) => {
+        const sec = document.getElementById(id);
+        if (sec) sectionObs.observe(sec);
+      });
     </script>
   </body>
 </html>
