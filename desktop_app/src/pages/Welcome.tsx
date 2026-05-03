@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
-import { ArrowRight, Target, Compass, Compass as CompassFill, type LucideIcon } from 'lucide-react'
+import { ArrowRight, Target, Compass, Compass as CompassFill, Sparkles, type LucideIcon } from 'lucide-react'
 import { VantaBackground } from '@/components/VantaBackground'
 import { useAppStore } from '@/stores/appStore'
 import { ZMark } from '@/components/ZMark'

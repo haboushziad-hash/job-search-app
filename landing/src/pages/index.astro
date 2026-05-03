@@ -37,7 +37,8 @@ const APP_SIZE = "107 MB";
         <a href="#features" data-nav-target="features" class="nav-link px-3 py-1.5 text-sm text-base-300 hover:text-base-100">Features</a>
         <a href="#privacy" data-nav-target="privacy" class="nav-link px-3 py-1.5 text-sm text-base-300 hover:text-base-100">Privacy</a>
       </div>
-      <a href="#download" class="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-md bg-white/[0.06] border border-white/[0.08] text-sm text-base-100 hover:bg-white/[0.10] transition-colors">
+      <a href="#" onclick="window.scrollTo({top: 0, behavior: 'smooth'}); return false;"
+         class="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-md bg-white/[0.06] border border-white/[0.08] text-sm text-base-100 hover:bg-white/[0.10] transition-colors">
         Download
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
       </a>
@@ -117,11 +118,11 @@ const APP_SIZE = "107 MB";
       <div class="reveal-stagger mt-14 grid grid-cols-3 gap-3 sm:gap-6 max-w-3xl mx-auto">
         <Stat number="Thousands" label="of roles per search" />
         <Stat number="≈11 min" label="per fresh search" />
-        <Stat number="4-Stage" label="AI cascade · 4 cross-validated models" />
+        <Stat number="4-Stage" label="AI cascade logic" />
       </div>
 
-      <div class="mt-10 text-[12px] text-base-500 uppercase tracking-widest">
-        ↓ Windows 10/11 · macOS 12+
+      <div class="mt-6 text-[11px] text-base-500 uppercase tracking-widest">
+        Windows 10/11 · macOS 12+
       </div>
     </div>
   </header>
@@ -129,7 +130,7 @@ const APP_SIZE = "107 MB";
   <!-- ================================================== JOB BOARDS MARQUEE -->
   <!-- Slow horizontal scroll showing the boards we scrape from. Trust signal:
        "we're searching everywhere." Pauses on hover. -->
-  <section class="relative pt-2 pb-10">
+  <section class="relative pt-1 pb-8">
     <div class="text-center text-[10px] uppercase tracking-[0.3em] text-base-500 mb-5">
       Searches across
     </div>
@@ -201,7 +202,7 @@ const APP_SIZE = "107 MB";
   <!-- Stylized rendering of the dashboard so visitors see what they're
        getting before downloading. Built with HTML/Tailwind to mirror
        the actual app's tier-card design. -->
-  <section class="relative pb-12 sm:pb-20 pt-2">
+  <section class="relative pb-8 sm:pb-12 pt-1">
     <div class="max-w-5xl mx-auto px-6">
       <div class="reveal glass-strong rounded-2xl p-5 sm:p-7 shadow-2xl shadow-accent-900/20">
         <!-- Mock dashboard chrome -->
@@ -355,40 +356,6 @@ const APP_SIZE = "107 MB";
           <PrivacyChip label="Local SQLite archive" />
           <PrivacyChip label="No telemetry by default" />
           <PrivacyChip label="You own your audit folder" />
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ================================================== DOWNLOAD CTA -->
-  <section id="download" class="section relative">
-    <div class="max-w-3xl mx-auto">
-      <div class="reveal glass-strong rounded-2xl p-10 sm:p-14 text-center">
-        <h2 class="text-3xl sm:text-4xl font-semibold tracking-tight mb-4" data-cta-headline>Download for Windows</h2>
-        <p class="text-base-300 mb-8 max-w-md mx-auto" data-cta-subhead>Version {VERSION} · {APP_SIZE} installer · Windows 10 or 11.</p>
-
-        <a id="cta-download" href={MSI_URL}
-           data-url-windows={MSI_URL}
-           data-url-mac-arm64={DMG_ARM64_URL}
-           data-url-mac-x64={DMG_X64_URL}
-           class="btn-primary text-base px-7 py-4">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
-          Get the installer
-        </a>
-
-        <!-- Same escape hatch on the bottom CTA — covers users who scroll
-             down without seeing the hero "Other downloads" row. -->
-        <div class="mt-6 text-[12px] text-base-500 flex items-center justify-center gap-3 flex-wrap">
-          <span class="text-base-600">Other downloads:</span>
-          <a href={MSI_URL} data-platform="windows" class="hover:text-base-300 transition-colors underline-offset-4 hover:underline">Windows</a>
-          <span class="text-base-700">·</span>
-          <a href={DMG_ARM64_URL} data-platform="mac-arm64" class="hover:text-base-300 transition-colors underline-offset-4 hover:underline">Mac (Apple Silicon)</a>
-          <span class="text-base-700">·</span>
-          <a href={DMG_X64_URL} data-platform="mac-x64" class="hover:text-base-300 transition-colors underline-offset-4 hover:underline">Mac (Intel)</a>
-        </div>
-
-        <div class="mt-8 text-[12px] text-base-500 leading-relaxed max-w-md mx-auto">
-          Tested on Windows 10/11 and macOS 12+. Linux build planned.
         </div>
       </div>
     </div>
