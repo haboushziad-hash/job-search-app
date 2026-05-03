@@ -76,14 +76,16 @@ const APP_SIZE = "107 MB";
         <a href="#how-it-works" class="btn-secondary">See how it works</a>
       </div>
 
-      <!-- "Wrong machine?" escape hatch — always visible. The auto-detect
-           script hides whichever option matches the primary CTA. -->
+      <!-- Contextual "wrong machine?" hint. The auto-detect script
+           rewrites this to show only the OTHER platform's options
+           (e.g., "On a Mac? Apple Silicon · Intel" when Windows is
+           the auto-pick). Default HTML shows all 3 for SSR + JS-disabled. -->
       <div id="other-downloads" class="reveal mt-5 text-[12px] text-base-500 flex items-center justify-center gap-3 flex-wrap">
-        <span class="text-base-600">Other downloads:</span>
+        <span class="text-base-600" data-other-prefix>Other downloads:</span>
         <a href={MSI_URL} data-platform="windows" class="hover:text-base-300 transition-colors underline-offset-4 hover:underline">Windows</a>
-        <span class="text-base-700">·</span>
+        <span class="text-base-700" data-sep="0">·</span>
         <a href={DMG_ARM64_URL} data-platform="mac-arm64" class="hover:text-base-300 transition-colors underline-offset-4 hover:underline">Mac (Apple Silicon)</a>
-        <span class="text-base-700">·</span>
+        <span class="text-base-700" data-sep="1">·</span>
         <a href={DMG_X64_URL} data-platform="mac-x64" class="hover:text-base-300 transition-colors underline-offset-4 hover:underline">Mac (Intel)</a>
       </div>
 
@@ -298,21 +300,41 @@ const APP_SIZE = "107 MB";
       el.textContent = subheadByPlatform[platform];
     });
 
-    // Hide the "Other downloads" link that matches the auto-pick — keep
-    // the alternatives visible so users on the wrong machine can switch.
-    document.querySelectorAll<HTMLElement>(`[data-platform="${platform}"]`).forEach((link) => {
-      const sep = link.previousElementSibling;
-      if (sep && sep.tagName === "SPAN" && sep.textContent?.trim() === "·") {
-        (sep as HTMLElement).style.display = "none";
-      } else {
-        // First link — hide the separator AFTER it instead
-        const after = link.nextElementSibling;
-        if (after && after.tagName === "SPAN" && after.textContent?.trim() === "·") {
-          (after as HTMLElement).style.display = "none";
-        }
-      }
-      link.style.display = "none";
+    // Rewrite the "Other downloads" row to be contextual:
+    //   - Detected Windows → show "On a Mac? Apple Silicon · Intel"
+    //   - Detected Mac arm64 → show "On Windows or Intel Mac? Windows · Mac (Intel)"
+    //   - Detected Mac x64  → show "On Windows or Apple Silicon? Windows · Mac (Apple Silicon)"
+    // Hides the platform that matches the big button, so it isn't a duplicate.
+    const prefixByPlatform: Record<Platform, string> = {
+      "windows": "On a Mac?",
+      "mac-arm64": "Different machine?",
+      "mac-x64": "Different machine?",
+    };
+    const prefixEl = document.querySelector<HTMLElement>("[data-other-prefix]");
+    if (prefixEl) prefixEl.textContent = prefixByPlatform[platform];
+
+    // Hide the auto-picked platform's link (it's already the big button).
+    // Also hide whichever separator becomes adjacent to nothing.
+    const links = Array.from(document.querySelectorAll<HTMLAnchorElement>("[data-platform]"));
+    const seps = Array.from(document.querySelectorAll<HTMLElement>("[data-sep]"));
+    links.forEach((link) => {
+      if (link.dataset.platform === platform) link.style.display = "none";
     });
+    // After hiding, recompute which separators sit between two visible links
+    const visibleLinks = links.filter((l) => l.style.display !== "none");
+    seps.forEach((sep) => {
+      // sep at index i sits between links[i] and links[i+1]
+      const idx = parseInt(sep.dataset.sep || "-1", 10);
+      const before = links[idx];
+      const after = links[idx + 1];
+      const beforeVisible = before && before.style.display !== "none";
+      const afterVisible = after && after.style.display !== "none";
+      sep.style.display = beforeVisible && afterVisible ? "" : "none";
+    });
+    // Final: if only one visible link remains, the prefix becomes "On a Mac?
+    // Apple Silicon" (singular) — drop the now-trailing separator already
+    // handled above. No extra work needed.
+    void visibleLinks;
   }
 
   detectPlatform().then(applyPlatform);
