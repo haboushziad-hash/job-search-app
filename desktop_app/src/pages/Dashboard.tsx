@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Filter, Play, Sparkles, Search, Download, FileSpreadsheet, FileText, FileType, ChevronDown, AlertTriangle } from 'lucide-react'
+import { Filter, Play, Sparkles, Search, Download, FileSpreadsheet, FileText, FileType, ChevronDown, AlertTriangle, Home } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { TierCard } from '@/components/TierCard'
@@ -336,6 +336,18 @@ export default function Dashboard() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {/* Home — return to Welcome page */}
+          <button
+            onClick={() => navigate('/welcome')}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg
+                       glass-subtle hover:bg-white/[0.08]
+                       text-sm text-base-300 transition-colors"
+            title="Back to home"
+          >
+            <Home size={14} />
+            Home
+          </button>
+
           {/* Export dropdown */}
           <div ref={exportMenuRef} className="relative">
             <button
@@ -525,8 +537,9 @@ export default function Dashboard() {
 }
 
 /** Renders roles grouped by tier with section headers. STRONG/GOOD/MAYBE get
- *  full RoleCard treatment; STRETCH renders condensed. Sections with zero
- *  roles are skipped entirely. */
+ *  full RoleCard treatment; STRETCH renders condensed BUT each card is
+ *  click-to-expand into the full layout (with Visit/Save/Applied/Hide actions
+ *  matching higher tiers). Click again to re-collapse. */
 function TierGroupedList({
   renderEntries,
   toggleExpand,
@@ -537,6 +550,18 @@ function TierGroupedList({
   >
   toggleExpand: (company: string) => void
 }) {
+  const [expandedStretch, setExpandedStretch] = useState<Set<string>>(new Set())
+  const stretchKey = (r: Role) =>
+    `${(r.company || '').toLowerCase()}::${(r.job_title || '').toLowerCase()}`
+  const toggleStretch = (r: Role) => {
+    const k = stretchKey(r)
+    setExpandedStretch((prev) => {
+      const next = new Set(prev)
+      if (next.has(k)) next.delete(k)
+      else next.add(k)
+      return next
+    })
+  }
   const tierOrder: Tier[] = ['STRONG', 'GOOD', 'MAYBE', 'STRETCH']
   const tierMeta: Record<Tier, { label: string; sub: string; condensed: boolean }> = {
     STRONG:  { label: 'Strong matches',  sub: 'apply this week',     condensed: false },
@@ -580,6 +605,12 @@ function TierGroupedList({
             <div className={meta.condensed ? 'space-y-1.5' : 'space-y-2.5'}>
               {entries.map((entry, idx) => {
                 if (entry.kind === 'role') {
+                  // STRETCH defaults to condensed but expands on click into
+                  // the full-card layout (matches Strong/Good/Maybe sections).
+                  // Click again to collapse.
+                  const isStretchExpanded =
+                    meta.condensed && expandedStretch.has(stretchKey(entry.role))
+                  const renderCondensed = meta.condensed && !isStretchExpanded
                   return (
                     <motion.div
                       key={`${entry.role.company}-${entry.role.job_title}-${idx}`}
@@ -587,7 +618,11 @@ function TierGroupedList({
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.3, delay: Math.min(idx * 0.02, 0.4) }}
                     >
-                      <RoleCard role={entry.role} condensed={meta.condensed} />
+                      <RoleCard
+                        role={entry.role}
+                        condensed={renderCondensed}
+                        onClick={meta.condensed ? () => toggleStretch(entry.role) : undefined}
+                      />
                     </motion.div>
                   )
                 }

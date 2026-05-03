@@ -41,18 +41,21 @@ const APP_SIZE = "107 MB";
       </a>
     </nav>
 
-    <!-- Hero content -->
-    <div class="max-w-5xl mx-auto px-6 pt-16 sm:pt-24 pb-20 text-center">
-      <!-- Built-by credit (animated gradient) -->
-      <div class="reveal mb-8 flex justify-center">
-        <span class="text-[11px] sm:text-xs font-medium uppercase tracking-[0.2em]
-                     bg-gradient-to-r from-accent-300 via-accent-400 via-50% to-accent-200
-                     bg-[length:200%_auto] bg-clip-text text-transparent
-                     animate-[shine_4s_linear_infinite]">
-          Built by Ziad Haboush
-        </span>
-      </div>
+    <!-- Built-by credit (animated gradient) — placed just below the nav,
+         not inside the hero's pt-16/24 wrapper, so it sits visually
+         centered between the nav bar and the headline rather than
+         floating with too much air above. -->
+    <div class="reveal mt-10 sm:mt-14 flex justify-center">
+      <span class="text-sm sm:text-base font-semibold uppercase tracking-[0.22em]
+                   bg-gradient-to-r from-accent-300 via-accent-400 via-50% to-accent-200
+                   bg-[length:200%_auto] bg-clip-text text-transparent
+                   animate-[shine_4s_linear_infinite]">
+        Built by Ziad Haboush
+      </span>
+    </div>
 
+    <!-- Hero content -->
+    <div class="max-w-5xl mx-auto px-6 pt-10 sm:pt-14 pb-20 text-center">
       <!-- Eyebrow chip -->
       <div class="reveal inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.08] text-[11px] text-base-300 mb-7 tracking-wide">
         <span class="w-1.5 h-1.5 rounded-full bg-tier-strong animate-pulse"></span>
