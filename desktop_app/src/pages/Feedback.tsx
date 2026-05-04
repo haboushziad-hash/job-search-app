@@ -77,6 +77,9 @@ function tierForScore(score?: number | null): { label: string; color: string } {
 
 export default function Feedback() {
   const lastRoles = useAppStore((s) => s.lastRoles)
+  // Read the running binary's version dynamically so the feedback report
+  // metadata stays in sync with whatever the auto-updater has installed.
+  const appVersion = useAppVersion()
   const [category, setCategory] = useState<FeedbackCategory>('bug')
   const [message, setMessage] = useState('')
   const [email, setEmail] = useState('')
