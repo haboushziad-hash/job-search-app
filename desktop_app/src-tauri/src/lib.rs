@@ -14,6 +14,17 @@ use uuid::Uuid;
 /// Format: "https://fmsdj-worker.YOUR-SUBDOMAIN.workers.dev/v1/runs"
 const AUDIT_UPLOAD_URL: &str = "https://api.findmesomedamnjobz.com/v1/runs";
 
+/// Hardcoded base URL of the LLM proxy Worker. When set, the bundled
+/// Python backend routes ALL Gemini + Anthropic API calls through this
+/// Worker, which holds the real keys server-side. Testers don't need to
+/// configure anything — the Worker takes care of it.
+///
+/// Empty string = direct mode (backend reads keys from local .env). Used
+/// in dev when you have keys locally and want to bypass the proxy.
+///
+/// Format: "https://api.findmesomedamnjobz.com" (no trailing slash, no path)
+const LLM_PROXY_URL: &str = "https://api.findmesomedamnjobz.com";
+
 // Holds the FastAPI backend's child process so we can kill it cleanly on
 // app quit. Stored in Tauri's managed state.
 struct BackendProcess(std::sync::Mutex<Option<CommandChild>>);
@@ -95,6 +106,13 @@ pub fn run() {
                 sidecar = sidecar.env("AUDIT_UPLOAD_URL", AUDIT_UPLOAD_URL);
             }
 
+            // LLM_PROXY_URL: route all Gemini/Anthropic calls through Ziad's
+            // Worker so testers don't need their own API keys. The Worker
+            // holds the real keys server-side and substitutes them per call.
+            if !LLM_PROXY_URL.is_empty() {
+                sidecar = sidecar.env("LLM_PROXY_URL", LLM_PROXY_URL);
+            }
+
             let (mut rx, child) = sidecar.spawn().map_err(|e| {
                 log::error!("failed to spawn backend sidecar: {e}");
                 e
@@ -135,8 +153,8 @@ pub fn run() {
             Ok(())
         })
         .on_window_event(|window, event| {
-            // Kill the backend process when the main window closes,
-            // otherwise the Python process can linger as a zombie.
+            // Primary cleanup path — fires when user clicks the window X.
+            // This is the normal end-user flow on packaged builds.
             if let tauri::WindowEvent::CloseRequested { .. } = event {
                 if let Some(state) = window.app_handle().try_state::<BackendProcess>() {
                     if let Ok(mut guard) = state.0.lock() {
@@ -147,6 +165,25 @@ pub fn run() {
                 }
             }
         })
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app_handle, event| {
+            // Secondary cleanup path — fires on ANY app shutdown (graceful
+            // X-close, OS shutdown, Ctrl+C in dev terminal, app crash that
+            // unwinds cleanly). Belt-and-suspenders so backend.exe doesn't
+            // linger as a zombie holding port 8765.
+            //
+            // The .take() above already drained the BackendProcess on a
+            // normal close, so this no-ops in that case. It only does
+            // real work when CloseRequested didn't fire (abnormal exits).
+            if let tauri::RunEvent::Exit = event {
+                if let Some(state) = app_handle.try_state::<BackendProcess>() {
+                    if let Ok(mut guard) = state.0.lock() {
+                        if let Some(child) = guard.take() {
+                            let _ = child.kill();
+                        }
+                    }
+                }
+            }
+        });
 }

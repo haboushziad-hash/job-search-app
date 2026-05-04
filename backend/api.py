@@ -42,6 +42,9 @@ from backend.scoring import cost_tracker
 # Production version stores in SQLite; this is fine for v0.
 
 _RUNS: dict[str, "RunState"] = {}
+# Track the asyncio.Task for each in-progress run so we can cancel cleanly.
+# Key = run_id. Removed when the run completes / fails / is cancelled.
+_RUN_TASKS: dict[str, asyncio.Task[None]] = {}
 _BUILDS: dict[str, "BuildState"] = {}
 
 
@@ -117,6 +120,26 @@ async def _init_archive() -> None:
         print(f"[archive] initialized at {DEFAULT_AUDIT_FOLDER}")
     except Exception as e:
         print(f"[archive] startup init failed: {e}")
+
+    # ----------------------------------------------------------------
+    # Diagnostic: print which mode the backend is starting in. Helps us
+    # verify Tauri is actually injecting LLM_PROXY_URL when it should.
+    # Tester builds: should print "[mode] LLM proxy mode" with the URL.
+    # Local dev (no proxy): should print "[mode] direct keys" with count.
+    # ----------------------------------------------------------------
+    proxy_url = (config.LLM_PROXY_URL or "").strip()
+    audit_url = (config.AUDIT_UPLOAD_URL or "").strip()
+    tester_uuid = (config.TESTER_UUID or "").strip()
+    if proxy_url:
+        print(f"[mode] LLM proxy mode -> {proxy_url}")
+    else:
+        n_keys = len(config.google_api_keys())
+        print(f"[mode] direct keys -> {n_keys} Google key(s) loaded from .env")
+    if audit_url:
+        print(f"[mode] audit upload -> {audit_url}")
+    if tester_uuid:
+        # Only show first 8 chars — enough for diagnostics, doesn't leak full UUID
+        print(f"[mode] tester uuid -> {tester_uuid[:8]}...")
 
 
 # ============================================================================
@@ -346,11 +369,14 @@ async def search_run(req: RunSearchRequest) -> dict[str, Any]:
     except Exception:
         pass
 
-    # Fire and forget; updates state in the background
-    asyncio.create_task(_execute_search(
+    # Fire and forget; updates state in the background. Track the task
+    # so we can cancel it via /search/cancel/{run_id}.
+    task = asyncio.create_task(_execute_search(
         state, profile, keywords, req.sources, req.posted_within_days,
         applied_keys, run_id, req.cache_max_age_days, req.force_refresh,
     ))
+    _RUN_TASKS[run_id] = task
+    task.add_done_callback(lambda _t: _RUN_TASKS.pop(run_id, None))
 
     return {"run_id": run_id, "status": "pending"}
 
@@ -402,9 +428,80 @@ async def _execute_search(
         state.current_step = "Done"
         state.current_step_index = 6
         state.progress = 100.0
+    except asyncio.CancelledError:
+        # User cancelled mid-run. Mark in-memory state as cancelled and
+        # propagate so any awaiters resolve cleanly.
+        #
+        # There are TWO mid-run database writes that need cleanup:
+        #
+        # 1) audits/runs.db — archive.begin_run() inserted a row with
+        #    status="running". Without cleanup, the dashboard's run-history
+        #    view would show an orphan "running" entry, and a buggy cache
+        #    lookup could conceivably match against it. Delete the row
+        #    outright (cancel_run uses DELETE, not UPDATE).
+        #
+        # 2) archive/cost.db (run_summaries table) — cost_tracker.start_run()
+        #    inserted a row with status="running" at the top of scoring.
+        #    Mark it status="cancelled" via finish_run(); the per-call
+        #    cost rows in llm_calls stay because those represent real money
+        #    already spent — we want spend-cap accounting honest.
+        #
+        # Roles, scores, market contributions, audit JSONs, and the audit
+        # upload to the central Worker are all written together in
+        # _archive_run() AFTER the cascade finishes, so they're already
+        # correctly absent on a mid-run cancel — no cleanup needed for those.
+        state.status = "cancelled"
+        state.current_step = "Cancelled"
+        state.error = None
+        try:
+            archive = _maybe_archive()
+            if archive is not None:
+                archive.cancel_run(run_id=run_id)
+        except Exception as e:
+            print(f"[cancel] archive cleanup failed (non-fatal): {e}")
+        try:
+            cost_tracker.finish_run(run_id, status="cancelled")
+        except Exception as e:
+            print(f"[cancel] cost_tracker cleanup failed (non-fatal): {e}")
+        # Re-raise so asyncio knows the task was cancelled (lets the
+        # cancel() caller's await complete cleanly).
+        raise
     except Exception as e:
         state.status = "failed"
         state.error = f"{type(e).__name__}: {str(e)[:500]}"
+
+
+@app.post("/search/cancel/{run_id}")
+async def search_cancel(run_id: str) -> dict[str, Any]:
+    """Cancel an in-progress search. The asyncio task is cancelled, which
+    raises CancelledError inside run_search() at the next await — abandoning
+    any partial work. No archive entry, no audit JSON, no run history is
+    written for cancelled runs.
+
+    Returns 404 if the run_id is unknown, 409 if the run already completed
+    (can't cancel what already finished).
+    """
+    state = _RUNS.get(run_id)
+    if not state:
+        raise HTTPException(status_code=404, detail="Unknown run_id")
+    if state.status in ("completed", "failed", "cancelled"):
+        raise HTTPException(
+            status_code=409,
+            detail=f"Run already {state.status}; nothing to cancel",
+        )
+    task = _RUN_TASKS.get(run_id)
+    if task is None or task.done():
+        # State says running but task is gone — race. Mark cancelled so the
+        # frontend can move on, even though there's nothing to actually cancel.
+        state.status = "cancelled"
+        state.current_step = "Cancelled"
+        return {"run_id": run_id, "status": "cancelled"}
+    task.cancel()
+    # Optimistic state update so the polling frontend sees it immediately.
+    # The task's CancelledError handler will set the same state.
+    state.status = "cancelled"
+    state.current_step = "Cancelled"
+    return {"run_id": run_id, "status": "cancelled"}
 
 
 @app.get("/search/status/{run_id}")

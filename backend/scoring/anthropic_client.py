@@ -26,12 +26,26 @@ class AnthropicClient:
     provider_name = "anthropic"
 
     def __init__(self, api_key: Optional[str] = None):
-        api_key = api_key or config.ANTHROPIC_API_KEY
-        if not api_key or api_key.startswith("PASTE_"):
-            raise RuntimeError(
-                "ANTHROPIC_API_KEY not configured. Set it in .env."
+        # Proxy mode (production): if config.LLM_PROXY_URL is set, route
+        # through the Worker. The Worker holds the real Anthropic key
+        # server-side and substitutes it on each forwarded request.
+        # Tester ships with no Anthropic key — it never touches their machine.
+        proxy_url = (config.LLM_PROXY_URL or "").rstrip("/")
+        if proxy_url:
+            tester_uuid = (config.TESTER_UUID or "").strip() or "00000000-0000-0000-0000-000000000000"
+            self._client = AsyncAnthropic(
+                api_key="proxy-mode",  # placeholder — Worker substitutes its real key
+                base_url=f"{proxy_url}/v1/llm/anthropic",
+                default_headers={"X-Tester-UUID": tester_uuid},
             )
-        self._client = AsyncAnthropic(api_key=api_key)
+        else:
+            api_key = api_key or config.ANTHROPIC_API_KEY
+            if not api_key or api_key.startswith("PASTE_"):
+                raise RuntimeError(
+                    "ANTHROPIC_API_KEY not configured. Set it in .env, "
+                    "or set LLM_PROXY_URL to route through a Worker."
+                )
+            self._client = AsyncAnthropic(api_key=api_key)
         self.current_run_id: Optional[str] = None
         self.current_license_key: Optional[str] = None
         self.current_stage: str = "misc"

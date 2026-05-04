@@ -2,22 +2,29 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  ArrowRight, ArrowLeft, X, Plus, Sparkles, AlertCircle,
-  Star, Layers, Compass,
+  ArrowRight, ArrowLeft, X, Plus, AlertCircle,
+  Star, Layers, Compass, Loader2, Play,
 } from 'lucide-react'
+import { toast } from 'sonner'
+import { ZMark } from '@/components/ZMark'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/stores/appStore'
+import { runSearch, ApiError } from '@/services/api'
 import type { Keyword } from '@/types'
 
 export default function Keywords() {
   const navigate = useNavigate()
   const profile = useAppStore((s) => s.profile)
   const setProfile = useAppStore((s) => s.setProfile)
+  const setActiveRunId = useAppStore((s) => s.setActiveRunId)
+  const roleStatuses = useAppStore((s) => s.roleStatuses)
+  const cacheMaxAgeDays = useAppStore((s) => s.cacheMaxAgeDays)
 
   // Local working copy of keywords (so cancellation doesn't mutate store)
   const [keywords, setKeywords] = useState<Keyword[]>(profile?.keywords || [])
   const [newKeyword, setNewKeyword] = useState('')
   const [newKeywordTier, setNewKeywordTier] = useState(1)
+  const [submitting, setSubmitting] = useState(false)
 
   if (!profile) {
     return (
@@ -56,10 +63,53 @@ export default function Keywords() {
     setKeywords(keywords.map((k) => (k.text === text ? { ...k, tier: newTier } : k)))
   }
 
-  const continueToSearch = () => {
+  // Kicks off the actual search directly from this page. Skips the /run
+  // summary screen — the user already reviewed/edited their keywords here,
+  // so the extra click on /run was redundant. Mirrors the same body that
+  // /run sends to /search/run (keywords tier 1+2, default sources, applied-role
+  // skip list). The /run page still exists as an entry point for "+ New
+  // Search" from the dashboard, where the user lands without having just
+  // edited keywords and a recap is more useful.
+  const startSearch = async () => {
     if (!profile) return
-    setProfile({ ...profile, keywords })
-    navigate('/dashboard')
+
+    // Persist edited keywords to the store BEFORE firing the search so
+    // the run uses what the user sees on screen, not the stale profile.
+    const updatedProfile = { ...profile, keywords }
+    setProfile(updatedProfile)
+
+    // Build the applied-roles skip list from local state — anything the
+    // user marked applied (or further along) is sent so the backend
+    // doesn't resurface it on this run.
+    const appliedRoles = Object.values(roleStatuses)
+      .filter((entry) => entry.status === 'applied')
+      .map((entry) => ({
+        company: entry.roleSnapshot?.company || '',
+        title: entry.roleSnapshot?.job_title || '',
+      }))
+      .filter((r) => r.company && r.title)
+
+    setSubmitting(true)
+    try {
+      const res = await runSearch({
+        profile: updatedProfile,
+        keywords: keywords.filter((k) => k.tier <= 2).map((k) => k.text),
+        sources: ['Greenhouse', 'Lever', 'Ashby', 'Workday'],
+        postedWithinDays: 30,
+        appliedRoles,
+        cacheMaxAgeDays,
+      })
+      setActiveRunId(res.run_id)
+      const skipMsg = appliedRoles.length > 0
+        ? ` · skipping ${appliedRoles.length} already-applied role${appliedRoles.length === 1 ? '' : 's'}`
+        : ''
+      toast.success(`Search started · this will take 5–15 minutes${skipMsg}`)
+      navigate('/running')
+    } catch (e) {
+      const msg = e instanceof ApiError ? e.detail : (e instanceof Error ? e.message : 'Unknown error')
+      toast.error(`Failed to start search: ${msg}`)
+      setSubmitting(false)
+    }
   }
 
   const tier1 = keywords.filter((k) => k.tier === 1)
@@ -76,10 +126,7 @@ export default function Keywords() {
       >
         {/* Header */}
         <div className="flex items-center gap-3 mb-1">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent-400 to-accent-700
-                          flex items-center justify-center shadow-lg shadow-accent-900/40">
-            <Sparkles size={17} className="text-white" />
-          </div>
+          <ZMark size={40} className="shadow-lg shadow-accent-900/40" />
           <h1 className="text-2xl font-semibold tracking-tight">Review your keywords</h1>
         </div>
         <p className="text-sm text-base-400 mb-2">
@@ -181,13 +228,23 @@ export default function Keywords() {
             {keywords.length} keyword{keywords.length === 1 ? '' : 's'} ready
           </div>
           <button
-            onClick={continueToSearch}
+            onClick={startSearch}
+            disabled={submitting || keywords.length === 0}
             className="flex items-center gap-2 px-6 py-2.5 rounded-lg
                        bg-white text-base-950 font-medium text-sm
                        hover:bg-base-200 transition-colors
+                       disabled:opacity-60 disabled:cursor-not-allowed
                        shadow-lg shadow-black/30"
           >
-            Continue <ArrowRight size={14} />
+            {submitting ? (
+              <>
+                <Loader2 size={14} className="animate-spin" /> Starting search...
+              </>
+            ) : (
+              <>
+                <Play size={13} /> Start search <ArrowRight size={14} />
+              </>
+            )}
           </button>
         </div>
       </motion.div>

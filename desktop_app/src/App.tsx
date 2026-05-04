@@ -17,6 +17,7 @@ import History from '@/pages/History'
 import SavedSearches from '@/pages/SavedSearches'
 import SavedJobs from '@/pages/SavedJobs'
 import Settings from '@/pages/Settings'
+import Feedback from '@/pages/Feedback'
 
 export default function App() {
   return (
@@ -44,14 +45,11 @@ export default function App() {
  *   - Brand new user                               → /welcome (resume upload flow)
  */
 function RootRedirect() {
-  const profile = useAppStore((s) => s.profile)
-  const lastRoles = useAppStore((s) => s.lastRoles)
-  if (profile && lastRoles.length > 0) {
-    return <Navigate to="/dashboard" replace />
-  }
-  if (profile) {
-    return <Navigate to="/run" replace />
-  }
+  // Always land on the Welcome (home) page on app launch. The Welcome page
+  // itself handles the "you've run before" case by showing both
+  // "Run a new search" AND "View previous results" CTAs side-by-side.
+  // Previously we'd auto-bounce to /dashboard which felt jarring — users
+  // landed in raw results instead of the brand surface.
   return <Navigate to="/welcome" replace />
 }
 
@@ -70,6 +68,7 @@ function AppShell() {
             <Route path="/saved-jobs" element={<AnimatedPage><SavedJobs /></AnimatedPage>} />
             <Route path="/saved" element={<AnimatedPage><SavedSearches /></AnimatedPage>} />
             <Route path="/settings" element={<AnimatedPage><Settings /></AnimatedPage>} />
+            <Route path="/feedback" element={<AnimatedPage><Feedback /></AnimatedPage>} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </AnimatePresence>

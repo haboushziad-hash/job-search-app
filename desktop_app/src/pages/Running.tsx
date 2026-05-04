@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Check, Loader2, Sparkles, AlertCircle } from 'lucide-react'
+import { Check, Loader2, AlertCircle, X } from 'lucide-react'
+import { ZMark } from '@/components/ZMark'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/stores/appStore'
-import { getSearchStatus, getSearchResults, ApiError } from '@/services/api'
+import { getSearchStatus, getSearchResults, cancelSearch, ApiError } from '@/services/api'
 import type { SearchStatus } from '@/services/api'
 
 const STEPS = [
@@ -49,8 +50,10 @@ export default function Running() {
   const navigate = useNavigate()
   const runId = useAppStore((s) => s.activeRunId)
   const setLastResults = useAppStore((s) => s.setLastResults)
+  const setActiveRunId = useAppStore((s) => s.setActiveRunId)
   const [status, setStatus] = useState<SearchStatus | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [cancelling, setCancelling] = useState(false)
 
   // No active run — bounce back to Run setup
   useEffect(() => {
@@ -59,7 +62,14 @@ export default function Running() {
     }
   }, [runId, navigate])
 
-  // Poll status every 2 seconds
+  // Poll status every 2 seconds. Track when this page mounted so we don't
+  // instantly auto-navigate away on cache-hit completions — users need a
+  // visible window to see progress AND have access to the Cancel button
+  // before we whisk them off to the dashboard.
+  const MIN_VISIBLE_MS = 2500
+  const mountedAtRef = (typeof performance !== 'undefined' ? performance : { now: () => Date.now() })
+  const mountedAt = mountedAtRef.now()
+
   useEffect(() => {
     if (!runId) return
     let cancelled = false
@@ -74,6 +84,14 @@ export default function Running() {
         if (s.status === 'completed') {
           // Pull final results
           const results = await getSearchResults(runId)
+          // Honor minimum visible time so the running page isn't a blink-and-
+          // miss flash on cache hits. Gives the user a chance to see + cancel.
+          const elapsed = mountedAtRef.now() - mountedAt
+          const wait = Math.max(0, MIN_VISIBLE_MS - elapsed)
+          if (wait > 0) {
+            await new Promise((r) => setTimeout(r, wait))
+            if (cancelled) return
+          }
           setLastResults(results.roles, results.summary)
           toast.success(
             `Search complete · ${results.roles.length} qualifying roles found`
@@ -84,6 +102,12 @@ export default function Running() {
 
         if (s.status === 'failed') {
           setError(s.error || 'Run failed')
+          return
+        }
+
+        if (s.status === 'cancelled') {
+          // User cancelled. Polling stops; toast was already shown by the
+          // cancel handler. Bounce back to the search setup page.
           return
         }
 
@@ -104,6 +128,22 @@ export default function Running() {
   const activeStep = status ? Math.max(0, status.current_step_index - 1) : 0
   const progress = status?.progress ?? 0
 
+  const handleCancel = async () => {
+    if (!runId || cancelling) return
+    if (!confirm('Cancel this search? Partial results won’t be saved.')) return
+    setCancelling(true)
+    try {
+      await cancelSearch(runId)
+      toast('Search cancelled', { description: 'No results were saved.' })
+      // Clear active run so /run can start fresh, then navigate back.
+      setActiveRunId(null)
+      navigate('/setup')
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.detail : 'Failed to cancel')
+      setCancelling(false)
+    }
+  }
+
   return (
     <div className="h-screen w-screen flex items-center justify-center px-8 overflow-hidden">
       <motion.div
@@ -112,10 +152,7 @@ export default function Running() {
         className="glass-strong w-full max-w-xl rounded-2xl p-10"
       >
         <div className="flex items-center gap-3 mb-2">
-          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-accent-400 to-accent-700
-                          flex items-center justify-center">
-            <Sparkles size={16} className="text-white" />
-          </div>
+          <ZMark size={36} />
           <h1 className="text-xl font-semibold tracking-tight">
             {error ? 'Search failed' : 'Search in progress'}
           </h1>
@@ -249,13 +286,28 @@ export default function Running() {
               </motion.div>
             )}
 
-            <button
-              onClick={() => navigate('/dashboard')}
-              className="mt-7 w-full px-4 py-2 rounded-lg text-sm text-base-400 hover:text-base-200
-                         border border-white/[0.06] hover:border-white/[0.10] transition-colors"
-            >
-              Continue in background
-            </button>
+            <div className="mt-7 flex gap-2">
+              <button
+                onClick={() => navigate('/dashboard')}
+                className="flex-1 px-4 py-2 rounded-lg text-sm text-base-400 hover:text-base-200
+                           border border-white/[0.06] hover:border-white/[0.10] transition-colors"
+              >
+                Continue in background
+              </button>
+              <button
+                onClick={handleCancel}
+                disabled={cancelling}
+                className="px-4 py-2 rounded-lg text-sm text-base-400
+                           border border-white/[0.06] hover:border-red-500/30
+                           hover:text-red-300 hover:bg-red-500/[0.04]
+                           transition-colors disabled:opacity-40 disabled:cursor-not-allowed
+                           flex items-center gap-1.5"
+                title="Cancel this search — partial work isn't saved"
+              >
+                <X size={13} />
+                {cancelling ? 'Cancelling…' : 'Cancel search'}
+              </button>
+            </div>
           </>
         )}
       </motion.div>

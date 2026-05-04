@@ -4,6 +4,7 @@ import {
   Sparkles, Search, Target, Shield, Zap, Layers,
   ArrowRight, ArrowLeft,
 } from 'lucide-react'
+import { ZMark } from '@/components/ZMark'
 
 export default function HowItWorks() {
   const navigate = useNavigate()
@@ -18,10 +19,7 @@ export default function HowItWorks() {
       >
         {/* Header */}
         <div className="flex items-center gap-3 mb-1">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent-400 to-accent-700
-                          flex items-center justify-center shadow-lg shadow-accent-900/40">
-            <Sparkles size={17} className="text-white" />
-          </div>
+          <ZMark size={40} className="shadow-lg shadow-accent-900/40" />
           <h1 className="text-2xl font-semibold tracking-tight">How it works</h1>
         </div>
         <p className="text-sm text-base-400 mb-6">

@@ -1,6 +1,6 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "Job Search",
+  "productName": "findmesomedamnjobz",
   "version": "0.1.0",
   "identifier": "app.jobsearch.desktop",
   "build": {
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Job Search",
+        "title": "findmesomedamnjobz",
         "width": 1400,
         "height": 900,
         "minWidth": 1100,

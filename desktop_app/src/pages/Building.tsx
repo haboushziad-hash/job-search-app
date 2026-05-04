@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Sparkles, Loader2, AlertCircle, Check } from 'lucide-react'
+import { Loader2, AlertCircle, Check } from 'lucide-react'
+import { ZMark } from '@/components/ZMark'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/stores/appStore'
@@ -116,10 +117,7 @@ export default function Building() {
         className="glass-strong w-full max-w-xl rounded-2xl p-9"
       >
         <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent-400 to-accent-700
-                          flex items-center justify-center shadow-lg shadow-accent-900/40">
-            <Sparkles size={17} className="text-white" />
-          </div>
+          <ZMark size={40} className="shadow-lg shadow-accent-900/40" />
           <h1 className="text-2xl font-semibold tracking-tight">
             {error ? 'Build failed' : 'Building your profile'}
           </h1>

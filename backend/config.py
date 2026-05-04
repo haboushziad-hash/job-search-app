@@ -1,25 +1,64 @@
 """Centralized configuration for the Job Search App backend.
 
-Loads .env from the project root. Provides typed access to every setting.
+Loads .env from the project root (or from common alternate locations when
+running as a PyInstaller bundle, where __file__ doesn't point at the
+original source tree). Provides typed access to every setting.
 """
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 from typing import Optional
 
 from dotenv import load_dotenv
 
 
-# Resolve the project root (one level above backend/)
+# Resolve the project root. Behavior differs between source and bundle:
+#
+#   - Source (python backend/api.py): __file__ = backend/config.py,
+#     so parent.parent = repo root.
+#   - PyInstaller frozen binary: __file__ resolves to a temp extraction
+#     dir (e.g. C:\Users\...\AppData\Local\Temp\_MEIxxxx\backend\config.py).
+#     parent.parent = that temp dir, which has no .env. We need to look
+#     elsewhere.
+#
+# In frozen mode we try multiple known-good locations, in order:
+#   1. Directory containing the .exe (alongside backend.exe)
+#   2. Directory above the .exe (typical install: parent of `binaries/`)
+#   3. The user's repo root if running locally during dev (env-resolved)
+#   4. Current working directory
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+def _find_env_file() -> Optional[Path]:
+    candidates: list[Path] = []
+    # Source-tree default
+    candidates.append(PROJECT_ROOT / ".env")
+    if getattr(sys, "frozen", False):
+        # Frozen bundle — look near the executable
+        exe_dir = Path(sys.executable).resolve().parent
+        candidates.append(exe_dir / ".env")
+        candidates.append(exe_dir.parent / ".env")
+        candidates.append(exe_dir.parent.parent / ".env")
+    # Current working directory as a last resort
+    candidates.append(Path.cwd() / ".env")
+    for path in candidates:
+        try:
+            if path.exists() and path.is_file():
+                return path
+        except OSError:
+            continue
+    return None
+
+
+_env_path = _find_env_file()
+if _env_path is not None:
+    load_dotenv(_env_path, override=True)
+# else: rely on inherited environment variables (LLM_PROXY_URL, etc.) —
+# the Tauri sidecar passes some of these explicitly via lib.rs.
+
 ARCHIVE_DIR = PROJECT_ROOT / "archive"
 REFERENCE_DATA_DIR = ARCHIVE_DIR / "reference_data"
-
-# Load .env from project root. override=True ensures the .env file always
-# wins over inherited environment variables — critical when keys get added
-# or rotated in .env after the parent shell was launched.
-load_dotenv(PROJECT_ROOT / ".env", override=True)
 
 
 class Config:

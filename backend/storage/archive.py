@@ -424,6 +424,27 @@ class Archive:
                 run_id,
             ))
 
+    def cancel_run(self, *, run_id: str) -> None:
+        """Drop the runs.db row for a cancelled run.
+
+        Called when the user clicks Cancel mid-search. begin_run() inserts
+        a row with status="running" at the top of run_search() — if the
+        cancel fires before _archive_run() upgrades it to "completed",
+        that row is the ONLY mid-run write we leave behind. Deleting it
+        outright (vs. marking status="cancelled") matches the principle
+        we promise testers in the UI: "partial work isn't saved." A row
+        labeled "cancelled" would still pollute the dashboard's run-history
+        view and would still match cache lookups under buggy filters.
+
+        No FK fan-out to worry about: scores, market contributions, and
+        audit JSONs are all written together in _archive_run() AFTER
+        scoring completes, so a cancel before that means the runs row is
+        the only orphan.
+
+        Idempotent — deleting a non-existent run_id is a no-op."""
+        with self._cursor() as cur:
+            cur.execute("DELETE FROM runs WHERE run_id = ?", (run_id,))
+
     def find_recent_run_for_profile(
         self, *, profile_snapshot: dict, max_age_days: int = 7
     ) -> Optional[sqlite3.Row]:

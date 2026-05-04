@@ -140,22 +140,51 @@ class GeminiClient(LLMClient):
     provider_name = "google"
 
     def __init__(self, api_key: Optional[str] = None):
-        # Multi-key rotation — when one key hits its daily Pro quota, we
-        # transparently rotate to the next configured key. Each key
-        # represents a separate Google Cloud project, each with its own
-        # independent 1000/day Pro quota, all billed to the same account.
-        if api_key:
-            keys = [api_key]
-        else:
-            keys = config.google_api_keys()
-        if not keys:
-            raise RuntimeError(
-                "GOOGLE_API_KEY not configured. Set it in .env."
+        # Three modes of operation:
+        #
+        # 1) Proxy mode (production / tester builds): if config.LLM_PROXY_URL
+        #    is set, route ALL requests through that URL. The Worker holds
+        #    real keys server-side, swaps them in, and forwards to Google.
+        #    Tester ships with no keys — they're never on the tester's machine.
+        #
+        # 2) Multi-key direct mode (local dev): if .env has GOOGLE_API_KEY(s),
+        #    use them directly. Multi-key rotation kicks in when one hits
+        #    its daily Pro quota. Each key is a separate Google Cloud project
+        #    with its own 1000/day Pro quota, all billed to the same account.
+        #
+        # 3) Single explicit key mode (callers passing api_key=...).
+        proxy_url = (config.LLM_PROXY_URL or "").rstrip("/")
+        if proxy_url:
+            # Proxy mode — SDK uses our Worker as its base URL.
+            # api_key here is a placeholder; the Worker substitutes its real key.
+            # We keep TESTER_UUID in the X-Tester-UUID header so the Worker can
+            # rate-limit per tester (cap.checkAndIncrementCallCap on the Worker).
+            tester_uuid = (config.TESTER_UUID or "").strip() or "00000000-0000-0000-0000-000000000000"
+            self._api_keys = ["proxy-mode"]  # placeholder — Worker substitutes
+            self._key_index = 0
+            self._exhausted_keys = set()
+            self._client = genai.Client(
+                api_key="proxy-mode",
+                http_options=genai_types.HttpOptions(
+                    base_url=f"{proxy_url}/v1/llm/gemini",
+                    headers={"X-Tester-UUID": tester_uuid},
+                ),
             )
-        self._api_keys: list[str] = keys
-        self._key_index: int = 0
-        self._exhausted_keys: set[int] = set()  # indices of keys that hit daily cap
-        self._client = genai.Client(api_key=keys[0])
+        else:
+            # Direct mode — use the configured keys.
+            if api_key:
+                keys = [api_key]
+            else:
+                keys = config.google_api_keys()
+            if not keys:
+                raise RuntimeError(
+                    "GOOGLE_API_KEY not configured. Set it in .env, "
+                    "or set LLM_PROXY_URL to route through a Worker."
+                )
+            self._api_keys: list[str] = keys
+            self._key_index: int = 0
+            self._exhausted_keys: set[int] = set()
+            self._client = genai.Client(api_key=keys[0])
         self._call_log: list[LLMCallLog] = []
         # Per-call metadata that callers can set before invoking
         # (used so the cost log records run_id, license_key, stage)
@@ -166,7 +195,14 @@ class GeminiClient(LLMClient):
     def _rotate_to_next_key(self) -> bool:
         """Mark current key as exhausted and switch to the next available one.
         Returns False if no more keys available — caller should propagate the error.
+
+        Proxy mode: the Worker handles key rotation server-side. Local
+        rotation is a no-op (we only have a single placeholder "key").
         """
+        if (config.LLM_PROXY_URL or "").strip():
+            # Proxy mode — Worker rotates between its own keys. Nothing to
+            # do here, just report that we can't help.
+            return False
         self._exhausted_keys.add(self._key_index)
         for offset in range(1, len(self._api_keys) + 1):
             candidate = (self._key_index + offset) % len(self._api_keys)

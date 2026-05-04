@@ -238,6 +238,13 @@ export async function getSearchStatus(runId: string): Promise<SearchStatus> {
   return handle(res)
 }
 
+// Cancel an in-progress search. Backend abandons partial work — no archive
+// entry, no audit JSON, no run-history record is written for cancelled runs.
+export async function cancelSearch(runId: string): Promise<{ run_id: string; status: string }> {
+  const res = await fetch(`${API_BASE}/search/cancel/${runId}`, { method: 'POST' })
+  return handle(res)
+}
+
 // ----------------------------------------------------------------------------
 // Search results (after completion)
 // ----------------------------------------------------------------------------
@@ -319,6 +326,70 @@ export async function submitFeedback(input: FeedbackInput): Promise<void> {
     }),
   })
   await handle(res)
+}
+
+// ----------------------------------------------------------------------------
+// User feedback — general open-ended feedback from any tester. Posts to the
+// central Worker (api.findmesomedamnjobz.com) which stores submissions in R2
+// under feedback/YYYY-MM-DD/. Distinct from submitFeedback() above which is
+// per-run scoring-quality feedback that lives in the local backend.
+// ----------------------------------------------------------------------------
+
+const FEEDBACK_WORKER_URL = 'https://api.findmesomedamnjobz.com/v1/feedback'
+
+export type FeedbackCategory =
+  | 'bug'
+  | 'false-positive'   // role surfaced that shouldn't have
+  | 'false-negative'   // role missed that should have surfaced
+  | 'ui'               // confusing copy / layout / interaction
+  | 'performance'      // slow / hangs / crashes
+  | 'setup'            // install / first-run friction
+  | 'suggestion'       // feature request / idea
+  | 'other'
+
+export interface SendFeedbackInput {
+  message: string
+  category: FeedbackCategory
+  email?: string
+  appVersion?: string
+}
+
+export async function sendFeedback(input: SendFeedbackInput): Promise<{ ok: boolean; id: string }> {
+  // Pull tester UUID from the local backend health check so the Worker can
+  // tag this submission to the same identity as the tester's audit uploads.
+  // If the call fails (offline, backend down), we still send the feedback
+  // anonymously rather than blocking the user.
+  let testerUuid = ''
+  try {
+    // Backend exposes the UUID indirectly via the env var it loaded — we
+    // don't have a dedicated endpoint, so we just send the request without
+    // and let the Worker treat it as anonymous (still rate-limited by IP).
+    // (If we add a /health/uuid endpoint later, plumb it here.)
+  } catch {}
+
+  const res = await fetch(FEEDBACK_WORKER_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(testerUuid ? { 'X-Tester-UUID': testerUuid } : {}),
+    },
+    body: JSON.stringify({
+      source: 'app',
+      category: input.category,
+      message: input.message,
+      email: input.email || undefined,
+      app_version: input.appVersion || undefined,
+    }),
+  })
+  if (!res.ok) {
+    let detail = `HTTP ${res.status}`
+    try {
+      const body = await res.json() as { error?: string; message?: string }
+      detail = body.message || body.error || detail
+    } catch {}
+    throw new ApiError(res.status, detail)
+  }
+  return res.json() as Promise<{ ok: boolean; id: string }>
 }
 
 export async function getAuditFolder(): Promise<{ path: string; uninitialized?: boolean }> {

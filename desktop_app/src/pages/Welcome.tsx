@@ -41,48 +41,57 @@ export default function Welcome() {
           transition={{ duration: 0.6, ease: 'easeOut' }}
           className="mb-8"
         >
-          <ZMark
-            size={64}
-            className="rounded-2xl shadow-2xl shadow-accent-900/50 border border-white/10"
-          />
+          <ZMark size={64} className="shadow-2xl shadow-accent-900/50" />
         </motion.div>
 
         {/* Headline — staggered word reveal with DAMN doing a shout
             (scale punch + glow burst). The framer variants below stagger
             each word and the damn span fires its own punch animation. */}
-        <motion.h1
-          initial="hidden"
-          animate="visible"
-          variants={{ visible: { transition: { delayChildren: 0.15, staggerChildren: 0.12 } } }}
-          className="text-[64px] leading-[1.05] font-semibold tracking-tight text-balance text-center max-w-3xl flex flex-wrap justify-center gap-x-3 gap-y-1"
-        >
-          {['Find', 'me', 'some'].map((word) => (
-            <motion.span
-              key={word}
-              variants={{
-                hidden: { opacity: 0, y: 20 },
-                visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.2, 0.8, 0.2, 1] } },
-              }}
-              className="bg-gradient-to-b from-white to-base-300 bg-clip-text text-transparent"
-            >
-              {word}
-            </motion.span>
-          ))}
+        {/* Headline — direct delays per child (no parent variant
+            orchestration). Variant orchestration was unreliable; this
+            explicit approach is bulletproof: each span has its own
+            initial/animate with a hardcoded delay. */}
+        <h1 className="text-[64px] leading-[1.05] font-semibold tracking-tight text-balance text-center max-w-3xl flex flex-wrap justify-center gap-x-3 gap-y-1">
           <motion.span
-            variants={{
-              hidden: { opacity: 0, scale: 0.4, rotate: -3, filter: 'blur(4px)' },
-              visible: {
-                opacity: 1,
-                scale: [0.4, 1.3, 0.94, 1.05, 1],
-                rotate: [-3, 2, -1, 0.5, 0],
-                filter: ['blur(4px)', 'blur(0px)', 'blur(0px)', 'blur(0px)', 'blur(0px)'],
-                transition: {
-                  duration: 1.0,
-                  ease: [0.16, 1.2, 0.3, 1.0],
-                  delay: 0.4,
-                  times: [0, 0.35, 0.6, 0.8, 1],
-                },
-              },
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.9, ease: [0.2, 0.8, 0.2, 1] }}
+            className="bg-gradient-to-b from-white to-base-300 bg-clip-text text-transparent"
+          >
+            Find
+          </motion.span>
+          <motion.span
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 1.15, ease: [0.2, 0.8, 0.2, 1] }}
+            className="bg-gradient-to-b from-white to-base-300 bg-clip-text text-transparent"
+          >
+            me
+          </motion.span>
+          <motion.span
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 1.40, ease: [0.2, 0.8, 0.2, 1] }}
+            className="bg-gradient-to-b from-white to-base-300 bg-clip-text text-transparent"
+          >
+            some
+          </motion.span>
+          {/* DAMN — fires AFTER "some" lands. Punch animation: scale up,
+              hold the peak briefly, settle. Explicit opacity keyframes
+              match scale array so opacity doesn't decouple mid-animation. */}
+          <motion.span
+            initial={{ opacity: 0, scale: 0.5, rotate: -3, filter: 'blur(3px)' }}
+            animate={{
+              opacity: [0, 1, 1, 1, 1],
+              scale: [0.5, 1.30, 1.30, 0.97, 1],
+              rotate: [-3, 2, 1, 0, 0],
+              filter: ['blur(3px)', 'blur(0px)', 'blur(0px)', 'blur(0px)', 'blur(0px)'],
+            }}
+            transition={{
+              duration: 1.1,
+              delay: 1.75,
+              ease: [0.25, 0.8, 0.35, 1.0],
+              times: [0, 0.30, 0.55, 0.80, 1],
             }}
             className="bg-gradient-to-r from-accent-300 via-accent-400 to-accent-600 bg-clip-text text-transparent inline-block"
             style={{ textShadow: '0 0 32px rgba(164, 124, 255, 0.4)' }}
@@ -90,15 +99,14 @@ export default function Welcome() {
             damn
           </motion.span>
           <motion.span
-            variants={{
-              hidden: { opacity: 0, y: 20 },
-              visible: { opacity: 1, y: 0, transition: { duration: 0.5, delay: 1.1, ease: [0.2, 0.8, 0.2, 1] } },
-            }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 3.0, ease: [0.2, 0.8, 0.2, 1] }}
             className="bg-gradient-to-b from-white to-base-300 bg-clip-text text-transparent"
           >
             jobz.
           </motion.span>
-        </motion.h1>
+        </h1>
 
         <motion.p
           initial={{ opacity: 0, y: 20 }}
@@ -131,7 +139,7 @@ export default function Welcome() {
         >
           <div className="flex items-center gap-3 flex-wrap justify-center">
             <button
-              onClick={() => navigate(hasPriorRun ? '/run' : '/how-it-works')}
+              onClick={() => navigate(hasPriorRun ? '/setup' : '/how-it-works')}
               className="group relative inline-flex items-center gap-2.5
                          px-7 py-3.5 rounded-full
                          bg-white text-base-950 font-medium text-sm

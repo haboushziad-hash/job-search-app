@@ -1,7 +1,7 @@
 import { NavLink, useLocation } from 'react-router-dom'
 import {
   Compass, PlayCircle, Briefcase,
-  History, Bookmark, BookmarkCheck, Settings,
+  History, Bookmark, BookmarkCheck, Settings, MessageCircle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { motion } from 'framer-motion'
@@ -20,6 +20,7 @@ const NAV: NavItem[] = [
   { to: '/tracker',    label: 'Applications',    icon: Briefcase },
   { to: '/history',    label: 'Run History',     icon: History },
   { to: '/saved',      label: 'Saved Searches',  icon: Bookmark },
+  { to: '/feedback',   label: 'Send Feedback',   icon: MessageCircle },
 ]
 
 export function Sidebar() {
@@ -31,7 +32,7 @@ export function Sidebar() {
           shipped in src-tauri/icons (Tauri reads those for taskbar/dock). */}
       <div className="px-5 pt-5 pb-5">
         <div className="flex items-center gap-2.5">
-          <ZMark size={28} className="shadow-lg shadow-accent-900/40 rounded-lg" />
+          <ZMark size={28} />
           <span className="font-semibold text-sm tracking-tight">findmesomedamnjobz</span>
         </div>
       </div>
@@ -91,7 +92,7 @@ export function Sidebar() {
         </NavLink>
 
         <div className="px-3 pt-4 text-[10px] text-base-500 leading-tight">
-          <div>Job Search v0.1.0</div>
+          <div>findmesomedamnjobz v0.1.0</div>
           <div className="text-base-600">
             Built by{' '}
             <span className="text-base-400 font-medium">Ziad Haboush</span>
