@@ -1,0 +1,79 @@
+name: Deploy Cloudflare Worker
+
+# Auto-deploy fmsdj-worker on every push to main that touches the Worker
+# source. This means once merged, the Worker is live within ~30s without
+# anyone needing to run `wrangler deploy` from a local machine.
+#
+# Setup (one-time, already done if this workflow is deploying successfully):
+#   1. Cloudflare dashboard → My Profile → API Tokens → Create Token →
+#      "Edit Cloudflare Workers" template (or custom: Workers Scripts:Edit
+#      + Account:Read for the right account)
+#   2. GitHub repo → Settings → Secrets and variables → Actions →
+#      New repository secret → Name: CLOUDFLARE_API_TOKEN, Value: <token>
+#   3. Push a change to cf_worker/ — this workflow runs automatically
+#
+# Why path-filter: landing/app pushes don't touch the Worker, so we skip
+# the deploy job entirely on those — saves runner minutes and avoids any
+# spurious "deployed but nothing changed" runs in the dashboard.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'cf_worker/**'
+      - '.github/workflows/deploy-worker.yml'
+  # Allow manual triggers from the Actions tab — useful for re-deploying
+  # without a code change (e.g., after rotating a secret).
+  workflow_dispatch:
+
+# Don't run two Worker deploys against the same branch in parallel — if a
+# fast follow-up push lands while the first is still deploying, cancel the
+# in-flight one so the latest code is what ships.
+concurrency:
+  group: worker-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy fmsdj-worker
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # The official Cloudflare Wrangler action handles install + auth +
+      # deploy in one step. Working-directory points at cf_worker/ so it
+      # picks up wrangler.toml without us needing to pass any flags.
+      - name: Deploy Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          workingDirectory: 'cf_worker'
+          # No `command` flag → defaults to `wrangler deploy`, which is
+          # exactly what we want. The action also reads wrangler.toml's
+          # bindings + observability config automatically.
+
+      # Quick post-deploy sanity check — pings /v1/health to confirm the
+      # newly-deployed code is actually serving requests. If this fails,
+      # the deploy succeeded but the Worker errored on startup; we want
+      # the workflow to mark red so we notice.
+      - name: Verify deployment
+        run: |
+          for i in 1 2 3 4 5; do
+            if curl -fsSL https://api.findmesomedamnjobz.com/v1/health \
+                 -o /tmp/health.json; then
+              echo "Health check passed:"
+              cat /tmp/health.json
+              exit 0
+            fi
+            echo "Attempt $i failed, retrying in 3s..."
+            sleep 3
+          done
+          echo "::error::Worker /v1/health did not respond after deploy"
+          exit 1
