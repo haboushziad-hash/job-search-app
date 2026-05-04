@@ -10,7 +10,6 @@ import { useAppStore } from '@/stores/appStore'
 import { exportToExcel, exportToCSV, exportToMarkdown } from '@/services/export'
 import { submitFeedback } from '@/services/api'
 import type { Tier, Role } from '@/types'
-import { cn } from '@/lib/utils'
 
 export default function Dashboard() {
   const navigate = useNavigate()

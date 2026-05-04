@@ -125,6 +125,10 @@ export default function Setup() {
   )
   const [locations, setLocations] = useState<LocationChip[]>(
     (priorProfile?.acceptable_locations || []).map((name, idx) => ({
+      // LocationChip requires a stable id for React's reconciler. Synthesize
+      // one from the name + index — sufficient for the chip-list use case
+      // since the locations list is small (typically 1-5 entries).
+      id: `${name.toLowerCase().replace(/\s+/g, '-')}-${idx}`,
       name,
       radius: priorProfile?.acceptable_location_radii?.[idx] ?? 50,
     }))
