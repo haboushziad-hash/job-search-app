@@ -114,13 +114,17 @@ def best_keyword_match(
 ) -> Optional[str]:
     """Find the single best keyword that matches a role. Used by UI tagger.
 
-    keywords_by_tier: pre-tokenized {1: [(text, tokens)], 2: [...]} sorted
+    keywords_by_tier: pre-tokenized {1: [...], 2: [...], 3: [...]} sorted
                      longest-first within each tier.
+                     Tier 1/2 are specific keywords; tier 3 (v0.1.4) is the
+                     broader search_terms fallback.
 
-    Priority: Tier 1 in title > Tier 2 in title > Tier 1 in JD > Tier 2 in JD.
-    Within each priority slot, longest keyword wins.
+    Priority (best -> worst):
+      Tier 1 in title > Tier 2 in title > Tier 1 in JD > Tier 2 in JD
+      > Tier 3 in title > Tier 3 in JD
+    Within each priority slot, longest text wins (more specific match).
 
-    Returns the keyword text (original casing) or None.
+    Returns the matched text (original casing) or None.
     """
     title_tokens = set(tokenize(title))
     jd_tokens = set(tokenize(jd[:2000])) if jd else set()
@@ -133,14 +137,22 @@ def best_keyword_match(
             return all(t in role_tokens for t in kw_tokens)
         return sum(1 for t in kw_tokens if t in role_tokens) / len(kw_tokens) >= 0.60
 
-    # Pass 1 — title-only (preferred)
+    # Pass 1 — title-only on Tier 1/2 (preferred — specific keyword in title)
     for tier in (1, 2):
         for kw_text, kw_tokens in keywords_by_tier.get(tier, []):
             if _matches(title_tokens, kw_tokens):
                 return kw_text
-    # Pass 2 — title + JD
+    # Pass 2 — title + JD on Tier 1/2
     for tier in (1, 2):
         for kw_text, kw_tokens in keywords_by_tier.get(tier, []):
             if _matches(full_tokens, kw_tokens):
                 return kw_text
+    # Pass 3 — Tier 3 (search_terms) fallback, title-only
+    for kw_text, kw_tokens in keywords_by_tier.get(3, []):
+        if _matches(title_tokens, kw_tokens):
+            return kw_text
+    # Pass 4 — Tier 3 (search_terms) fallback, title + JD
+    for kw_text, kw_tokens in keywords_by_tier.get(3, []):
+        if _matches(full_tokens, kw_tokens):
+            return kw_text
     return None

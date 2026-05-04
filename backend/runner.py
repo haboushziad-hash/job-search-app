@@ -573,33 +573,35 @@ def _safe_json_loads(s):
 
 
 def _tag_matched_keywords(roles: list[Role], profile) -> None:
-    """For each role, set role.matched_keyword to the single most relevant
-    keyword from profile.keywords that the role actually matched.
+    """For each role, set role.matched_keyword to the most relevant keyword
+    or search term that the role actually matched.
 
     Uses the shared TOKEN-OVERLAP matcher (backend.scraper._keyword_match)
     so the tagger agrees with what each scraper accepted as a match.
-    Substring matching previously missed near-matches like "AI Enablement
-    Services Lead" for keyword "AI Enablement Lead" — token overlap catches
-    those.
 
-    Priority order (best → worst):
-      1. Tier-1 keyword in job title
-      2. Tier-2 keyword in job title
-      3. Tier-1 keyword in JD body (first 2000 chars)
-      4. Tier-2 keyword in JD body
-    Within the same band, longer keywords win (more specific = more meaningful).
-    Tier-3 keywords are intentionally excluded — they're noisy and would dilute
-    the "via X" UI label.
+    Priority order (best -> worst):
+      Tier 1 keyword (specific title)        e.g. "AI Enablement Lead"
+      Tier 2 keyword (specific title)        e.g. "AI Operations Manager"
+      Search term (broad phrase)              e.g. "AI strategy"
+    Each tier checks title first, then title+JD. Within a tier, longest
+    text wins. Tier-3 keywords are intentionally excluded.
+
+    v0.1.4: search_terms added as a fallback tier — when a role doesn't
+    match any specific keyword (which is common when scrapers query upstream
+    with broad search_terms), fall back to displaying the broader concept
+    that brought the role into the pool.
     """
     from backend.scraper import _keyword_match as _kw_match
 
     keywords = list(getattr(profile, "keywords", None) or [])
-    if not keywords:
+    search_terms = list(getattr(profile, "search_terms", None) or [])
+    if not keywords and not search_terms:
         return
 
-    # Build the {tier: [(text, tokens)]} structure best_keyword_match expects,
-    # longest-first within each tier so the first match is the most specific.
-    by_tier: dict[int, list[tuple[str, list[str]]]] = {1: [], 2: []}
+    # Build the {tier: [(text, tokens)]} structure best_keyword_match expects.
+    # Tier 1/2: specific keywords. Tier 3 (synthetic): search terms.
+    # The matcher walks tiers in order and stops at first match within a tier.
+    by_tier: dict[int, list[tuple[str, list[str]]]] = {1: [], 2: [], 3: []}
     for kw in keywords:
         text = (getattr(kw, "text", "") or "").strip()
         tier = getattr(kw, "tier", 3) or 3
@@ -608,6 +610,14 @@ def _tag_matched_keywords(roles: list[Role], profile) -> None:
         tokens = _kw_match.tokenize(text)
         if tokens:
             by_tier[tier].append((text, tokens))
+    # Search terms get tier 3 — only used when no Tier 1/2 keyword matched.
+    for st in search_terms:
+        text = str(st or "").strip()
+        if not text:
+            continue
+        tokens = _kw_match.tokenize(text)
+        if tokens:
+            by_tier[3].append((text, tokens))
     for t in by_tier:
         by_tier[t].sort(key=lambda p: -len(p[0]))
 

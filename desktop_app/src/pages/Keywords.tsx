@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   ArrowRight, ArrowLeft, X, Plus, AlertCircle,
-  Star, Layers, Compass, Loader2, Play,
+  Star, Layers, Compass, Loader2, Play, Search, Target,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { ZMark } from '@/components/ZMark'
@@ -20,10 +20,14 @@ export default function Keywords() {
   const roleStatuses = useAppStore((s) => s.roleStatuses)
   const cacheMaxAgeDays = useAppStore((s) => s.cacheMaxAgeDays)
 
-  // Local working copy of keywords (so cancellation doesn't mutate store)
+  // Local working copies (cancel doesn't mutate the store)
   const [keywords, setKeywords] = useState<Keyword[]>(profile?.keywords || [])
+  const [searchTerms, setSearchTerms] = useState<string[]>(
+    profile?.search_terms || []
+  )
   const [newKeyword, setNewKeyword] = useState('')
   const [newKeywordTier, setNewKeywordTier] = useState(1)
+  const [newSearchTerm, setNewSearchTerm] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   if (!profile) {
@@ -63,6 +67,18 @@ export default function Keywords() {
     setKeywords(keywords.map((k) => (k.text === text ? { ...k, tier: newTier } : k)))
   }
 
+  // Search-term mutators (broad upstream-API queries; v0.1.4 split)
+  const addSearchTerm = () => {
+    const text = newSearchTerm.trim()
+    if (!text) return
+    if (searchTerms.some((s) => s.toLowerCase() === text.toLowerCase())) return
+    setSearchTerms([...searchTerms, text])
+    setNewSearchTerm('')
+  }
+  const removeSearchTerm = (text: string) => {
+    setSearchTerms(searchTerms.filter((s) => s !== text))
+  }
+
   // Kicks off the actual search directly from this page. Skips the /run
   // summary screen — the user already reviewed/edited their keywords here,
   // so the extra click on /run was redundant. Mirrors the same body that
@@ -73,9 +89,9 @@ export default function Keywords() {
   const startSearch = async () => {
     if (!profile) return
 
-    // Persist edited keywords to the store BEFORE firing the search so
-    // the run uses what the user sees on screen, not the stale profile.
-    const updatedProfile = { ...profile, keywords }
+    // Persist edited keywords + search_terms to the store BEFORE firing
+    // the search so the run uses what the user sees on screen.
+    const updatedProfile = { ...profile, keywords, search_terms: searchTerms }
     setProfile(updatedProfile)
 
     // Build the applied-roles skip list from local state — anything the
@@ -93,7 +109,11 @@ export default function Keywords() {
     try {
       const res = await runSearch({
         profile: updatedProfile,
-        keywords: keywords.filter((k) => k.tier <= 2).map((k) => k.text),
+        // Prefer search_terms (broad phrases) over keywords (specific titles).
+        // Backend will fall back to keywords if search_terms is empty.
+        keywords: searchTerms.length > 0
+          ? searchTerms
+          : keywords.filter((k) => k.tier <= 2).map((k) => k.text),
         // Omit `sources` so the backend uses ALL active scrapers in the
         // registry (Greenhouse, Lever, Ashby, Workday, iCIMS, BuiltIn,
         // TheMuse, Remotive, USAJOBS, Adzuna, Climatebase, SmartRecruiters,
@@ -110,7 +130,7 @@ export default function Keywords() {
       const skipMsg = appliedRoles.length > 0
         ? ` · skipping ${appliedRoles.length} already-applied role${appliedRoles.length === 1 ? '' : 's'}`
         : ''
-      toast.success(`Search started · this will take 5–15 minutes${skipMsg}`)
+      toast.success(`Search started · this will take 10–20 minutes${skipMsg}`)
       navigate('/running')
     } catch (e) {
       const msg = e instanceof ApiError ? e.detail : (e instanceof Error ? e.message : 'Unknown error')
@@ -134,20 +154,112 @@ export default function Keywords() {
         {/* Header */}
         <div className="flex items-center gap-3 mb-1">
           <ZMark size={40} className="shadow-lg shadow-accent-900/40" />
-          <h1 className="text-2xl font-semibold tracking-tight">Review your keywords</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Review your search</h1>
         </div>
         <p className="text-sm text-base-400 mb-2">
-          We generated <span className="text-base-100 font-medium">{keywords.length}</span> personalized keywords from your resume + extra context.
+          We generated <span className="text-base-100 font-medium">{searchTerms.length}</span> search
+          queries and <span className="text-base-100 font-medium">{keywords.length}</span> target
+          titles from your resume + extra context.
         </p>
         <p className="text-xs text-base-500 mb-6 leading-relaxed">
-          Remove any that don't fit, add ones we missed, or change a keyword's tier. Tier 1 always runs;
-          Tier 2 runs if quota allows; Tier 3 is broader exploration.
+          <span className="text-base-300 font-medium">Search queries</span> are the broad phrases we
+          send to job boards to find roles.{' '}
+          <span className="text-base-300 font-medium">Target titles</span> are specific role names
+          we score each result against. Edit either list if something looks off — the next search
+          uses what you see here.
+        </p>
+
+        {/* SEARCH QUERIES — broad upstream-API phrases (v0.1.4) */}
+        <div className="mb-6 p-4 rounded-xl bg-accent-500/[0.04] border border-accent-500/20">
+          <div className="flex items-center gap-2 mb-1">
+            <Search size={13} className="text-accent-300" />
+            <h3 className="text-xs uppercase tracking-wider text-accent-200 font-medium">
+              Search queries — what we search for
+            </h3>
+            <span className="text-xs text-base-500">({searchTerms.length})</span>
+          </div>
+          <p className="text-xs text-base-500 mb-3 leading-relaxed">
+            Broad 2-3 word phrases sent to each job board. These cast the widest net.
+            Examples: "AI strategy", "tax compliance", "leadership development program".
+          </p>
+
+          {/* Add new search term */}
+          <div className="flex gap-2 mb-3">
+            <input
+              type="text"
+              value={newSearchTerm}
+              onChange={(e) => setNewSearchTerm(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  addSearchTerm()
+                }
+              }}
+              placeholder="e.g. AI strategy, sales operations, tax compliance"
+              className="flex-1 px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.08]
+                         text-sm placeholder:text-base-500 focus:outline-none focus:border-accent-500/50"
+            />
+            <button
+              onClick={addSearchTerm}
+              disabled={!newSearchTerm.trim()}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg
+                         bg-white/[0.06] hover:bg-white/[0.10] text-sm text-base-200
+                         disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Plus size={14} /> Add
+            </button>
+          </div>
+
+          {/* Existing search terms */}
+          {searchTerms.length === 0 ? (
+            <div className="px-4 py-3 rounded-lg border border-dashed border-white/[0.06] text-xs text-base-500">
+              No search queries yet — add 4-12 broad phrases above, or rebuild your profile.
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-1.5">
+              <AnimatePresence>
+                {searchTerms.map((st) => (
+                  <motion.div
+                    key={st}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    className="group flex items-center gap-1.5 px-3 py-1.5 rounded-full
+                               bg-accent-500/[0.10] border border-accent-500/30
+                               text-xs text-accent-100"
+                  >
+                    <span>{st}</span>
+                    <button
+                      onClick={() => removeSearchTerm(st)}
+                      className="opacity-50 hover:opacity-100 transition-opacity"
+                      aria-label={`Remove ${st}`}
+                    >
+                      <X size={12} />
+                    </button>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+          )}
+        </div>
+
+        {/* TARGET TITLES — specific job titles for scoring rubric */}
+        <div className="mb-3 flex items-center gap-2">
+          <Target size={14} className="text-base-300" />
+          <h3 className="text-xs uppercase tracking-wider text-base-200 font-medium">
+            Target titles — what we score against
+          </h3>
+        </div>
+        <p className="text-xs text-base-500 mb-4 leading-relaxed">
+          Specific role titles. The AI scoring cascade compares each scraped role against
+          these to assign STRONG / GOOD / MAYBE / STRETCH. Tier 1 always runs;
+          Tier 2 if quota allows; Tier 3 broader.
         </p>
 
         {/* Add new keyword */}
         <div className="mb-6 p-4 rounded-xl bg-white/[0.03] border border-white/[0.06]">
           <h3 className="text-[10px] uppercase tracking-wider text-base-400 font-medium mb-2.5">
-            Add a keyword
+            Add a target title
           </h3>
           <div className="flex gap-2">
             <input
@@ -160,7 +272,7 @@ export default function Keywords() {
                   addKeyword()
                 }
               }}
-              placeholder="e.g. AI program manager, Responsible AI lead..."
+              placeholder="e.g. Senior AI Strategist, AI Program Manager..."
               className="flex-1 px-3 py-2 rounded-lg
                          bg-white/[0.04] border border-white/[0.08]
                          text-sm placeholder:text-base-500
@@ -232,7 +344,8 @@ export default function Keywords() {
             <ArrowLeft size={14} /> Back to setup
           </button>
           <div className="text-xs text-base-500">
-            {keywords.length} keyword{keywords.length === 1 ? '' : 's'} ready
+            {searchTerms.length} {searchTerms.length === 1 ? 'query' : 'queries'} ·{' '}
+            {keywords.length} target {keywords.length === 1 ? 'title' : 'titles'}
           </div>
           <button
             onClick={startSearch}

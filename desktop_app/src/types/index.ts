@@ -61,7 +61,13 @@ export interface CandidateProfile {
   work_arrangements: string[]
   acceptable_locations: string[]
   excluded_locations: string[]
+  // Specific job titles ("AI Enablement Lead", "Senior Tax Accountant")
+  // Used by the scoring rubric and "via X" tag matcher.
   keywords: Keyword[]
+  // v0.1.4: broad 2-3 word phrases ("AI strategy", "tax compliance") used as
+  // upstream API queries by scrapers. Wider net than specific titles.
+  // Fallback to keywords for old profiles without search_terms.
+  search_terms?: string[]
   resumes: ResumeMetadata[]
 }
 

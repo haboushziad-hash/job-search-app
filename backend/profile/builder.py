@@ -202,6 +202,72 @@ expected skill stack. Examples to demote:
 TOTAL: 30-40 keywords. Quality > quantity. Don't pad with noise.
 
 ============================================================
+SEARCH TERMS — broader phrases for upstream API queries (NEW v0.1.4)
+============================================================
+In addition to the tier-1/2/3 keyword lists above (specific job titles),
+generate **8-12 broad SEARCH TERMS** (`search_terms`). These are 2-3 word
+phrases used as the literal query string for upstream job-board APIs
+(Workday's searchText, Adzuna's what_phrase, JSearch's query, etc.).
+
+WHY a separate broad list:
+- Specific titles like "AI Enablement Lead" don't match upstream APIs
+  when the actual posting is "Lead, AI Enablement" — upstream filters
+  by literal phrase before our tools see anything.
+- Broader 2-3 word phrases like "AI enablement" or "tax compliance"
+  catch a much wider net at the upstream layer. Our token-overlap
+  matcher then verifies relevance downstream.
+
+RULES for search_terms:
+  - 2-3 words each (NOT 1 word — too broad, NOT 4+ — too narrow)
+  - Functional concepts, NOT specific titles. "AI strategy" GOOD.
+    "Senior AI Strategist" BAD (that's a keyword, not a search term).
+  - Cover the candidate's primary AND secondary targets. Each Tier 1
+    keyword cluster gets 1-2 search terms representing the concept.
+  - Include domain modifiers when they sharply narrow vs noise:
+    "tax provision" not "provision", "AI governance" not "governance".
+  - Industry-standard phrases preferred. Use phrases that hiring
+    managers and recruiters actually type.
+
+EARLY-CAREER ROTATIONAL PROGRAMS (CRITICAL):
+For candidates with fewer than 5 years of experience OR entry-level/
+associate target seniority, ALWAYS include 2-3 industry-standard
+rotational/development program search terms. Examples:
+  - "leadership development program"
+  - "management trainee"
+  - "rotational analyst program"
+  - "associate brand manager" (for CPG candidates)
+  - "operations leadership program"
+  - "sales development program"
+These are common early-career pathways that won't appear under
+specific title searches but are heavily posted on aggregator boards
+by Fortune 500 employers (P&G, General Mills, Mars, JP Morgan, etc.).
+
+EXAMPLES of good search_terms by persona:
+
+Senior AI consultant (federal/commercial), 7 years:
+  ["AI strategy", "AI enablement", "AI governance", "AI adoption",
+   "AI consulting", "AI transformation", "change management",
+   "AI program management"]
+
+Business Admin senior, 4 years route sales (CPG track):
+  ["account management", "territory sales", "sales operations",
+   "operations analyst", "supply chain analyst",
+   "leadership development program", "management trainee",
+   "category manager"]
+
+Senior Tax Associate, 5 years Big 4:
+  ["tax accountant", "tax analyst", "tax manager", "tax compliance",
+   "tax provision", "corporate tax", "international tax"]
+
+Environmental data scientist with AI training crossover:
+  ["environmental data", "GIS analyst", "remote sensing",
+   "research scientist", "data scientist", "AI training",
+   "research engineer", "environmental science"]
+  ↑ note dual-vector for crossover personas
+
+Output as a flat list of strings under the `search_terms` field.
+
+============================================================
 PRINCIPLE 6: TITLE-PATTERN MARKET INTELLIGENCE (field-agnostic)
 ============================================================
 Some title patterns produce disproportionately good matches across many
@@ -438,6 +504,7 @@ _RESPONSE_SCHEMA = {
         "keywords_tier_1": {"type": "array", "items": {"type": "string"}},
         "keywords_tier_2": {"type": "array", "items": {"type": "string"}},
         "keywords_tier_3": {"type": "array", "items": {"type": "string"}},
+        "search_terms": {"type": "array", "items": {"type": "string"}},
         "resume_emphases": {
             "type": "array",
             "items": {
@@ -830,6 +897,18 @@ async def build_profile_from_resumes(
         tier1_keywords=t1_lower,
     )
 
+    # Parse search_terms (NEW v0.1.4). Bounded 5-15 entries, 2-5 words each.
+    raw_search_terms = data.get("search_terms") or []
+    search_terms: list[str] = []
+    for st in raw_search_terms:
+        s = str(st or "").strip()
+        if not s:
+            continue
+        # Sanity bound on phrase length — search terms should be 1-5 words
+        if 1 <= len(s.split()) <= 5:
+            search_terms.append(s)
+    search_terms = search_terms[:15]
+
     profile = CandidateProfile(
         headline=str(data.get("headline", ""))[:300],
         years_experience=int(data["years_experience"]) if data.get("years_experience") else None,
@@ -848,6 +927,7 @@ async def build_profile_from_resumes(
         acceptable_location_radii=user_preferences.get("acceptable_location_radii", []),
         excluded_locations=user_preferences.get("excluded_locations", []),
         keywords=keywords,
+        search_terms=search_terms,
         resumes=resume_meta,
     )
 
@@ -855,7 +935,15 @@ async def build_profile_from_resumes(
 
 
 def keywords_to_search_strings(profile: CandidateProfile, max_tier: int = 2) -> list[str]:
-    """Extract keyword strings up to a given tier for use by scrapers."""
+    """Return the list of search strings to feed scrapers' upstream APIs.
+
+    v0.1.4: prefer profile.search_terms (broad 2-3 word phrases) when
+    populated. Fall back to profile.keywords for old profiles built before
+    the search-terms split. The fallback ensures back-compat — old saved
+    profiles work without rebuild.
+    """
+    if profile.search_terms:
+        return list(profile.search_terms)
     return [kw.text for kw in profile.keywords if kw.tier <= max_tier]
 
 

@@ -67,8 +67,10 @@ class RunState(BaseModel):
     started_at: datetime
     status: str = "pending"           # pending / scraping / scoring / completed / failed
     progress: float = 0.0              # 0-100
-    current_step: str = ""
+    current_step: str = ""             # high-level step label, matches UI STEPS array
     current_step_index: int = 0        # 1..6 in the UI
+    current_step_detail: str = ""      # granular live text shown under the active step
+                                        # ("Scoring 47 of 120 with Flash...")
     total_steps: int = 6
     roles_scraped: int = 0
     roles_qualifying: int = 0
@@ -333,9 +335,15 @@ async def search_run(req: RunSearchRequest) -> dict[str, Any]:
     profile = CandidateProfile(**req.profile)
 
     if req.keywords:
+        # Caller explicitly overrode (rare — used by debug tooling)
         keywords = req.keywords
+    elif profile.search_terms:
+        # v0.1.4: prefer search_terms (broad 2-3 word phrases) over keywords
+        # (specific titles). Search terms produce wider upstream API matches.
+        keywords = list(profile.search_terms)
     else:
-        # Default: Tier 1 + Tier 2 keywords from profile
+        # Fallback: Tier 1 + Tier 2 keywords from profile (back-compat for
+        # profiles built before the search-terms split).
         keywords = [k.text for k in profile.keywords if k.tier <= 2]
 
     if not keywords:
@@ -396,10 +404,23 @@ async def _execute_search(
     try:
         state.status = "running"
         state.current_step = "Scraping job boards"
-        state.current_step_index = 1
+        state.current_step_index = 2
         state.progress = 5.0
 
-        # Patch the runner's progress reporting via a wrapper
+        # Wire the progress callback so the polling frontend (Running.tsx)
+        # actually sees stage transitions instead of being frozen on step 1
+        # for the full 15-25 min run. The runner emits at each major stage
+        # boundary; orchestrator emits inside the scoring cascade. The
+        # `detail` string is the granular live text shown under the active
+        # step (e.g. "Scoring 47 of 120 with Flash" — replaces the static
+        # describeProgress() fallback).
+        def _on_progress(pct: int, step_label: str, step_index: int, detail: str = "") -> None:
+            state.progress = float(pct)
+            state.current_step = step_label
+            state.current_step_index = step_index
+            if detail:
+                state.current_step_detail = detail
+
         scored, summary = await run_search(
             profile=profile,
             keywords=keywords,
@@ -410,6 +431,7 @@ async def _execute_search(
             cache_max_age_days=cache_max_age_days,
             force_refresh=force_refresh,
             log=True,
+            progress=_on_progress,
         )
 
         state.roles_scraped = summary.roles_scraped

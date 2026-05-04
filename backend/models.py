@@ -197,8 +197,25 @@ class CandidateProfile(BaseModel):
     # "territory_management","account_management"]
     profile_tags: list[str] = Field(default_factory=list)
 
-    # Auto-generated keywords for scraping
+    # Auto-generated keywords for scraping (specific job titles, e.g.
+    # "AI Enablement Lead", "Senior Tax Accountant"). Used as fallback when
+    # search_terms is empty (back-compat for profiles built before the
+    # search-terms split). Also drives the "via X" matched_keyword UI tag.
     keywords: list["Keyword"] = Field(default_factory=list)
+
+    # v0.1.4: Broad search phrases (8-12 entries, 2-3 words each) used as
+    # upstream API queries by scrapers. Examples: "AI strategy", "tax
+    # compliance", "sales operations". Designed to widen the recall of
+    # upstream APIs (Workday/Adzuna/JSearch/etc.) which match by literal
+    # phrase. Specific titles like "AI Enablement Lead" miss "Lead, AI
+    # Enablement" at the upstream API level even when our token-overlap
+    # matcher would have caught it — broader phrases solve that.
+    #
+    # Scraper logic: prefer search_terms when present; fall back to keywords
+    # for old profiles. Token-overlap matcher rules already handle
+    # 1-2 token phrases correctly (requires ALL tokens) so broad terms like
+    # "AI strategy" don't false-match "AI Engineer".
+    search_terms: list[str] = Field(default_factory=list)
 
     # Resume metadata — when multiple are uploaded
     resumes: list["ResumeMetadata"] = Field(default_factory=list)
@@ -274,6 +291,15 @@ class RunSummary(BaseModel):
     # zero or anomalously few results (likely broken/rate-limited).
     # Format: {"Greenhouse": {"roles": 1047, "elapsed_s": 109.1, "errored": false}, ...}
     per_source_counts: dict = Field(default_factory=dict)
+
+    # Per-source funnel — populated by runner.py after scoring completes.
+    # Reveals where each scraper's roles get dropped: scrape → dedup →
+    # hard_filters → liveness → final qualifying. Critical for diagnosing
+    # cases like Workday 8147 raw → 0 qualifying.
+    # Format: {"Workday": {"raw_scraped": 8147, "after_dedup": 8001,
+    #          "after_hard_filters": 12, "after_liveness_and_deadlist": 12,
+    #          "qualifying_final": 0}, ...}
+    per_source_funnel: dict = Field(default_factory=dict)
 
     # Status
     status: str = "running"                     # running / completed / failed / cancelled
