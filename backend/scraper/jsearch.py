@@ -116,10 +116,18 @@ class JSearchScraper(BaseScraper):
         self, keyword: str, limit: int, date_filter: str,
         api_key: str, base_url: str,
     ) -> list[Role]:
+        # JSearch returns ~10 results per page, ranked by relevance.
+        # v0.1.4 (post-Pro-upgrade): num_pages=2 doubles the yield.
+        # Math: 11 search_terms × 2 pages = 22 calls/search.
+        # Pro tier (10K calls/month) covers ~450 searches/month — plenty for
+        # 4 testers × 2 searches/week. Page 2 is still high-quality
+        # (relevance-ranked); diminishing returns kick in around page 3.
+        # Audit confirmed JSearch converts raw -> qualifying at 30.6%, the
+        # highest of any source — worth pushing the recall window wider.
         params = {
             "query": keyword,
             "page": "1",
-            "num_pages": "1",  # one page = ~10 results, keeps free-tier budget tight
+            "num_pages": "2",
             "date_posted": date_filter,
             "country": "us",
         }
@@ -153,6 +161,12 @@ class JSearchScraper(BaseScraper):
             except Exception:
                 continue
         return out
+
+    async def fetch_jd(self, role: Role) -> str:
+        """JSearch returns full JDs inline at search time — no separate fetch
+        needed. Just return whatever was already populated. This satisfies
+        BaseScraper's abstract method without making a useless API call."""
+        return role.job_description_full or ""
 
     def _item_to_role(self, item: dict[str, Any]) -> Optional[Role]:
         """Map a JSearch result to our Role model."""
