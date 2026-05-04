@@ -52,7 +52,13 @@ export interface Env {
 // Configuration
 // ============================================================================
 
-const DAILY_CALL_CAP = 250;        // per UUID per day
+// Per-UUID per-day cap for LLM calls routed through the Worker. A single
+// full search burns ~330 calls (Stage 1: ~160 + Stage 2: ~120 + Stage 3:
+// ~50). At the previous 250/day cap, no tester could even complete ONE
+// search. 2000/day allows ~6 full searches per tester per day, which is
+// plenty for the pilot. Cap exists primarily to catch runaway-loop bugs;
+// if a tester hits 2000 calls in a day, something is genuinely wrong.
+const DAILY_CALL_CAP = 2000;       // per UUID per day
 const MONTHLY_SPEND_CAP_USD = 5.0; // per UUID per month
 const MAX_AUDIT_JSON_BYTES = 5 * 1024 * 1024; // 5 MB
 
