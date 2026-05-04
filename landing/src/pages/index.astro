@@ -261,25 +261,24 @@ const APP_SIZE = "107 MB";
     </div>
     <div class="marquee">
       <div class="marquee-track text-base-400 text-sm font-medium tracking-tight whitespace-nowrap">
-        <!-- Lead with the most recognizable names. LinkedIn / Indeed / Glassdoor
-             aren't scraped directly (they block aggressively), but their
-             listings reach the dashboard via the Adzuna aggregator and the
-             Google-search Plan B that fetches missing JDs from LinkedIn URLs.
-             So the inclusion is honest if not literal-direct-scrape. The
-             ATS names (Workday, Greenhouse, Lever, Ashby, iCIMS, Smart-
-             Recruiters) ARE direct integrations and cover the majority of
-             enterprise + tech roles. -->
-        <span class="opacity-70">LinkedIn</span>
-        <span class="text-base-700">·</span>
-        <span class="opacity-70">Indeed</span>
-        <span class="text-base-700">·</span>
-        <span class="opacity-70">Glassdoor</span>
-        <span class="text-base-700">·</span>
+        <!-- Honest list of what we actually scrape. Most are ATS providers
+             (Workday, Greenhouse, Lever, Ashby, iCIMS, SmartRecruiters) —
+             niche-sounding names but they ARE the systems used by Fortune
+             500 enterprises and most tech employers, so the company-side
+             recognition picks up the slack visually. Adzuna + USAJOBS are
+             real APIs we hit; specialty boards (BuiltIn, Muse, Remotive,
+             Climatebase, Findwork, Hacker News) are direct integrations.
+             We deliberately do NOT list LinkedIn / Indeed / Glassdoor —
+             we read individual LinkedIn JD bodies via Plan B but don't
+             scrape any of their listing indexes, so claiming them would
+             be misleading. -->
         <span class="opacity-70">Workday</span>
         <span class="text-base-700">·</span>
         <span class="opacity-70">Greenhouse</span>
         <span class="text-base-700">·</span>
         <span class="opacity-70">USAJOBS</span>
+        <span class="text-base-700">·</span>
+        <span class="opacity-70">Adzuna</span>
         <span class="text-base-700">·</span>
         <span class="opacity-70">Lever</span>
         <span class="text-base-700">·</span>
@@ -287,32 +286,28 @@ const APP_SIZE = "107 MB";
         <span class="text-base-700">·</span>
         <span class="opacity-70">iCIMS</span>
         <span class="text-base-700">·</span>
-        <span class="opacity-70">BuiltIn</span>
-        <span class="text-base-700">·</span>
         <span class="opacity-70">SmartRecruiters</span>
         <span class="text-base-700">·</span>
-        <span class="opacity-70">The Muse</span>
+        <span class="opacity-70">BuiltIn</span>
         <span class="text-base-700">·</span>
-        <span class="opacity-70">Adzuna</span>
+        <span class="opacity-70">The Muse</span>
         <span class="text-base-700">·</span>
         <span class="opacity-70">Hacker News</span>
         <span class="text-base-700">·</span>
         <span class="opacity-70">Remotive</span>
         <span class="text-base-700">·</span>
         <span class="opacity-70">Climatebase</span>
+        <span class="text-base-700">·</span>
+        <span class="opacity-70">Findwork</span>
         <span class="text-base-700">·</span>
         <!-- Duplicate for seamless loop (CSS translates -50%) -->
-        <span class="opacity-70">LinkedIn</span>
-        <span class="text-base-700">·</span>
-        <span class="opacity-70">Indeed</span>
-        <span class="text-base-700">·</span>
-        <span class="opacity-70">Glassdoor</span>
-        <span class="text-base-700">·</span>
         <span class="opacity-70">Workday</span>
         <span class="text-base-700">·</span>
         <span class="opacity-70">Greenhouse</span>
         <span class="text-base-700">·</span>
         <span class="opacity-70">USAJOBS</span>
+        <span class="text-base-700">·</span>
+        <span class="opacity-70">Adzuna</span>
         <span class="text-base-700">·</span>
         <span class="opacity-70">Lever</span>
         <span class="text-base-700">·</span>
@@ -320,19 +315,19 @@ const APP_SIZE = "107 MB";
         <span class="text-base-700">·</span>
         <span class="opacity-70">iCIMS</span>
         <span class="text-base-700">·</span>
-        <span class="opacity-70">BuiltIn</span>
-        <span class="text-base-700">·</span>
         <span class="opacity-70">SmartRecruiters</span>
         <span class="text-base-700">·</span>
-        <span class="opacity-70">The Muse</span>
+        <span class="opacity-70">BuiltIn</span>
         <span class="text-base-700">·</span>
-        <span class="opacity-70">Adzuna</span>
+        <span class="opacity-70">The Muse</span>
         <span class="text-base-700">·</span>
         <span class="opacity-70">Hacker News</span>
         <span class="text-base-700">·</span>
         <span class="opacity-70">Remotive</span>
         <span class="text-base-700">·</span>
         <span class="opacity-70">Climatebase</span>
+        <span class="text-base-700">·</span>
+        <span class="opacity-70">Findwork</span>
         <span class="text-base-700">·</span>
       </div>
     </div>
