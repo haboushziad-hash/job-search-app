@@ -5,7 +5,7 @@ these structures. Pydantic gives us free validation + serialization.
 """
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from enum import Enum
 from typing import Any, Optional
 
@@ -242,7 +242,12 @@ class ResumeMetadata(BaseModel):
 
 class RunSummary(BaseModel):
     run_id: str
-    run_date: datetime = Field(default_factory=datetime.utcnow)
+    # Use timezone-aware UTC so the ISO string serializes with `+00:00`.
+    # `datetime.utcnow()` returns a NAIVE datetime that pydantic emits
+    # without a tz suffix — and JS `new Date(isoString)` interprets a
+    # tz-less string as LOCAL time, so the dashboard would display UTC
+    # values as if they were local (off by your local UTC offset).
+    run_date: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     license_key: Optional[str] = None
 
     # Volume

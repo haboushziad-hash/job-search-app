@@ -35,6 +35,35 @@ from backend.scraper.greenhouse import _strip_html
 JSEARCH_API_BASE = "https://jsearch.p.rapidapi.com/search"
 
 
+def _clean_jsearch_employer_name(employer_name: str, item: dict[str, Any]) -> str:
+    """Normalize JSearch's employer_name field, which sometimes returns
+    a company's internal categorization tag instead of the brand name.
+
+    Known cases:
+      - PwC: returns "Line of Service:Assurance" / "Line of Service:Advisory"
+        / "Line of Service:Tax" / similar instead of "PwC". Detected by
+        the literal "Line of Service:" prefix — PwC is the only firm
+        we've seen using this naming convention.
+
+    The audit JSON I'm hardening against showed 3 such roles in a single
+    Ziad run; sample upstream JSON suggests this is a deterministic
+    JSearch-side parsing of PwC's career page metadata, not noise.
+
+    Add new patterns here as we discover them in tester audits.
+    """
+    name = (employer_name or "").strip()
+    if not name:
+        return name
+
+    # PwC's "Line of Service:Assurance" pattern.
+    if name.startswith("Line of Service:"):
+        return "PwC"
+
+    # Future patterns for other companies go here, e.g.:
+    #   if name.startswith("Practice Area:"): return "<Company>"
+    return name
+
+
 def _jsearch_base_and_key() -> tuple[str, Optional[str]]:
     """Return (base_url, rapidapi_key) honoring proxy mode (v0.1.4).
 
@@ -186,7 +215,9 @@ class JSearchScraper(BaseScraper):
     def _item_to_role(self, item: dict[str, Any]) -> Optional[Role]:
         """Map a JSearch result to our Role model."""
         title = (item.get("job_title") or "").strip()
-        company = (item.get("employer_name") or "").strip()
+        company = _clean_jsearch_employer_name(
+            item.get("employer_name") or "", item
+        )
         if not title or not company:
             return None
 

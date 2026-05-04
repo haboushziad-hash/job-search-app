@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion'
 import {
   MapPin, DollarSign, Calendar, Sparkles,
-  Bookmark, BookmarkCheck, EyeOff, Check, ArrowUpRight, Send,
+  Bookmark, BookmarkCheck, EyeOff, Eye, Check, ArrowUpRight, Send,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn, formatCurrency, formatRelativeDate } from '@/lib/utils'
@@ -38,6 +38,7 @@ export function RoleCard({ role, onClick, condensed = false }: RoleCardProps) {
 
   const isSaved = status?.status === 'saved'
   const isApplied = status?.status === 'applied'
+  const isHidden = status?.status === 'hidden'
 
   // Salary display — explicit "not disclosed" when missing so users know
   // the field was checked rather than overlooked.
@@ -82,8 +83,15 @@ export function RoleCard({ role, onClick, condensed = false }: RoleCardProps) {
 
   const handleHide = (e: React.MouseEvent) => {
     e.stopPropagation()
+    if (isHidden) {
+      // Toggle off — clear the hidden status so the role re-appears in
+      // the dashboard's default view.
+      unsaveRole(role)
+      toast('Unhidden', { description: role.job_title })
+      return
+    }
     hideRole(role)
-    toast(`Hidden`, {
+    toast('Hidden', {
       description: role.job_title,
       action: {
         label: 'Undo',
@@ -249,7 +257,11 @@ export function RoleCard({ role, onClick, condensed = false }: RoleCardProps) {
           </div>
 
           {previewText && (
-            <p className="text-xs text-base-400 mt-2.5 line-clamp-2 leading-relaxed">
+            // line-clamp-4 fits the typical Stage 3 summary (avg 280 chars,
+            // max ~360) on screen without truncation. line-clamp-2 was
+            // cutting off ~30% of the fit reasoning. STRETCH cards render
+            // in the condensed branch above so they don't show this at all.
+            <p className="text-xs text-base-400 mt-2.5 line-clamp-4 leading-relaxed">
               {previewText}
             </p>
           )}
@@ -277,8 +289,8 @@ export function RoleCard({ role, onClick, condensed = false }: RoleCardProps) {
             />
             <ActionButton
               onClick={handleHide}
-              icon={EyeOff}
-              label="Hide"
+              icon={isHidden ? Eye : EyeOff}
+              label={isHidden ? 'Unhide' : 'Hide'}
               variant="default"
             />
           </div>

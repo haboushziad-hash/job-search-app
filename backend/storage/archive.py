@@ -183,6 +183,13 @@ class Archive:
                     embedding_similarity REAL,
                     keyword_matches_json TEXT,
                     summary TEXT,
+                    -- Per-run "via X" tag — which keyword/phrase from the
+                    -- profile surfaced this role. Stored per-run because
+                    -- the same role may be matched by different keywords
+                    -- under different profiles (e.g. "AI Strategy" vs
+                    -- "Tax Manager"). Without this column, /runs/{id}
+                    -- can't restore the dashboard tag chip.
+                    matched_keyword TEXT,
                     PRIMARY KEY (run_id, role_id),
                     FOREIGN KEY (run_id) REFERENCES runs(run_id) ON DELETE CASCADE,
                     FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE
@@ -238,6 +245,11 @@ class Archive:
             cur.execute("ALTER TABLE role_scores ADD COLUMN summary TEXT")
         if "keyword_matches_json" not in rs_cols:
             cur.execute("ALTER TABLE role_scores ADD COLUMN keyword_matches_json TEXT")
+        # matched_keyword — the "via X" tag shown on the dashboard. Was
+        # being computed and held in memory but dropped on persistence,
+        # so /runs/{id} returned roles with no tag (v0.1.4 regression).
+        if "matched_keyword" not in rs_cols:
+            cur.execute("ALTER TABLE role_scores ADD COLUMN matched_keyword TEXT")
         # roles.industry — added with AI-A industry detection
         cur.execute("PRAGMA table_info(roles)")
         r_cols = {row["name"] for row in cur.fetchall()}
@@ -424,6 +436,51 @@ class Archive:
                 run_id,
             ))
 
+    def delete_completed_run(self, *, run_id: str) -> bool:
+        """Delete a completed run by run_id, including its audit JSON and
+        summary file on disk. Returns True if the run existed and was
+        removed, False if no row matched (idempotent).
+
+        Performs:
+          1. Reads the audit_file_path column to find the JSON on disk
+          2. Deletes that JSON + the matching summary.md (sibling file
+             named with same timestamp/id stem; best-effort, missing
+             files don't fail the delete)
+          3. Deletes the runs row → ON DELETE CASCADE removes the
+             role_scores rows automatically (FK declared in CREATE
+             TABLE).
+
+        Used by the History page's per-row delete button so testers
+        can prune old runs they don't want cluttering their list.
+        """
+        from pathlib import Path
+        with self._cursor() as cur:
+            cur.execute(
+                "SELECT audit_file_path FROM runs WHERE run_id = ?",
+                (run_id,),
+            )
+            row = cur.fetchone()
+            if not row:
+                return False
+            audit_path_str = row["audit_file_path"]
+            cur.execute("DELETE FROM runs WHERE run_id = ?", (run_id,))
+
+        # Best-effort filesystem cleanup. Don't fail the whole delete if
+        # the JSON is missing — the user already lost it from the DB.
+        if audit_path_str:
+            try:
+                p = Path(audit_path_str)
+                if p.exists():
+                    p.unlink()
+                # Sibling summary.md uses the same stem with _summary suffix,
+                # e.g. 2026-05-04_19-22_eb90b66a_audit.json -> _summary.md
+                summary = p.with_name(p.stem.replace("_audit", "_summary") + ".md")
+                if summary.exists():
+                    summary.unlink()
+            except Exception:
+                pass
+        return True
+
     def cancel_run(self, *, run_id: str) -> None:
         """Drop the runs.db row for a cancelled run.
 
@@ -481,7 +538,9 @@ class Archive:
                     rs.stage2_score, rs.stage2_tier, rs.stage2_reasoning,
                     rs.stage3_score, rs.stage3_tier, rs.stage3_analysis,
                     rs.stage3_application_strategy,
-                    rs.embedding_similarity
+                    rs.embedding_similarity,
+                    rs.summary AS stage3_summary,
+                    rs.matched_keyword
                 FROM role_scores rs
                 JOIN roles r ON r.id = rs.role_id
                 WHERE rs.run_id = ?
@@ -500,8 +559,9 @@ class Archive:
                     final_score, final_tier,
                     stage1_kept, stage2_score, stage2_tier, stage2_reasoning,
                     stage3_score, stage3_tier, stage3_analysis, stage3_application_strategy,
-                    embedding_similarity, keyword_matches_json, summary
-                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                    embedding_similarity, keyword_matches_json, summary,
+                    matched_keyword
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             """, (
                 run_id, role_id,
                 getattr(role_obj, "final_score", None),
@@ -517,6 +577,7 @@ class Archive:
                 getattr(role_obj, "embedding_similarity", None),
                 json.dumps(getattr(role_obj, "keyword_matches", []) or []),
                 getattr(role_obj, "summary", None),
+                getattr(role_obj, "matched_keyword", None),
             ))
 
     # ----------------------------------------------------------------------

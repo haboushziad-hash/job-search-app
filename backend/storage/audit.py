@@ -169,27 +169,44 @@ def _coverage_gap_analysis(qualifying: list, profile) -> dict:
 
     pct = (100.0 * matched / total_with_industry) if total_with_industry else 0.0
 
+    # Suppress the dashboard warning when the run already returned plenty of
+    # quality matches. If the user has 30+ roles scoring >= 55 (STRONG+GOOD+
+    # MAYBE), the absolute count of in-industry roles is already strong even
+    # at a low target-industry %, and the warning hurts credibility more
+    # than it helps. The severity is still recorded for the audit JSON.
+    quality_count = sum(
+        1 for r in qualifying
+        if (getattr(r, "final_score", None) or 0) >= 55
+    )
+    SUPPRESS_THRESHOLD = 30
+
     if pct >= 60:
         severity = "LOW"
         dashboard = None
     elif pct >= 30:
         severity = "MEDIUM"
-        dashboard = (
-            f"Some of your target industries ({', '.join(targets[:3])}) have "
-            f"limited coverage in this version — only {pct:.0f}% of your "
-            f"qualifying roles are in your stated target sectors. We're "
-            f"expanding employer coverage; results will improve over time."
-        )
+        if quality_count >= SUPPRESS_THRESHOLD:
+            dashboard = None
+        else:
+            dashboard = (
+                f"Some of your target industries ({', '.join(targets[:3])}) have "
+                f"limited coverage in this version — only {pct:.0f}% of your "
+                f"qualifying roles are in your stated target sectors. We're "
+                f"expanding employer coverage; results will improve over time."
+            )
     else:
         severity = "HIGH"
-        dashboard = (
-            f"Your target industries ({', '.join(targets[:3])}) have limited "
-            f"coverage in this version. Only {pct:.0f}% of your qualifying "
-            f"roles match your target sectors — the rest are from adjacent "
-            f"industries. More employers in your space are coming in the next "
-            f"update. In the meantime, these results show transferable roles "
-            f"at companies outside your primary targets."
-        )
+        if quality_count >= SUPPRESS_THRESHOLD:
+            dashboard = None
+        else:
+            dashboard = (
+                f"Your target industries ({', '.join(targets[:3])}) have limited "
+                f"coverage in this version. Only {pct:.0f}% of your qualifying "
+                f"roles match your target sectors — the rest are from adjacent "
+                f"industries. More employers in your space are coming in the next "
+                f"update. In the meantime, these results show transferable roles "
+                f"at companies outside your primary targets."
+            )
 
     # Build a recommendation string for the operator (us, not the user)
     recommendation = None
@@ -349,7 +366,7 @@ def write_audit_files(
             "sources_searched": sources_searched or summary_dump.get("boards_searched", []),
             "keywords_used": keywords,
             "cache_was_hit": cache_was_hit,
-            "app_version": "0.1.3",
+            "app_version": "0.1.4",
         },
         "profile_snapshot": profile_dump,
         "pipeline_funnel": {

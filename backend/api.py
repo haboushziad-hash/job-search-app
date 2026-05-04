@@ -20,7 +20,7 @@ import asyncio
 import json
 import tempfile
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
@@ -93,7 +93,7 @@ class RunState(BaseModel):
 app = FastAPI(
     title="Job Search API",
     description="Local bridge between the React desktop app and the Python search backend.",
-    version="0.1.0",
+    version="0.1.4",
 )
 
 app.add_middleware(
@@ -152,7 +152,7 @@ async def _init_archive() -> None:
 async def health() -> dict[str, Any]:
     return {
         "status": "ok",
-        "version": "0.1.0",
+        "version": "0.1.4",
         "env": {
             "google_keys_configured": len(config.google_api_keys()),
             "dev_mode": config.DEV_MODE,
@@ -233,7 +233,7 @@ async def profile_build(
     build_id = str(uuid.uuid4())
     state = BuildState(
         build_id=build_id,
-        started_at=datetime.utcnow(),
+        started_at=datetime.now(timezone.utc),
         status="pending",
         current_step="Queued",
     )
@@ -361,7 +361,7 @@ async def search_run(req: RunSearchRequest) -> dict[str, Any]:
     run_id = str(uuid.uuid4())
     state = RunState(
         run_id=run_id,
-        started_at=datetime.utcnow(),
+        started_at=datetime.now(timezone.utc),
         status="pending",
         current_step="Initializing",
     )
@@ -596,6 +596,103 @@ async def list_runs() -> dict[str, Any]:
     return {"runs": out}
 
 
+@app.get("/profiles/recent")
+async def list_recent_profiles() -> dict[str, Any]:
+    """Return up to N most-recent UNIQUE profiles, ordered by latest run.
+
+    Used by the StartSearch choice screen so a returning user can pick
+    which past profile to re-run.
+
+    Dedup key: (resume filenames, salary_minimum). We deliberately do
+    NOT use the stored `profile_hash` here because that hash is keyed
+    on AI-extracted fields (headline, target_functions, technical
+    skills) which vary slightly across runs of the same resume due to
+    LLM non-determinism — e.g. "AI Strategy and Enablement Consultant"
+    vs "AI Strategy & Enablement Consultant" produce different hashes
+    even though it's the same person + same resume + same intent.
+    `profile_hash` is the right key for cache invalidation (any change
+    = miss) but the wrong key for "is this the same user." For
+    user-facing dedup, the resume filename(s) plus salary preference
+    capture identity correctly: same resume + same explicit salary
+    floor = same profile in the user's mental model.
+
+    Cap at 3 unique profiles — that's the cognitive limit on the
+    choice screen and matches what users actually maintain in practice
+    (typically 1, occasionally 2 for "AI track" vs "non-AI track").
+    """
+    archive = _maybe_archive()
+    if archive is None:
+        return {"profiles": []}
+    try:
+        with archive._cursor() as cur:
+            cur.execute("""
+                SELECT run_id, started_at, profile_hash,
+                       profile_snapshot_json, qualifying_count, summary_json
+                FROM runs
+                WHERE status = 'completed'
+                ORDER BY started_at DESC
+                LIMIT 50
+            """)
+            rows = [dict(r) for r in cur.fetchall()]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    def _dedup_key(snap: dict) -> tuple:
+        """Identity key insensitive to LLM-driven phrasing drift."""
+        resumes = snap.get("resumes") or []
+        filenames = tuple(sorted(
+            (r.get("filename", "") if isinstance(r, dict) else str(r))
+            for r in resumes
+        ))
+        salary = snap.get("salary_minimum") or 0
+        return (filenames, salary)
+
+    seen_keys: set[tuple] = set()
+    out: list[dict[str, Any]] = []
+    for r in rows:
+        snapshot = _safe_json_loads(r.get("profile_snapshot_json"))
+        if not snapshot:
+            continue
+        key = _dedup_key(snapshot)
+        # Skip rows whose dedup key is empty (no resume metadata stored).
+        if not key[0]:
+            continue
+        if key in seen_keys:
+            continue
+        seen_keys.add(key)
+        summary = _safe_json_loads(r.get("summary_json")) or {}
+        out.append({
+            "run_id": r["run_id"],
+            "last_used_at": r.get("started_at"),
+            "profile_hash": r.get("profile_hash") or "",
+            "profile": snapshot,
+            "qualifying_count": r.get("qualifying_count"),
+            "tier_strong": summary.get("tier_strong"),
+            "tier_good": summary.get("tier_good"),
+        })
+        if len(out) >= 3:
+            break
+    return {"profiles": out}
+
+
+@app.delete("/runs/{run_id}")
+async def delete_run(run_id: str) -> dict[str, Any]:
+    """Delete a completed run by id, including its audit JSON on disk.
+
+    Used by the History page's per-row delete button. Idempotent — if
+    the run is already gone, returns ok with deleted=False so the
+    frontend can refresh its list without an error toast.
+    """
+    archive = _maybe_archive()
+    if archive is None:
+        raise HTTPException(status_code=404, detail="Archive not configured")
+    try:
+        deleted = archive.delete_completed_run(run_id=run_id)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    return {"run_id": run_id, "deleted": deleted}
+
+
 @app.get("/runs/{run_id}")
 async def get_run(run_id: str) -> dict[str, Any]:
     """Return full role list + summary for a completed run from runs.db."""
@@ -622,7 +719,10 @@ async def get_run(run_id: str) -> dict[str, Any]:
         raise HTTPException(status_code=500, detail=str(e))
 
     # Convert SQL row dicts to Role-shaped dicts the frontend expects.
-    # role_scores joined columns: final_score, final_tier, stage2_*, stage3_*
+    # role_scores joined columns: final_score, final_tier, stage2_*, stage3_*,
+    # plus matched_keyword (the "via X" tag) and stage3_summary (the AI-C
+    # dashboard preview, aliased from rs.summary in replay_cached_run to
+    # avoid collision with the runs.summary_json column).
     out_roles = []
     for r in roles:
         out_roles.append({
@@ -647,6 +747,11 @@ async def get_run(run_id: str) -> dict[str, Any]:
             "stage3_analysis": r.get("stage3_analysis"),
             "stage3_application_strategy": r.get("stage3_application_strategy"),
             "embedding_similarity": r.get("embedding_similarity"),
+            # Restored on /runs/{id} so the dashboard's "via X" tag and
+            # 2-sentence preview text survive a startup-sync from runs.db
+            # (previously silently stripped).
+            "matched_keyword": r.get("matched_keyword"),
+            "summary": r.get("stage3_summary"),
         })
     return {
         "run_id": run_id,
@@ -835,7 +940,7 @@ async def submit_feedback(req: FeedbackRequest) -> dict[str, Any]:
                     data["tester_feedback"] = {
                         "free_text": req.feedback,
                         "bad_roles": req.bad_roles or [],
-                        "submitted_at": datetime.utcnow().isoformat(),
+                        "submitted_at": datetime.now(timezone.utc).isoformat(),
                     }
                     apath.write_text(
                         json.dumps(data, indent=2, default=str), encoding="utf-8"

@@ -140,8 +140,12 @@ export default function Welcome() {
           className="mt-12"
         >
           <div className="flex items-center gap-3 flex-wrap justify-center">
+            {/* Single primary CTA — always routes through /how-it-works.
+                Returning users hit a choice page after to pick between
+                re-running with their saved profile or starting fresh.
+                First-time users go straight from /how-it-works to /setup. */}
             <button
-              onClick={() => navigate(hasPriorRun ? '/setup' : '/how-it-works')}
+              onClick={() => navigate('/how-it-works')}
               className="group relative inline-flex items-center gap-2.5
                          px-7 py-3.5 rounded-full
                          bg-white text-base-950 font-medium text-sm
@@ -150,7 +154,7 @@ export default function Welcome() {
                          transition-all duration-300 hover:scale-[1.02]
                          active:scale-[0.98]"
             >
-              <span>{hasPriorRun ? 'Run a new search' : 'Get started'}</span>
+              <span>{hasPriorRun ? 'Run Search' : 'Get started'}</span>
               <ArrowRight
                 size={16}
                 className="transition-transform duration-300 group-hover:translate-x-0.5"

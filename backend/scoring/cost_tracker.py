@@ -20,7 +20,7 @@ from __future__ import annotations
 import csv
 import sqlite3
 from contextlib import contextmanager
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from pathlib import Path
 from typing import Iterator, Optional
 
@@ -185,7 +185,7 @@ def start_run(run_id: str, license_key: Optional[str] = None) -> None:
             INSERT OR IGNORE INTO run_summaries (run_id, started_at, license_key, status)
             VALUES (?, ?, ?, 'running')
             """,
-            (run_id, datetime.utcnow().isoformat(), license_key),
+            (run_id, datetime.now(timezone.utc).isoformat(), license_key),
         )
 
 
@@ -231,7 +231,7 @@ def finish_run(
             WHERE run_id = ?
             """,
             (
-                datetime.utcnow().isoformat(),
+                datetime.now(timezone.utc).isoformat(),
                 row["total"], row["s1"], row["s2"], row["s3"], row["emb"], row["misc"],
                 roles_scraped, roles_qualifying, duration_seconds, status, run_id,
             ),
@@ -255,7 +255,7 @@ def cost_today() -> float:
 
 def cost_this_month() -> float:
     """Total spend this calendar month (UTC)."""
-    month = datetime.utcnow().strftime("%Y-%m")
+    month = datetime.now(timezone.utc).strftime("%Y-%m")
     with _db() as conn:
         row = conn.execute(
             "SELECT COALESCE(SUM(cost_usd), 0) AS t FROM llm_calls WHERE timestamp LIKE ?",
@@ -298,7 +298,7 @@ def recent_runs(limit: int = 20) -> list[dict]:
 
 def cost_by_license_this_month() -> list[dict]:
     """Per-tester cost rollup for the current month."""
-    month = datetime.utcnow().strftime("%Y-%m")
+    month = datetime.now(timezone.utc).strftime("%Y-%m")
     with _db() as conn:
         rows = conn.execute(
             """

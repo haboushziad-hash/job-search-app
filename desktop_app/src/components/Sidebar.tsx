@@ -1,7 +1,7 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
   Compass, PlayCircle, Briefcase,
-  History, Bookmark, BookmarkCheck, Settings, MessageCircle, Loader2,
+  History, Bookmark, BookmarkCheck, EyeOff, Settings, MessageCircle, Loader2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { motion } from 'framer-motion'
@@ -23,6 +23,7 @@ const NAV: NavItem[] = [
   { to: '/tracker',    label: 'Applications',    icon: Briefcase },
   { to: '/history',    label: 'Run History',     icon: History },
   { to: '/saved',      label: 'Saved Searches',  icon: Bookmark },
+  { to: '/hidden',     label: 'Hidden Roles',    icon: EyeOff },
   { to: '/feedback',   label: 'Send Feedback',   icon: MessageCircle },
 ]
 

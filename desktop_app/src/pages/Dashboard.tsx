@@ -10,6 +10,7 @@ import { useAppStore } from '@/stores/appStore'
 import { exportToExcel, exportToCSV, exportToMarkdown } from '@/services/export'
 import { submitFeedback } from '@/services/api'
 import type { Tier, Role } from '@/types'
+import { cn } from '@/lib/utils'
 
 export default function Dashboard() {
   const navigate = useNavigate()
@@ -193,12 +194,26 @@ export default function Dashboard() {
 
   const hideSalarylessRoles = useAppStore((s) => s.hideSalarylessRoles)
 
+  // Hidden-roles handling. Roles the user has explicitly hidden are
+  // ALWAYS suppressed from the dashboard's main list (this fixes the
+  // bug where clicking "Hide" had no visible effect). Reviewing and
+  // un-hiding lives on the dedicated /hidden page — keeping unhide
+  // off the dashboard means an unhidden role drops out of the visible
+  // list without burying itself back among 30+ siblings; the user
+  // stays on /hidden with their context intact.
+  const isRoleHidden = (r: Role): boolean => {
+    const k = `${(r.company || '').toLowerCase()}::${(r.job_title || '').toLowerCase()}`
+    return roleStatuses[k]?.status === 'hidden'
+  }
+  const hiddenCount = lastRoles.filter(isRoleHidden).length
+
   const tierFiltered = filterTier
     ? lastRoles.filter((r) => r.final_tier === filterTier)
     : lastRoles
+  const afterHiddenFilter = tierFiltered.filter((r) => !isRoleHidden(r))
   const visibleRoles = hideSalarylessRoles
-    ? tierFiltered.filter((r) => r.salary_min != null || r.salary_max != null || !!r.salary_text)
-    : tierFiltered
+    ? afterHiddenFilter.filter((r) => r.salary_min != null || r.salary_max != null || !!r.salary_text)
+    : afterHiddenFilter
 
   // Sort visible roles by score descending. Tiebreaker: when scores are
   // within 3 points, prefer the role with salary disclosed — equivalent
@@ -267,8 +282,18 @@ export default function Dashboard() {
     })
   }
 
+  // Defensive parse: if the backend ever sends a tz-less ISO string
+  // (e.g. from `datetime.utcnow()` in legacy code paths), `new Date()`
+  // would interpret it as LOCAL time, displaying UTC values as if local.
+  // Append "Z" when no tz suffix is present so we always treat backend
+  // timestamps as UTC. The pydantic model now stamps tz-aware UTC, so
+  // this is a belt-and-suspenders safety net.
   const runDate = lastSummary?.run_date
-    ? new Date(lastSummary.run_date).toLocaleString(undefined, {
+    ? new Date(
+        /[+-]\d\d:?\d\d$|Z$/.test(lastSummary.run_date)
+          ? lastSummary.run_date
+          : lastSummary.run_date + 'Z'
+      ).toLocaleString(undefined, {
         month: 'short',
         day: 'numeric',
         hour: 'numeric',
@@ -424,9 +449,12 @@ export default function Dashboard() {
         initial="hidden"
         animate="visible"
         variants={{ visible: { transition: { staggerChildren: 0.05 } } }}
-        className="grid grid-cols-4 gap-3 mt-8"
+        className="grid grid-cols-4 gap-2.5 mt-8"
       >
         {(['STRONG', 'GOOD', 'MAYBE', 'STRETCH'] as const).map((tier) => (
+          // No h-full on this wrapper anymore — TierCard now has a
+          // fixed inline height (210px), so the wrapper just acts as
+          // an animation container without trying to stretch.
           <motion.div
             key={tier}
             variants={{
@@ -456,43 +484,78 @@ export default function Dashboard() {
         ))}
       </motion.div>
 
-      {/* Filter chip */}
-      {filterTier && (
-        <div className="mt-6 flex items-center gap-2">
-          <Filter size={13} className="text-base-400" />
-          <span className="text-xs text-base-400">Filtering:</span>
-          <button
-            onClick={() => setFilterTier(null)}
-            className="px-2.5 py-1 rounded-full text-xs bg-white/[0.06]
-                       border border-white/[0.08] hover:bg-white/[0.10]"
-          >
-            {filterTier} · clear ✕
-          </button>
+      {/* Filter chips — tier filter + hidden-roles toggle. The hidden
+          toggle only appears when the user has actually hidden something,
+          to avoid clutter on a fresh run. */}
+      {(filterTier || hiddenCount > 0) && (
+        <div className="mt-6 flex items-center gap-2 flex-wrap">
+          {filterTier && (
+            <>
+              <Filter size={13} className="text-base-400" />
+              <span className="text-xs text-base-400">Filtering:</span>
+              <button
+                onClick={() => setFilterTier(null)}
+                className="px-2.5 py-1 rounded-full text-xs bg-white/[0.06]
+                           border border-white/[0.08] hover:bg-white/[0.10]"
+              >
+                {filterTier} · clear ✕
+              </button>
+            </>
+          )}
+          {hiddenCount > 0 && (
+            <button
+              onClick={() => navigate('/hidden')}
+              className="ml-auto px-2.5 py-1 rounded-full text-xs
+                         bg-white/[0.04] border border-white/[0.08] text-base-400
+                         hover:bg-white/[0.08] hover:text-base-200 transition-colors"
+              title="Open the Hidden Roles page to review and unhide"
+            >
+              {hiddenCount} hidden · view
+            </button>
+          )}
         </div>
       )}
 
       {/* Coverage gap banner — surfaces when target_industries are
           under-represented in the scraper pool. Honest warning instead
-          of silently weak results. */}
-      {lastSummary?.coverage_gap_severity === 'HIGH' &&
-       lastSummary.coverage_gap_message && (
-        <motion.div
-          initial={{ opacity: 0, y: -6 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mt-6 rounded-xl border border-amber-500/30 bg-amber-500/[0.06]
-                     px-4 py-3 flex items-start gap-3"
-        >
-          <AlertTriangle size={16} className="text-amber-400 flex-shrink-0 mt-0.5" />
-          <div className="flex-1">
-            <div className="text-xs font-semibold text-amber-200 mb-1">
-              Limited coverage in your target sectors
+          of silently weak results.
+
+          Mirrored client-side suppression (also applied at compute time
+          in backend/storage/audit.py): if the run already returned 30+
+          quality matches (STRONG + GOOD + MAYBE), don't show the
+          banner — credibility cost > usefulness when the user has
+          plenty of viable roles. The check is also done client-side so
+          historical runs (which persisted the message before this fix)
+          benefit too. */}
+      {(() => {
+        const qualityCount = (lastSummary?.tier_strong || 0)
+          + (lastSummary?.tier_good || 0)
+          + (lastSummary?.tier_maybe || 0)
+        const SUPPRESS_THRESHOLD = 30
+        const showBanner =
+          lastSummary?.coverage_gap_severity === 'HIGH'
+          && !!lastSummary.coverage_gap_message
+          && qualityCount < SUPPRESS_THRESHOLD
+        if (!showBanner) return null
+        return (
+          <motion.div
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-6 rounded-xl border border-amber-500/30 bg-amber-500/[0.06]
+                       px-4 py-3 flex items-start gap-3"
+          >
+            <AlertTriangle size={16} className="text-amber-400 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <div className="text-xs font-semibold text-amber-200 mb-1">
+                Limited coverage in your target sectors
+              </div>
+              <p className="text-[11px] text-base-300 leading-relaxed">
+                {lastSummary!.coverage_gap_message}
+              </p>
             </div>
-            <p className="text-[11px] text-base-300 leading-relaxed">
-              {lastSummary.coverage_gap_message}
-            </p>
-          </div>
-        </motion.div>
-      )}
+          </motion.div>
+        )
+      })()}
 
       {/* Roles list — tier-grouped when no filter applied, flat when filtered.
           STRONG/GOOD/MAYBE get full cards with accent borders; STRETCH gets

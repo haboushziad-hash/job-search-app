@@ -150,8 +150,13 @@ async def score_roles(
         print(f"[orchestrator] after Stage 2: {len(scored)} scored, {len(s2_qualifying)} qualifying (>=55)")
 
     # ---- 4. Stage 3 deep eval (55-87 band only) ----
+    # Note: s2_in_band is the subset entering Pro deep-eval (stage2_score
+    # in [55, skip_above)). It is NOT the final qualifying count — STRETCH
+    # roles in [40, 55) qualify too via Stage 2 alone. We word the message
+    # accordingly so the user doesn't see "Stage 3 reviewing N qualifying"
+    # and then "Final: M qualifying" with M > N (confusing).
     s2_in_band = sum(1 for r in scored if r.stage2_score is not None and 55 <= r.stage2_score < stage3_skip_above)
-    _emit(80, "Scoring with AI cascade", 5, f"Stage 3 deep evaluation on {s2_in_band} qualifying roles (Pro, ~5-10s each)...")
+    _emit(80, "Scoring with AI cascade", 5, f"Stage 3 deep evaluation on {s2_in_band} top-tier roles (Pro, ~5-10s each)...")
     scored = await stage3_deep_eval(
         profile=profile,
         roles=scored,

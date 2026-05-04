@@ -1,18 +1,54 @@
 import { useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { Play, Globe, FileText, Clock, Sparkles, Loader2, AlertCircle, Edit3, Home, Upload } from 'lucide-react'
-import { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Play, Globe, FileText, Clock, Sparkles, Loader2, AlertCircle, Edit3, Home, Upload, ChevronDown, X, MapPin, DollarSign } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { useAppStore } from '@/stores/appStore'
 import { runSearch, ApiError } from '@/services/api'
+import { SparkleBurst } from '@/components/SparkleBurst'
+import { cn } from '@/lib/utils'
 
 export default function Run() {
   const navigate = useNavigate()
   const profile = useAppStore((s) => s.profile)
+  const setProfile = useAppStore((s) => s.setProfile)
   const setActiveRunId = useAppStore((s) => s.setActiveRunId)
   const roleStatuses = useAppStore((s) => s.roleStatuses)
   const cacheMaxAgeDays = useAppStore((s) => s.cacheMaxAgeDays)
   const [submitting, setSubmitting] = useState(false)
+  const [burstTrigger, setBurstTrigger] = useState(0)
+
+  // Inline "Adjust salary or locations" expansion. Mirror of the panel
+  // on /start-search so the user can tweak from either entry point.
+  // Auto-populates from the active profile and writes back on launch.
+  const [showAdjust, setShowAdjust] = useState(false)
+  const [adjustedSalary, setAdjustedSalary] = useState<number | null>(null)
+  const [adjustedLocations, setAdjustedLocations] = useState<string[]>([])
+  const [newLocationDraft, setNewLocationDraft] = useState('')
+
+  // Sync the adjust panel to the active profile whenever it changes
+  // (e.g. user came back from /setup with a fresh build, or hydrated
+  // from /start-search). Keeps the panel honest about what's loaded.
+  useEffect(() => {
+    if (!profile) return
+    setAdjustedSalary(profile.salary_minimum ?? 100_000)
+    setAdjustedLocations([...(profile.acceptable_locations || [])])
+  }, [profile])
+
+  const handleAddLocation = () => {
+    const trimmed = newLocationDraft.trim()
+    if (!trimmed) return
+    if (adjustedLocations.some((l) => l.toLowerCase() === trimmed.toLowerCase())) {
+      setNewLocationDraft('')
+      return
+    }
+    setAdjustedLocations((prev) => [...prev, trimmed])
+    setNewLocationDraft('')
+  }
+
+  const handleRemoveLocation = (loc: string) => {
+    setAdjustedLocations((prev) => prev.filter((l) => l !== loc))
+  }
 
   // No profile yet — guide user back to setup
   if (!profile) {
@@ -39,6 +75,29 @@ export default function Run() {
 
   const tier1 = profile.keywords.filter((k) => k.tier === 1).length
   const tier2 = profile.keywords.filter((k) => k.tier === 2).length
+  const tier3 = profile.keywords.filter((k) => k.tier === 3).length
+  const totalKw = profile.keywords.length
+  // Tier 1+2 are sent as scraper queries; Tier 3 is reserved for
+  // post-scrape matching (still part of the user's profile, so it
+  // counts toward the displayed total). Hide the T3 cell when it's
+  // zero to avoid clutter on profiles that didn't generate any.
+  const keywordsLabel = tier3 > 0
+    ? `${totalKw} (${tier1} Tier 1 · ${tier2} Tier 2 · ${tier3} Tier 3)`
+    : `${totalKw} (${tier1} Tier 1 · ${tier2} Tier 2)`
+  // For the "saved profile" indicator. We don't store a build timestamp
+  // on the profile itself, but the most-recent run_date is a close proxy
+  // for "when this profile was last used." Falls back to "saved" with no
+  // date if the user hasn't run a search yet with this profile.
+  // Subscribe via useAppStore so this updates if the run completes while
+  // we're on this page; .getState() would give a one-shot snapshot only.
+  const lastSummary = useAppStore((s) => s.lastSummary)
+  const lastUsedIso = lastSummary?.run_date
+  const lastUsedLabel = lastUsedIso
+    ? new Date(
+        /[+-]\d\d:?\d\d$|Z$/.test(lastUsedIso) ? lastUsedIso : lastUsedIso + 'Z'
+      ).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+    : null
+  const resumeName = profile.resumes[0]?.filename || 'your resume'
 
   // Build the applied-roles list from local-state — anything the user has
   // marked applied (or in a downstream stage like phone_screen, interview,
@@ -52,17 +111,38 @@ export default function Run() {
     .filter((r) => r.company && r.title)
 
   const startSearch = async () => {
+    // Fire the sparkle burst before the async work so the animation
+    // overlaps with the network round-trip (feels snappier).
+    setBurstTrigger((t) => t + 1)
     setSubmitting(true)
     try {
+      // Overlay any inline adjustments onto the active profile. If the
+      // user didn't expand the adjust panel, these values match the
+      // saved profile and this is a no-op. If they edited, the new
+      // values flow into the run AND get persisted back to localStorage
+      // so they stick across future sessions.
+      const profileToRun = {
+        ...profile,
+        salary_minimum: adjustedSalary ?? profile.salary_minimum ?? null,
+        acceptable_locations: adjustedLocations,
+      }
+      setProfile(profileToRun)
+
       const res = await runSearch({
-        profile,
+        profile: profileToRun,
         // Default: tier 1+2 keywords
-        keywords: profile.keywords.filter((k) => k.tier <= 2).map((k) => k.text),
-        // Omit `sources` so backend uses ALL active scrapers (14 total).
+        keywords: profileToRun.keywords.filter((k) => k.tier <= 2).map((k) => k.text),
+        // Omit `sources` so backend uses ALL active scrapers (16 total
+        // as of v0.1.4 — JSearch was added on top of the prior 15).
         // See Keywords.tsx for full reasoning.
         postedWithinDays: 30,
         appliedRoles,
         cacheMaxAgeDays,
+        // Force fresh — every user-initiated search from this page
+        // should hit live job boards, not return cached results from
+        // a recent run with the same profile_hash. See StartSearch.tsx
+        // for the same reasoning.
+        forceRefresh: true,
       })
       setActiveRunId(res.run_id)
       const skipMsg = appliedRoles.length > 0
@@ -77,14 +157,21 @@ export default function Run() {
     }
   }
 
+  // True when the user has at least one prior completed run on record;
+  // we frame this page as "Re-Run" rather than "New Search" in that case
+  // so it's obvious clicking the launch button reuses the saved profile.
+  const isReRun = !!lastSummary
+  const pageTitle = isReRun ? 'Re-Run Search' : 'New Search'
+  const pageSubtitle = isReRun
+    ? 'Re-running with your saved profile — same resume, same keywords. Use "Use new resume" to rebuild instead.'
+    : 'Review your configuration and launch when ready.'
+
   return (
     <div className="px-10 py-8 max-w-3xl mx-auto">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">New Search</h1>
-          <p className="text-sm text-base-400 mt-1">
-            Review your configuration and launch when ready.
-          </p>
+          <h1 className="text-2xl font-semibold tracking-tight">{pageTitle}</h1>
+          <p className="text-sm text-base-400 mt-1">{pageSubtitle}</p>
         </div>
         <button
           onClick={() => navigate('/welcome')}
@@ -101,19 +188,29 @@ export default function Run() {
         animate={{ opacity: 1, y: 0 }}
         className="glass mt-8 rounded-xl p-7"
       >
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="flex items-center gap-2 text-sm font-medium text-base-200">
-            <Sparkles size={14} className="text-accent-400" /> Search summary
-          </h2>
-          <div className="flex items-center gap-1.5">
+        {/* Header row — title on left, action buttons on right.
+            "Reusing saved profile" sub-line makes the silent reuse
+            explicit + offers a one-click rebuild path via "Use new
+            resume". The Stats below give the full breakdown. */}
+        <div className="flex items-start justify-between gap-3 mb-5">
+          <div className="min-w-0">
+            <h2 className="flex items-center gap-2 text-sm font-medium text-base-200">
+              <Sparkles size={14} className="text-accent-400" /> Search summary
+            </h2>
+            <p className="text-[11px] text-base-400 mt-1 truncate">
+              Re-running with your saved profile from {resumeName}
+              {lastUsedLabel ? ` · last used ${lastUsedLabel}` : ''}
+            </p>
+          </div>
+          <div className="flex items-center gap-1.5 flex-shrink-0">
             <button
               onClick={() => navigate('/setup')}
               className="flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px]
                          bg-white/[0.04] hover:bg-white/[0.08] text-base-300
                          border border-white/[0.06] transition-colors"
-              title="Edit profile / preferences / re-upload resume"
+              title="Re-upload your resume to rebuild profile + regenerate keywords"
             >
-              <Upload size={11} /> Edit profile
+              <Upload size={11} /> Use new resume
             </button>
             <button
               onClick={() => navigate('/keywords')}
@@ -136,12 +233,12 @@ export default function Run() {
           <Stat
             icon={Sparkles}
             label="Keywords"
-            value={`${tier1 + tier2} (${tier1} Tier 1 · ${tier2} Tier 2)`}
+            value={keywordsLabel}
           />
           <Stat
             icon={Globe}
             label="Job boards"
-            value="Greenhouse · Lever · Ashby · Workday · iCIMS · 5 broad aggregators"
+            value="16 sources searched in parallel"
           />
           <Stat
             icon={Clock}
@@ -150,7 +247,150 @@ export default function Run() {
           />
         </div>
 
-        <div className="mt-7 p-4 rounded-lg bg-tier-strong/10 border border-tier-strong/20">
+        {/* Inline "Adjust salary or locations" panel — same UI as the
+            choice screen on /start-search so the user has a single
+            mental model regardless of which entry point they used. */}
+        <div className="mt-5">
+          <button
+            type="button"
+            onClick={() => setShowAdjust((v) => !v)}
+            disabled={submitting}
+            className="w-full flex items-center justify-between
+                       px-4 py-2.5 rounded-lg
+                       bg-white/[0.03] hover:bg-white/[0.06]
+                       border border-white/[0.06]
+                       text-[12px] text-base-300 transition-colors"
+          >
+            <span className="flex items-center gap-2">
+              <Sparkles size={12} className="text-accent-400" />
+              Adjust salary or locations before running
+            </span>
+            <ChevronDown
+              size={14}
+              className={cn(
+                'text-base-400 transition-transform',
+                showAdjust && 'rotate-180'
+              )}
+            />
+          </button>
+
+          <AnimatePresence initial={false}>
+            {showAdjust && (
+              <motion.div
+                initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                animate={{ opacity: 1, height: 'auto', marginTop: 8 }}
+                exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden"
+              >
+                <div className="rounded-lg bg-white/[0.02] border border-white/[0.06] p-4 space-y-4">
+                  {/* Salary */}
+                  <div>
+                    <label className="flex items-center gap-1.5 text-[11px] uppercase
+                                      tracking-wider text-base-400 font-medium mb-2">
+                      <DollarSign size={11} /> Salary minimum
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <span className="text-base-400 text-sm">$</span>
+                      <input
+                        type="number"
+                        value={adjustedSalary ?? ''}
+                        min={0}
+                        max={500_000}
+                        step={5_000}
+                        onChange={(e) => {
+                          const v = e.target.value
+                          setAdjustedSalary(v === '' ? null : parseInt(v, 10))
+                        }}
+                        disabled={submitting}
+                        className="flex-1 bg-white/[0.03] border border-white/[0.10]
+                                   rounded px-3 py-1.5 text-sm text-base-100
+                                   focus:outline-none focus:border-accent-500/50
+                                   tabular-nums"
+                      />
+                      <span className="text-[11px] text-base-500">
+                        {adjustedSalary != null
+                          ? `(${adjustedSalary.toLocaleString()})`
+                          : ''}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Locations */}
+                  <div>
+                    <label className="flex items-center gap-1.5 text-[11px] uppercase
+                                      tracking-wider text-base-400 font-medium mb-2">
+                      <MapPin size={11} /> Acceptable locations
+                    </label>
+                    <div className="flex flex-wrap gap-1.5 mb-2">
+                      {adjustedLocations.length === 0 && (
+                        <span className="text-[11px] text-base-500 italic">
+                          None — add at least one or roles won't pass the location filter
+                        </span>
+                      )}
+                      {adjustedLocations.map((loc) => (
+                        <span
+                          key={loc}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md
+                                     bg-accent-500/10 border border-accent-500/30
+                                     text-[11px] text-accent-100"
+                        >
+                          {loc}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveLocation(loc)}
+                            disabled={submitting}
+                            className="hover:text-red-300 transition-colors"
+                            aria-label={`Remove ${loc}`}
+                          >
+                            <X size={10} />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={newLocationDraft}
+                        onChange={(e) => setNewLocationDraft(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault()
+                            handleAddLocation()
+                          }
+                        }}
+                        disabled={submitting}
+                        placeholder="e.g. Richmond VA, Remote, New York NY"
+                        className="flex-1 bg-white/[0.03] border border-white/[0.10]
+                                   rounded px-3 py-1.5 text-sm text-base-100
+                                   placeholder:text-base-600
+                                   focus:outline-none focus:border-accent-500/50"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddLocation}
+                        disabled={submitting || !newLocationDraft.trim()}
+                        className="px-3 py-1.5 rounded text-[12px]
+                                   bg-white/[0.06] border border-white/[0.10]
+                                   text-base-200 hover:bg-white/[0.10]
+                                   disabled:opacity-40 disabled:cursor-not-allowed
+                                   transition-colors"
+                      >
+                        Add
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-base-500 mt-1.5 leading-snug">
+                      Type a city + state (or "Remote") and press Enter or Add. Changes save
+                      to your profile when you click Re-Run.
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        <div className="mt-5 p-4 rounded-lg bg-tier-strong/10 border border-tier-strong/20">
           <div className="flex items-center gap-2 text-tier-strong text-sm">
             <Sparkles size={14} />
             <span className="font-medium">Configuration looks healthy</span>
@@ -172,7 +412,7 @@ export default function Run() {
           <button
             onClick={startSearch}
             disabled={submitting}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-lg
+            className="relative overflow-visible flex items-center gap-2 px-5 py-2.5 rounded-lg
                        bg-white text-base-950 font-medium text-sm
                        hover:bg-base-200 transition-colors
                        disabled:opacity-60 disabled:cursor-not-allowed
@@ -185,9 +425,10 @@ export default function Run() {
             ) : (
               <>
                 <Play size={14} />
-                Start search
+                {isReRun ? 'Re-Run Search' : 'Start Search'}
               </>
             )}
+            <SparkleBurst trigger={burstTrigger} />
           </button>
         </div>
       </motion.div>

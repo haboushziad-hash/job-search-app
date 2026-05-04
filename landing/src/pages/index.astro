@@ -12,7 +12,7 @@ import PrivacyChip from "../components/PrivacyChip.astro";
 const MSI_URL = import.meta.env.PUBLIC_MSI_URL || "https://api.findmesomedamnjobz.com/v1/dl/windows";
 const DMG_ARM64_URL = import.meta.env.PUBLIC_DMG_ARM64_URL || "https://api.findmesomedamnjobz.com/v1/dl/mac-arm64";
 const DMG_X64_URL = import.meta.env.PUBLIC_DMG_X64_URL || "https://api.findmesomedamnjobz.com/v1/dl/mac-x64";
-const VERSION = "0.1.0";
+const VERSION = "0.1.4";
 const APP_SIZE = "107 MB";
 ---
 <BaseLayout>
@@ -116,7 +116,7 @@ const APP_SIZE = "107 MB";
       <!-- Stats strip -->
       <div class="reveal-stagger mt-14 grid grid-cols-3 gap-3 sm:gap-6 max-w-3xl mx-auto">
         <Stat number="Thousands" label="of roles per search" />
-        <Stat number="≈15 min" label="per fresh search" />
+        <Stat number="10–20 min" label="per fresh search" />
         <Stat number="4-Stage" label="AI cascade logic" />
       </div>
 
@@ -477,7 +477,7 @@ const APP_SIZE = "107 MB";
         <Step n="1" title="Upload your background"
               desc="Resumes, cover letters, paste-in JDs you like, raw text — drop in whatever shows your story. Four AI models read everything in parallel and cross-validate your personalized search profile in 60-90 seconds." />
         <Step n="2" title="Run the search"
-              desc="Scrapes 15+ job boards covering 500+ companies for thousands of roles. Filters by location, salary, and your stated red-flags. Scores each role with a multi-stage AI cascade." />
+              desc="Scrapes 16 job boards covering 500+ companies for thousands of roles. Filters by location, salary, and your stated red-flags. Scores each role with a multi-stage AI cascade." />
         <Step n="3" title="Triage with confidence"
               desc="Tiered dashboard: STRONG, GOOD, MAYBE, STRETCH. Each role comes with a match score, the keyword from your profile that surfaced it, and a 2-sentence summary. Mark what you applied to — the tool learns." />
       </div>
@@ -498,13 +498,13 @@ const APP_SIZE = "107 MB";
         <Feature title="Multi-industry by design"
                  desc="Tax accountants, software engineers, nurses, marketing directors, real estate analysts — same tool, different keyword universe. The AI builds your search around your resume, not a generic template." />
         <Feature title="Fast, free, no upsells"
-                 desc="A full search runs in 10–20 minutes (covers 14 job boards plus all the major ATS systems). No subscriptions, no monthly fees, no upsells, no marketing email — install once and use it as much as you want. The AI compute is covered during the pilot — no API keys to set up, no credit card, just download and run." />
+                 desc="A full search runs in 10–20 minutes (covers 16 job boards including federal, ATSes, and broad aggregators). No subscriptions, no monthly fees, no upsells, no marketing email — install once and use it as much as you want. The AI compute is covered during the pilot — no API keys to set up, no credit card, just download and run." />
         <Feature title="Smarter every run"
                  desc="The keyword generator learns from anonymized job titles found across the last several searches. Each run sharpens what the next one looks for, so your fifth search surfaces roles your first one would have missed. Your resume, profile data, and saved roles stay private to you." />
         <Feature title="Honest tier labels"
                  desc="No 'top match!' marketing. STRONG = score ≥85 with substantive evidence. GOOD = 70-84. MAYBE = 55-69 worth reading. STRETCH = 40-54. If a role doesn't qualify, it doesn't show up." />
         <Feature title="Built for triage at scale"
-                 desc="60+ qualifying roles per search. Score, tier, salary, and a 2-sentence summary visible at a glance — skim 70 results in 5 minutes and know exactly which to apply to." />
+                 desc="Typically 100+ qualifying roles per search, often 200+. Score, tier, salary, and a 2-sentence summary visible at a glance — skim the list in 5 minutes and know exactly which to apply to." />
       </div>
     </div>
   </section>
@@ -707,9 +707,9 @@ A few examples of the level of detail that helps:
       "mac-x64": "Download for Mac (Intel)",
     };
     const subheadByPlatform: Record<Platform, string> = {
-      "windows": "Version 0.1.0 · Windows 10 or 11.",
-      "mac-arm64": "Version 0.1.0 · macOS 12+ (Apple Silicon).",
-      "mac-x64": "Version 0.1.0 · macOS 12+ (Intel).",
+      "windows": "Version 0.1.4 · Windows 10 or 11.",
+      "mac-arm64": "Version 0.1.4 · macOS 12+ (Apple Silicon).",
+      "mac-x64": "Version 0.1.4 · macOS 12+ (Intel).",
     };
 
     // Primary buttons — swap href + label

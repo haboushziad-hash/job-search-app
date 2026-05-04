@@ -232,6 +232,34 @@ export async function getRun(runId: string): Promise<{
   return handle(res)
 }
 
+export async function deleteRun(runId: string): Promise<{ run_id: string; deleted: boolean }> {
+  const res = await fetch(`${API_BASE}/runs/${encodeURIComponent(runId)}`, {
+    method: 'DELETE',
+  })
+  return handle(res)
+}
+
+// ----------------------------------------------------------------------------
+// Recent unique profiles — for the StartSearch choice screen so a returning
+// user can pick which past profile to re-run. Backend dedupes by profile_hash
+// and caps at 3 unique profiles ordered by most recent run.
+// ----------------------------------------------------------------------------
+
+export interface RecentProfile {
+  run_id: string
+  last_used_at: string
+  profile_hash: string
+  profile: CandidateProfile
+  qualifying_count?: number | null
+  tier_strong?: number | null
+  tier_good?: number | null
+}
+
+export async function getRecentProfiles(): Promise<{ profiles: RecentProfile[] }> {
+  const res = await fetch(`${API_BASE}/profiles/recent`)
+  return handle(res)
+}
+
 // ----------------------------------------------------------------------------
 // Search status (polled while running)
 // ----------------------------------------------------------------------------

@@ -44,8 +44,16 @@ export function TierCard({ tier, count, scoreRange, description, onClick, select
       onClick={onClick}
       whileHover={{ y: -2 }}
       whileTap={{ scale: 0.99 }}
+      // Inline style for height — Tailwind's JIT can miss arbitrary-value
+      // classes across HMR updates. Inline style wins over both classes
+      // and parent stretch behavior. 160px sized to fit the worst-case
+      // content (label row + 4xl count + 2-line wrapping description)
+      // with a small breathing-room cushion. Larger values left obvious
+      // empty space on wide screens where descriptions don't wrap.
+      style={{ height: 160 }}
       className={cn(
         'glass relative overflow-hidden rounded-xl p-5 text-left transition-all',
+        'flex flex-col',
         'hover:shadow-2xl',
         style.glow,
         selected && 'ring-2 ring-white/20'

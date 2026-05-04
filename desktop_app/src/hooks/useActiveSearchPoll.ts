@@ -70,7 +70,14 @@ export function useActiveSearchPoll(): void {
 
   useEffect(() => {
     if (!runId) {
-      _setStatus(null)
+      // Intentionally do NOT clear `_status` here. When a run completes,
+      // tick() sets status='completed' and then clears activeRunId. If
+      // we cleared status on this effect re-run (triggered by the runId
+      // change), Running.tsx briefly sees status=null AND runId=null
+      // and races to navigate('/run') — defeating the intended
+      // post-completion redirect to /dashboard. Leaving the last status
+      // in place lets consumers detect "we just finished" reliably.
+      // A new run will overwrite status on the next tick() anyway.
       return
     }
     if (completedRef.current.has(runId)) {

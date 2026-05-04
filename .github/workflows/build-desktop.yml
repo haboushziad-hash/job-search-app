@@ -60,21 +60,21 @@ jobs:
             target_triple: "aarch64-apple-darwin"
             update_glob: "**/bundle/macos/*.app.tar.gz"
             update_platform_key: "darwin-aarch64"
-          # macos-13 (Intel) intentionally NOT in the default matrix.
-          # GitHub's macOS-13 runners are chronically queue-starved (often
-          # hours of wait), which blocks the publish-manifest aggregator
-          # job. Most testers are on Apple Silicon (2020+) anyway. To
-          # include it for a specific release, manually run the workflow
-          # with workflow_dispatch + matrix override, or temporarily
-          # un-comment this entry and push.
-          # - os: macos-13
-          #   target: macos-x64
-          #   artifact_pattern: "**/*.dmg"
-          #   artifact_name: macos-x64-installer
-          #   r2_key: "current/job-search-app-x64.dmg"
-          #   target_triple: "x86_64-apple-darwin"
-          #   update_glob: "**/bundle/macos/*.app.tar.gz"
-          #   update_platform_key: "darwin-x86_64"
+          # macos-15-intel — Apple's current Intel-x86_64 GitHub-hosted
+          # runner. Replaces the deprecated `macos-13` (retired Dec 4,
+          # 2025). Same Intel hardware family (Mac mini 2018), updated
+          # macOS image. Standard runner — chargeable like other
+          # macOS runners (10x multiplier on free-tier minutes), no
+          # 24-hour minimum, no dedicated host. Inventory is reliable
+          # since this is the official replacement label.
+          - os: macos-15-intel
+            target: macos-x64
+            artifact_pattern: "**/*.dmg"
+            artifact_name: macos-x64-installer
+            r2_key: "current/job-search-app-x64.dmg"
+            target_triple: "x86_64-apple-darwin"
+            update_glob: "**/bundle/macos/*.app.tar.gz"
+            update_platform_key: "darwin-x86_64"
 
     runs-on: ${{ matrix.os }}
 

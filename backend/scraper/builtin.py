@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import asyncio
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from backend.models import Role
@@ -126,9 +126,13 @@ class BuiltInScraper(BaseScraper):
                 ctx_before = body[max(0, match.start() - 2000): match.start()]
                 company = _extract_company_before(ctx_before, job_id)
 
-                # Location appears AFTER the title anchor
+                # Location + posted date both appear AFTER the title anchor.
+                # Posted date is observed ~500 chars after the anchor; 1500 is
+                # generous enough to cover both without crossing into the next
+                # listing's markup.
                 ctx_after = body[match.end(): match.end() + 1500]
                 location = _extract_location_after(ctx_after)
+                posted_iso = _extract_posted_date_after(ctx_after)
 
                 out.append(Role(
                     job_title=title_clean[:200],
@@ -136,6 +140,7 @@ class BuiltInScraper(BaseScraper):
                     job_url=url,
                     location=location or None,
                     location_type=("Remote" if "remote" in (location or "").lower() else "On-site"),
+                    posted_date=posted_iso,
                     job_description_full="",
                     jd_completeness="Missing",
                     primary_source=self.source_name,
@@ -232,3 +237,62 @@ def _extract_location_after(ctx_after: str) -> str:
             return text
     # Last resort: first match
     return matches[0].strip() if matches else ""
+
+
+# BuiltIn's listing HTML embeds the posted date as inline text like
+# "Posted 17 Hours Ago" / "Posted 2 Days Ago" / "Posted 3 Weeks Ago"
+# (case is title-case in the rendered DOM). There is no machine-readable
+# datetime attribute, so we parse the relative phrase and convert to an
+# ISO date. Verified against live HTML 2026-05-04 — every job card has
+# this string within ~600 chars of the title anchor.
+_POSTED_RELATIVE_RE = re.compile(
+    r'posted\s+(\d+)\s+(hour|day|week|month|year)s?\s+ago',
+    re.IGNORECASE,
+)
+_POSTED_TODAY_RE = re.compile(r'(just posted|posted today)', re.IGNORECASE)
+_POSTED_YESTERDAY_RE = re.compile(r'posted yesterday', re.IGNORECASE)
+
+
+def _extract_posted_date_after(ctx_after: str) -> Optional[str]:
+    """Convert BuiltIn's inline 'Posted X Days Ago' phrase to an ISO date.
+
+    Returns None if no date phrase is found — callers should treat that
+    the same as any other source missing a posted date.
+    """
+    now = datetime.now(timezone.utc)
+
+    # "Just posted" / "Posted today" → today's UTC date
+    if _POSTED_TODAY_RE.search(ctx_after):
+        return now.date().isoformat()
+
+    # "Posted yesterday"
+    if _POSTED_YESTERDAY_RE.search(ctx_after):
+        return (now - timedelta(days=1)).date().isoformat()
+
+    # "Posted N (hour|day|week|month|year)s ago"
+    m = _POSTED_RELATIVE_RE.search(ctx_after)
+    if not m:
+        return None
+    try:
+        n = int(m.group(1))
+    except ValueError:
+        return None
+    unit = m.group(2).lower()
+
+    if unit == "hour":
+        # Hour granularity rounds to "today" for date-only output, which is
+        # what every other scraper emits (a date, not a datetime).
+        delta = timedelta(hours=n)
+    elif unit == "day":
+        delta = timedelta(days=n)
+    elif unit == "week":
+        delta = timedelta(weeks=n)
+    elif unit == "month":
+        # Month is ambiguous — approximate as 30 days.
+        delta = timedelta(days=30 * n)
+    elif unit == "year":
+        delta = timedelta(days=365 * n)
+    else:
+        return None
+
+    return (now - delta).date().isoformat()

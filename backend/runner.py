@@ -151,7 +151,11 @@ async def run_search(
             return scored, summary
 
     # ---- 1. Scrape ----
-    _emit(5, "Scraping job boards", 2, "Querying 14 job boards in parallel...")
+    # Count active boards dynamically so this stays accurate when the
+    # registry changes (added JSearch in v0.1.4 → 16 boards).
+    from backend.scraper.orchestrator import SCRAPER_REGISTRY as _SR
+    _board_count = len(sources) if sources else len(_SR)
+    _emit(5, "Scraping job boards", 2, f"Querying {_board_count} job boards in parallel...")
     if log:
         print(f"\n[1/9] Scraping job boards...")
     scrape_health: dict = {}

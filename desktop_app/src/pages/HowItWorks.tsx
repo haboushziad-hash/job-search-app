@@ -5,9 +5,17 @@ import {
   ArrowRight, ArrowLeft,
 } from 'lucide-react'
 import { ZMark } from '@/components/ZMark'
+import { useAppStore } from '@/stores/appStore'
 
 export default function HowItWorks() {
   const navigate = useNavigate()
+  // Returning users (saved profile + at least one prior run) get
+  // forked to /start-search where they pick re-run vs. fresh build.
+  // First-timers go straight to /setup for resume upload.
+  const profile = useAppStore((s) => s.profile)
+  const lastRoles = useAppStore((s) => s.lastRoles)
+  const hasPriorRun = !!profile && profile.keywords.length > 0 && lastRoles.length > 0
+  const continueDest = hasPriorRun ? '/start-search' : '/setup'
 
   return (
     <div className="min-h-screen w-full flex items-start justify-center px-6 py-7">
@@ -131,7 +139,7 @@ export default function HowItWorks() {
           </div>
 
           <button
-            onClick={() => navigate('/setup')}
+            onClick={() => navigate(continueDest)}
             className="flex items-center gap-2 px-6 py-2.5 rounded-lg
                        bg-white text-base-950 font-medium text-sm
                        hover:bg-base-200 transition-colors

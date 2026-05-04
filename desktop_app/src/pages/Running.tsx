@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Check, Loader2, AlertCircle, X } from 'lucide-react'
@@ -69,12 +69,38 @@ export default function Running() {
   const status = useActiveSearchStatus()
   const [cancelling, setCancelling] = useState(false)
 
-  // No active run AND no terminal-state status to show → bounce back to
-  // Run setup. (We DO want to render briefly when a search just finished
-  // and runId got cleared, but in practice the global hook redirects via
-  // the success toast's "View results" button.)
+  // Track whether THIS Running.tsx instance ever saw an active run.
+  // Lets us distinguish "we just completed a run, navigate to dashboard"
+  // from "user landed on /running cold without a run — send them back
+  // to /run setup". Without this guard, the cold-mount detection
+  // (status=null, runId=null) would also fire right after a successful
+  // completion if status briefly clears, causing a wrong-page bounce.
+  const sawActiveRunRef = useRef(false)
+  // Also remember the last non-null status so we can detect "just
+  // completed" reliably even if the global hook later clears it.
+  const lastStatusRef = useRef<string | null>(null)
+  if (status) lastStatusRef.current = status.status
+
   useEffect(() => {
-    if (!runId && (!status || status.status === 'completed')) {
+    if (runId) {
+      sawActiveRunRef.current = true
+      return
+    }
+    // No active run anymore. Decide based on whatever we last saw.
+    const last = status?.status ?? lastStatusRef.current
+    if (last === 'completed') {
+      navigate('/dashboard')
+      return
+    }
+    if (last === 'failed' || last === 'cancelled') {
+      // Failure shows error UI above; cancellation is handled in
+      // handleCancel which navigates explicitly. Stay put.
+      return
+    }
+    // Cold mount with no run history → bounce to /run setup. The ref
+    // guard prevents this from firing right after a completed run
+    // when status briefly transitions through null.
+    if (!sawActiveRunRef.current) {
       navigate('/run')
     }
   }, [runId, status, navigate])
