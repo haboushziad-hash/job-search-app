@@ -74,9 +74,20 @@ class AnthropicClient:
     ) -> "_AnthropicResponse":
         start = time.perf_counter()
 
+        # Anthropic requires max_tokens > thinking.budget_tokens — the
+        # response uses the gap. If caller asked for thinking_budget=16K
+        # and max_output_tokens=8K, the API returns 400. Auto-pad
+        # max_tokens to leave at least 4K for the actual response.
+        # (v0.1.4 fix — was crashing the cross-model profile audit step.)
+        effective_max_tokens = max_output_tokens
+        if thinking_budget and thinking_budget > 0:
+            min_needed = thinking_budget + 4096
+            if effective_max_tokens < min_needed:
+                effective_max_tokens = min_needed
+
         kwargs: dict[str, Any] = {
             "model": model,
-            "max_tokens": max_output_tokens,
+            "max_tokens": effective_max_tokens,
             "temperature": temperature,
             "messages": [{"role": "user", "content": user}],
         }
