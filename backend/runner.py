@@ -155,12 +155,29 @@ async def run_search(
     if log:
         print(f"\n[1/9] Scraping job boards...")
     scrape_health: dict = {}
+
+    # v0.1.4: build an EXPANDED keyword list for JSearch only.
+    # JSearch's qualifying conversion (30.6%) is the highest of any source
+    # AND it runs on paid Pro tier with substantial budget headroom. We
+    # feed it search_terms + Tier 1/2 specific titles ("Senior AI
+    # Strategist", "Federal AI Strategy Consultant") on top of the broad
+    # search phrases. Tier 3 is excluded — too noisy. Other scrapers stay
+    # on the base `keywords` list to preserve their per-source budgets.
+    expanded_jsearch_kw: list[str] = list(keywords)
+    if hasattr(profile, "keywords") and profile.keywords:
+        for kw in profile.keywords:
+            text = (getattr(kw, "text", "") or "").strip()
+            tier = getattr(kw, "tier", 3) or 3
+            if text and tier in (1, 2) and text not in expanded_jsearch_kw:
+                expanded_jsearch_kw.append(text)
+
     raw_roles = await scrape_all(
         keywords=keywords,
         sources=sources,
         posted_within_days=posted_within_days,
         log=log,
         health_out=scrape_health,
+        extra_jsearch_keywords=expanded_jsearch_kw if len(expanded_jsearch_kw) > len(keywords) else None,
     )
     # Note: scrape_health gets attached to summary below, after score_roles
     # creates the summary object. Don't try to write to summary here.

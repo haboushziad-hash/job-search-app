@@ -92,6 +92,7 @@ async def scrape_all(
     posted_within_days: Optional[int] = 30,
     log: bool = True,
     health_out: Optional[dict] = None,
+    extra_jsearch_keywords: Optional[list[str]] = None,
 ) -> list[Role]:
     """Run all configured scrapers in parallel, return a deduped Role list.
 
@@ -100,12 +101,20 @@ async def scrape_all(
         { source: { "roles": int, "elapsed_s": float, "errored": bool, "error": str|None } }
         Used by the runner to record per-source health into the audit JSON
         and trigger alerts when a scraper returns 0 unexpectedly.
+    extra_jsearch_keywords (v0.1.4): additional keywords sent ONLY to JSearch.
+        JSearch is the highest-yielding source by qualifying-rate (30.6% vs
+        Greenhouse 1.5%) and runs on the paid Pro tier with substantial
+        budget headroom, so we feed it an expanded keyword set (search_terms
+        + Tier 1/2 specific titles) for maximum recall. Other scrapers stick
+        with the base keywords list to keep their per-source budgets in line.
     """
     import time
     selected = sources or list(SCRAPER_REGISTRY.keys())
     if log:
         print(f"[scraper] starting scrape across {len(selected)} sources: {selected}")
         print(f"[scraper] keywords: {keywords}")
+        if extra_jsearch_keywords:
+            print(f"[scraper] JSearch-only expanded keywords: {len(extra_jsearch_keywords)} terms")
         print(f"[scraper] posted within: {posted_within_days} days")
 
     timings: dict[str, float] = {}
@@ -113,7 +122,15 @@ async def scrape_all(
     async def timed_run(source_name: str, scraper: BaseScraper):
         t0 = time.time()
         try:
-            roles = await _run_scraper(scraper, keywords, posted_within_days, log)
+            # JSearch gets the expanded keyword list when supplied — paid Pro
+            # tier has plenty of budget for broader fan-out. All other sources
+            # stick with the base list (their per-source budgets are tighter).
+            kw_for_this_source = (
+                extra_jsearch_keywords
+                if (source_name == "JSearch" and extra_jsearch_keywords)
+                else keywords
+            )
+            roles = await _run_scraper(scraper, kw_for_this_source, posted_within_days, log)
             timings[source_name] = time.time() - t0
             return roles
         except Exception as e:
