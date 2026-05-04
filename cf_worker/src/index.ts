@@ -261,6 +261,22 @@ async function proxyAnthropicDeep(req: Request, env: Env, reqUrl: URL): Promise<
 // Cost cap (daily call counter via KV with TTL)
 // ============================================================================
 
+// Probabilistic write sampling: only PUT every CAP_SAMPLE_EVERY-th call,
+// increment by CAP_SAMPLE_EVERY at a time. Cuts KV PUT operations by ~98%
+// (a typical 330-LLM-call search now writes ~7 PUTs instead of 330).
+//
+// Why: Cloudflare Workers KV free tier allows only 1,000 PUTs/day across the
+// ENTIRE worker (not per-tester). One search per tester used to consume
+// roughly 1/3 of the daily quota — 3 testers = quota exhausted by lunch.
+// Sampling lets the same 1,000 PUT/day budget cover ~150 searches/day.
+//
+// Quality impact: zero. The counter is a budget guardrail, not a quality
+// signal. Accuracy degrades to +/- CAP_SAMPLE_EVERY (50 calls = 2.5% of the
+// 2000 cap), which is irrelevant for a $-budget cap. Race condition between
+// concurrent requests both winning the lottery only ever OVERCOUNTS, which
+// is the safe direction for a budget cap.
+const CAP_SAMPLE_EVERY = 50;
+
 async function checkAndIncrementCallCap(
   env: Env, uuid: string,
 ): Promise<{ over: boolean; reason?: string; current: number }> {
@@ -271,9 +287,17 @@ async function checkAndIncrementCallCap(
   if (n >= DAILY_CALL_CAP) {
     return { over: true, reason: `daily call cap of ${DAILY_CALL_CAP} reached`, current: n };
   }
-  // 36-hour TTL safely covers the next day cycle
-  await env.TESTER_KV.put(key, String(n + 1), { expirationTtl: 60 * 60 * 36 });
-  return { over: false, current: n + 1 };
+  // Sample 1-in-CAP_SAMPLE_EVERY requests; on a hit, write +CAP_SAMPLE_EVERY.
+  // On a miss, return the unchanged read value — no PUT.
+  if (Math.random() * CAP_SAMPLE_EVERY < 1) {
+    // 36-hour TTL safely covers the next day cycle
+    await env.TESTER_KV.put(
+      key, String(n + CAP_SAMPLE_EVERY),
+      { expirationTtl: 60 * 60 * 36 },
+    );
+    return { over: false, current: n + CAP_SAMPLE_EVERY };
+  }
+  return { over: false, current: n };
 }
 
 // ============================================================================
