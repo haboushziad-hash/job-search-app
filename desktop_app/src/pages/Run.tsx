@@ -68,7 +68,7 @@ export default function Run() {
       const skipMsg = appliedRoles.length > 0
         ? ` · skipping ${appliedRoles.length} already-applied role${appliedRoles.length === 1 ? '' : 's'}`
         : ''
-      toast.success(`Search started · this will take 5–15 minutes${skipMsg}`)
+      toast.success(`Search started · this will take 10–20 minutes${skipMsg}`)
       navigate('/running')
     } catch (e) {
       const msg = e instanceof ApiError ? e.detail : (e instanceof Error ? e.message : 'Unknown error')
@@ -146,7 +146,7 @@ export default function Run() {
           <Stat
             icon={Clock}
             label="Estimated runtime"
-            value="5–15 minutes"
+            value="10–20 minutes"
           />
         </div>
 

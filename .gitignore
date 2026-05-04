@@ -60,6 +60,7 @@ archive/raw_jds/*.txt
 # Tester audit dumps + local run outputs (contain personal data)
 audit_handoff/
 scripts/full_search_output/
+scripts/test_runs/
 backend/storage/runs/
 
 # Test/stress/health outputs (may contain tester data, not needed in repo)
