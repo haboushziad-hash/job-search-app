@@ -33,10 +33,18 @@ and a single role. Score how strong a fit this role is for the candidate.
 
 Score from 0 to 100, where 0 means "absolutely not a fit" and 100 means
 "perfect, apply today." Use the FULL range. Avoid clustering at round numbers
-(45, 55, 68, 78, 88) — those are stale tier-band midpoints, not signals.
-Pick the specific score that matches your read of the role: 47, 63, 81, etc.
-Tier labels (STRONG/GOOD/MAYBE/STRETCH) are assigned downstream from your raw
-score — you do not need to think about them.
+(40, 42, 45, 47, 50, 55, 68, 78, 88) — those are stale tier-band midpoints
+or floor anchors, not signals. Pick a SPECIFIC score that matches your read
+of the role: 31, 38, 43, 47, 51, 63, 81, etc.
+
+CRITICAL on the low end: weak-fit and STRETCH-tier roles should be scored
+across the full 25-49 range based on how close they are to a fit, NOT
+clustered at 42 or 47. A role you're 10% confident about scores ~30. A
+role you're 40% confident about scores ~46. A role at the borderline of
+qualifying scores ~50. SPREAD them.
+
+Tier labels (STRONG/GOOD/MAYBE/STRETCH) are assigned downstream from your
+raw score — you do not need to think about them.
 
 When scoring, consider:
   1. Function alignment — is this the kind of work the candidate wants?
