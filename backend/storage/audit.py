@@ -324,6 +324,19 @@ def write_audit_files(
     summary_dump = summary.model_dump(mode="json") if hasattr(summary, "model_dump") else {}
 
     # ---- Build audit dict ----
+    # Build the per-stage cost breakdown from the discrete cost fields on
+    # RunSummary. Previously the serializer expected a `cost_by_stage` field
+    # that didn't exist on the model, so the dict was always empty. Now we
+    # synthesize it from cost_stage1_usd / cost_stage2_usd / cost_stage3_usd /
+    # cost_embeddings_usd / cost_misc_usd which the cost tracker actually
+    # populates. Surfaces "where did the $0.46 go?" in the audit.
+    cost_by_stage = {
+        "stage1_usd":     summary_dump.get("cost_stage1_usd", 0.0),
+        "stage2_usd":     summary_dump.get("cost_stage2_usd", 0.0),
+        "stage3_usd":     summary_dump.get("cost_stage3_usd", 0.0),
+        "embeddings_usd": summary_dump.get("cost_embeddings_usd", 0.0),
+        "misc_usd":       summary_dump.get("cost_misc_usd", 0.0),
+    }
     audit = {
         "run_metadata": {
             "run_id": run_id,
@@ -331,12 +344,12 @@ def write_audit_files(
             "duration_seconds": summary_dump.get("duration_seconds"),
             "cost_breakdown": {
                 "total_usd": summary_dump.get("cost_total_usd"),
-                "by_stage": summary_dump.get("cost_by_stage", {}),
+                "by_stage": cost_by_stage,
             },
             "sources_searched": sources_searched or summary_dump.get("boards_searched", []),
             "keywords_used": keywords,
             "cache_was_hit": cache_was_hit,
-            "app_version": "0.1.0",
+            "app_version": "0.1.3",
         },
         "profile_snapshot": profile_dump,
         "pipeline_funnel": {
@@ -354,6 +367,11 @@ def write_audit_files(
                 "salary_coverage_pct": summary_dump.get("salary_coverage_pct"),
                 "location_coverage_pct": summary_dump.get("location_coverage_pct"),
             },
+            # Per-source funnel — populated by runner.py after scoring
+            # completes. Reveals where each scraper's roles get dropped:
+            # raw_scraped → after_dedup → after_hard_filters →
+            # after_liveness_and_deadlist → qualifying_final.
+            "per_source_funnel": summary_dump.get("per_source_funnel") or {},
         },
         # Per-source health (Phase D quality monitoring) — auto-populated by
         # the scraper orchestrator. Tells us at audit time which scrapers
