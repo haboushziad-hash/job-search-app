@@ -31,12 +31,12 @@ STAGE2_SYSTEM_PROMPT = """\
 You are a hiring-fit scorer for a job search tool. You see a candidate profile
 and a single role. Score how strong a fit this role is for the candidate.
 
-Score from 0 to 100:
-  85-100  STRONG    — clear yes, apply this week
-  70-84   GOOD      — strong fit, apply within 2 weeks
-  55-69   MAYBE     — worth reading the JD, apply if time allows
-  40-54   STRETCH   — long shot but technically qualifying
-  0-39    SKIP      — not a fit, will not be shown to the user
+Score from 0 to 100, where 0 means "absolutely not a fit" and 100 means
+"perfect, apply today." Use the FULL range. Avoid clustering at round numbers
+(45, 55, 68, 78, 88) — those are stale tier-band midpoints, not signals.
+Pick the specific score that matches your read of the role: 47, 63, 81, etc.
+Tier labels (STRONG/GOOD/MAYBE/STRETCH) are assigned downstream from your raw
+score — you do not need to think about them.
 
 When scoring, consider:
   1. Function alignment — is this the kind of work the candidate wants?
@@ -129,7 +129,27 @@ PRINCIPLE 7: ROLE FUNCTION OVER COMPANY AFFINITY
   no resume evidence of that function, cap the score at 55 regardless of
   how strong the company/domain alignment looks.
 
-PRINCIPLE 8: TITLE PATTERNS REQUIRING CAREFUL JD READING
+PRINCIPLE 8: TITLE-HEADLINE OVERLAP FLOOR
+  When the role's title contains 3 or more meaningful content words that also
+  appear in the candidate's headline OR target_functions list, the base score
+  FLOORS at 70. Domain or seniority concerns can reduce by 5-10 points from
+  there, but the floor is 70 for strong title alignment.
+
+  Why: this catches cases where a role with near-exact title match gets
+  unfairly penalized for a peripheral concern. Example: candidate headline
+  "AI Strategy and Enablement Consultant" vs role "AI Strategy Consultant"
+  shares 3+ content words — score should not drop below 70 for "the company
+  is in marketing not consulting" or similar domain quibbles.
+
+  Stopwords to ignore when counting: "and", "or", "of", "the", "for", "a",
+  "an", "to", "with", "in", "on", "at", "by", "as".
+
+  This rule still respects PRINCIPLE 1 (title fits, JD disagrees) — if the
+  JD describes meaningfully different work, the floor doesn't apply. But
+  DOMAIN concerns alone (industry mismatch, sector preference) shouldn't
+  push a strong title-headline match below 70.
+
+PRINCIPLE 9: TITLE PATTERNS REQUIRING CAREFUL JD READING
   Some title patterns reliably mislead. Read the JD carefully before scoring
   these high or low — don't auto-reject:
 
@@ -234,7 +254,7 @@ def _profile_block(profile: CandidateProfile) -> str:
     return "\n".join(parts)
 
 
-def _role_block(role: Role, jd_max_chars: int = 8000) -> str:
+def _role_block(role: Role, jd_max_chars: int = 16000) -> str:
     parts = [
         f"TITLE: {role.job_title}",
         f"COMPANY: {role.company}",
@@ -359,7 +379,7 @@ async def stage2_triage(
     profile: CandidateProfile,
     roles: list[Role],
     client: Optional[LLMClient] = None,
-    concurrency: int = 3,
+    concurrency: int = 8,
     use_cache: bool = False,  # Flash is cheap enough that cache savings aren't worth complexity
     run_id: Optional[str] = None,
     # Flash supports thinking_budget=0 for cheapest+fastest. Pro requires >=1.

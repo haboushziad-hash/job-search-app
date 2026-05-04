@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import time
 import uuid
-from typing import Optional
+from typing import Callable, Optional
 
 from backend.models import CandidateProfile, Role, RunSummary, score_to_tier, Tier
 from backend.scoring import cost_tracker
@@ -79,9 +79,10 @@ async def score_roles(
     client: Optional[LLMClient] = None,
     license_key: Optional[str] = None,
     embed_keep_fraction: float = 0.40,
-    stage3_skip_above: int = 88,
+    stage3_skip_above: int = 101,
     stage3_skip_below: int = 55,
     log: bool = True,
+    progress: Optional[Callable[[int, str, int], None]] = None,
 ) -> tuple[list[Role], RunSummary]:
     """Run the full scoring cascade. Returns (scored_roles, run_summary)."""
     run_id = str(uuid.uuid4())
@@ -98,7 +99,22 @@ async def score_roles(
     if log:
         print(f"[orchestrator] run {run_id[:8]} starting with {initial_count} roles")
 
+    # Local progress emitter — best-effort 4-arg call, swallows errors so
+    # progress callback bugs can't abort the actual scoring run.
+    def _emit(pct: int, stage: str, step_index: int, detail: str = "") -> None:
+        if progress is None:
+            return
+        try:
+            try:
+                progress(pct, stage, step_index, detail)
+            except TypeError:
+                progress(pct, stage, step_index)
+        except Exception as e:
+            if log:
+                print(f"[progress] callback raised (ignored): {e}")
+
     # ---- 1. Embedding pre-filter ----
+    _emit(50, "Embedding pre-filter", 4, f"Comparing {initial_count:,} roles against your profile semantically...")
     if hasattr(client, "current_stage"):
         client.current_stage = "embedding"  # type: ignore[attr-defined]
     after_embed = await filter_roles_by_embedding(
@@ -111,6 +127,7 @@ async def score_roles(
         print(f"[orchestrator] after embedding pre-filter: {len(after_embed)} / {initial_count}")
 
     # ---- 2. Stage 1 LLM pre-filter ----
+    _emit(60, "Scoring with AI cascade", 5, f"Stage 1 anti-pattern check on {len(after_embed)} roles (Flash)...")
     after_stage1 = await stage1_prefilter(
         profile=profile,
         roles=after_embed,
@@ -121,6 +138,7 @@ async def score_roles(
         print(f"[orchestrator] after Stage 1: {len(after_stage1)}")
 
     # ---- 3. Stage 2 triage ----
+    _emit(70, "Scoring with AI cascade", 5, f"Stage 2 triage scoring {len(after_stage1)} roles (Flash, ~2s each)...")
     scored = await stage2_triage(
         profile=profile,
         roles=after_stage1,
@@ -132,6 +150,8 @@ async def score_roles(
         print(f"[orchestrator] after Stage 2: {len(scored)} scored, {len(s2_qualifying)} qualifying (>=55)")
 
     # ---- 4. Stage 3 deep eval (55-87 band only) ----
+    s2_in_band = sum(1 for r in scored if r.stage2_score is not None and 55 <= r.stage2_score < stage3_skip_above)
+    _emit(80, "Scoring with AI cascade", 5, f"Stage 3 deep evaluation on {s2_in_band} qualifying roles (Pro, ~5-10s each)...")
     scored = await stage3_deep_eval(
         profile=profile,
         roles=scored,

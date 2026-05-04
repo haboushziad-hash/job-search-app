@@ -24,7 +24,7 @@ def passes_salary_floor(
     role: Role,
     *,
     minimum: int,
-    soft_band_pct: float = 0.15,
+    soft_band_pct: float = 0.10,
     hard_floor: bool = False,
 ) -> bool:
     """Soft salary filter — keep roles within band of minimum.

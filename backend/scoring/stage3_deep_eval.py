@@ -65,8 +65,11 @@ specific aspects of the candidate's profile and the role's requirements.
 If multiple resumes were uploaded, identify which one best matches this role
 and why.
 
-Score from 0 to 100 using the same rubric as Stage 2:
-  85-100 STRONG / 70-84 GOOD / 55-69 MAYBE / 40-54 STRETCH / 0-39 SKIP
+Score from 0 to 100. Use the FULL range — pick the specific score that
+matches your read of the role (47, 63, 81, etc.). Avoid clustering at round
+numbers (45, 55, 68, 78, 88, 92) — those are stale tier-band midpoints, not
+signals. Tier labels are assigned downstream from your raw score; you do not
+need to think about them.
 
 SALARY EXTRACTION:
 If structured salary fields (salary_min/salary_max) are missing or null, scan the
@@ -114,9 +117,17 @@ _RESPONSE_SCHEMA = {
         "summary": {"type": "string"},
         # LLM-extracted salary — backfills when regex missed it. Stage 3
         # already reads the full JD, so this is essentially free.
+        # IMPORTANT: Gemini's schema dialect does NOT accept JSON Schema's
+        # `type: [list, of, types]` syntax for nullables — it validates
+        # each `type` field as a single enum string (STRING, INTEGER, ...)
+        # and uses a separate `nullable: true` flag for "or null". Using
+        # `type: ["integer", "null"]` here causes a Pydantic validation
+        # error before the API call even fires, which previously broke
+        # 100% of Stage 3 calls (audit 2026-05-04: 51/51 failed silently
+        # with "ValidationError: properties.extracted_salary_min.type").
         "extracted_salary_text": {"type": "string"},
-        "extracted_salary_min": {"type": ["integer", "null"]},
-        "extracted_salary_max": {"type": ["integer", "null"]},
+        "extracted_salary_min": {"type": "integer", "nullable": True},
+        "extracted_salary_max": {"type": "integer", "nullable": True},
     },
     "required": ["score", "match_analysis", "application_strategy", "summary"],
 }
@@ -153,7 +164,7 @@ def _profile_block(profile: CandidateProfile) -> str:
     return "\n".join(parts)
 
 
-def _role_block(role: Role, jd_max_chars: int = 12000) -> str:
+def _role_block(role: Role, jd_max_chars: int = 16000) -> str:
     parts = [
         f"TITLE: {role.job_title}",
         f"COMPANY: {role.company}",
@@ -187,11 +198,11 @@ def _role_block(role: Role, jd_max_chars: int = 12000) -> str:
 def needs_stage3(
     role: Role,
     *,
-    skip_above: int = 88,
+    skip_above: int = 101,
     primary_min: int = 55,
     second_look_min: int = 35,
     second_look_max: int = 54,
-    second_look_confidence_max: float = 0.7,
+    second_look_confidence_max: float = 0.8,
 ) -> bool:
     """Decide whether a role's Stage 2 score warrants Stage 3 evaluation.
 
@@ -313,8 +324,8 @@ async def stage3_deep_eval(
     profile: CandidateProfile,
     roles: list[Role],
     client: Optional[LLMClient] = None,
-    concurrency: int = 3,
-    skip_above: int = 88,
+    concurrency: int = 6,
+    skip_above: int = 101,
     skip_below: int = 55,
     run_id: Optional[str] = None,
     thinking_budget: Optional[int] = 1024,
