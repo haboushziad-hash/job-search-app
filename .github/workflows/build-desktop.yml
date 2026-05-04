@@ -54,11 +54,12 @@ jobs:
             artifact_name: windows-installer
             r2_key: "current/job-search-app.msi"
             target_triple: "x86_64-pc-windows-msvc"
-            # Tauri 2 generates an NSIS update bundle alongside the MSI when
-            # createUpdaterArtifacts is true. The updater downloads this
-            # bundle (a zip containing the silent-install NSIS .exe) instead
-            # of the MSI, since the MSI requires UAC prompt + manual click.
-            update_glob: "**/bundle/nsis/*-setup.nsis.zip"
+            # Tauri 2 with createUpdaterArtifacts: true emits the silent-
+            # install NSIS .exe directly (no .zip wrapper, unlike Tauri 1.x)
+            # alongside a .sig file. The updater downloads the .exe directly
+            # and runs it silently — no UAC prompt, no manual click, unlike
+            # the MSI which would require both.
+            update_glob: "**/bundle/nsis/*-setup.exe"
             update_platform_key: "windows-x86_64"
           - os: macos-latest                  # Apple Silicon (arm64)
             target: macos-arm64
