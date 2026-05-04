@@ -1,14 +1,19 @@
 name: Build desktop installers
 
 # Builds the .msi (Windows) and .dmg (macOS) for every push to main.
-# Uploads them as workflow artifacts. The user downloads each platform's
-# installer from the Actions tab.
+# Also signs + publishes the auto-update bundles + manifest.json so
+# existing tester installs auto-update on next launch.
 #
 # Required setup (one-time):
-#   1. Push this repo to GitHub (public or private — both work, free for ~2000 min/mo)
-#   2. The workflow runs automatically on push to main
-#   3. Each successful run produces "windows-installer" and "macos-installer" artifacts
-#   4. Send testers the artifact download URLs (or attach to GitHub releases)
+#   1. Push this repo to GitHub
+#   2. Add GHA secrets:
+#      - CLOUDFLARE_API_TOKEN          (for R2 uploads + Worker deploy)
+#      - TAURI_SIGNING_PRIVATE_KEY     (contents of ~/.tauri/<app>.key)
+#      - TAURI_SIGNING_PRIVATE_KEY_PASSWORD  (the password set during keygen)
+#   3. The workflow runs automatically on push to main
+#   4. To ship an update: bump the `version` field in
+#      desktop_app/src-tauri/tauri.conf.json + desktop_app/src-tauri/Cargo.toml
+#      + desktop_app/package.json, push to main, GHA does the rest.
 
 on:
   push:
@@ -41,18 +46,28 @@ jobs:
             artifact_name: windows-installer
             r2_key: "current/job-search-app.msi"
             target_triple: "x86_64-pc-windows-msvc"
+            # Tauri 2 generates an NSIS update bundle alongside the MSI when
+            # createUpdaterArtifacts is true. The updater downloads this
+            # bundle (a zip containing the silent-install NSIS .exe) instead
+            # of the MSI, since the MSI requires UAC prompt + manual click.
+            update_glob: "**/bundle/nsis/*-setup.nsis.zip"
+            update_platform_key: "windows-x86_64"
           - os: macos-latest                  # Apple Silicon (arm64)
             target: macos-arm64
             artifact_pattern: "**/*.dmg"
             artifact_name: macos-arm64-installer
             r2_key: "current/job-search-app-aarch64.dmg"
             target_triple: "aarch64-apple-darwin"
+            update_glob: "**/bundle/macos/*.app.tar.gz"
+            update_platform_key: "darwin-aarch64"
           - os: macos-13                       # Intel (x86_64) — last Intel-supporting runner
             target: macos-x64
             artifact_pattern: "**/*.dmg"
             artifact_name: macos-x64-installer
             r2_key: "current/job-search-app-x64.dmg"
             target_triple: "x86_64-apple-darwin"
+            update_glob: "**/bundle/macos/*.app.tar.gz"
+            update_platform_key: "darwin-x86_64"
 
     runs-on: ${{ matrix.os }}
 
@@ -123,7 +138,7 @@ jobs:
           chmod +x "desktop_app/src-tauri/binaries/backend-${{ matrix.target_triple }}"
           ls -la desktop_app/src-tauri/binaries/
 
-      # ---- Tauri build (Rust + sidecar packaging) ----
+      # ---- Tauri build (Rust + sidecar packaging + signed update bundles) ----
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
@@ -136,21 +151,26 @@ jobs:
             desktop_app/src-tauri/target
           key: ${{ matrix.os }}-cargo-${{ hashFiles('desktop_app/src-tauri/Cargo.lock') }}
 
+      # Tauri reads TAURI_SIGNING_PRIVATE_KEY at build time and signs the
+      # update bundle (NSIS .zip on Windows, .app.tar.gz on macOS). The
+      # signature file lands next to the bundle. Without these env vars
+      # set, Tauri builds the regular installer but skips the update
+      # bundle — meaning auto-update wouldn't work. We set them on every
+      # build so the manifest publish step always has fresh signatures.
       - name: Build Tauri (Windows)
         if: matrix.os == 'windows-latest'
         working-directory: desktop_app
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: npm run tauri build
 
       - name: Build Tauri (macOS)
         if: runner.os == 'macOS'
         working-directory: desktop_app
         env:
-          # Mac unsigned build — testers will see "unidentified developer"
-          # warning. Apple Developer Program ($99/yr) needed for signed
-          # builds. For tester pilot, document the warning + how to bypass:
-          # right-click → Open → Open Anyway.
-          TAURI_SIGNING_PRIVATE_KEY: ""
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: npm run tauri build
 
       - name: Upload installer artifact
@@ -170,13 +190,22 @@ jobs:
       # Uploads to keys that the Worker's /v1/dl/<platform> route streams from.
       # The Worker's origin lock keeps the file from being downloaded except
       # via the landing page.
-      #
-      # Required GHA secret: CLOUDFLARE_API_TOKEN — same token used to deploy
-      # the Worker (must include R2:Edit and Workers:Edit permissions).
 
       - name: Install wrangler
         if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
         run: npm install -g wrangler
+
+      - name: Read app version
+        id: version
+        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          # Single source of truth: tauri.conf.json's version field.
+          # Cargo.toml + package.json should match (Tauri's release docs say
+          # to keep these three in sync; manifest reflects this version).
+          VERSION=$(node -p "require('./desktop_app/src-tauri/tauri.conf.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "App version: $VERSION"
 
       - name: Publish installer to R2
         if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
@@ -203,3 +232,146 @@ jobs:
           echo "Found installer: $FILE"
           echo "Uploading to R2 key: ${{ matrix.r2_key }}"
           wrangler r2 object put "fmsdj-installers/${{ matrix.r2_key }}" --file "$FILE" --content-type "application/octet-stream" --remote
+
+      # ---- Auto-update bundle + signature → R2 ----
+      # After tauri build with signing keys set, two extra files appear:
+      #   Windows: bundle/nsis/<app>_<version>_x64-setup.nsis.zip + .sig
+      #   macOS:   bundle/macos/<app>.app.tar.gz                 + .sig
+      # Upload both to a versioned R2 path. The .sig is a single line of
+      # base64 — we also capture it as a workflow output so the next job
+      # (publish-manifest) can include it in manifest.json without having
+      # to re-download the file from R2.
+      - name: Publish update bundle to R2
+        id: upload_update
+        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+        shell: bash
+        run: |
+          BASE="desktop_app/src-tauri/target"
+          BUNDLE=$(find "$BASE" -path "${{ matrix.update_glob }}" -type f | head -1)
+          if [ -z "$BUNDLE" ]; then
+            echo "::warning::No update bundle found at ${{ matrix.update_glob }} — auto-update for this platform will not work this build"
+            echo "available bundle outputs:"
+            find "$BASE" -path "*/bundle/*" -type f | head -50 || true
+            exit 0
+          fi
+          SIG="${BUNDLE}.sig"
+          if [ ! -f "$SIG" ]; then
+            echo "::warning::Update bundle present but signature missing — TAURI_SIGNING_PRIVATE_KEY may not be set"
+            exit 0
+          fi
+          BUNDLE_NAME=$(basename "$BUNDLE")
+          KEY_BASE="current/update/${VERSION}/${{ matrix.update_platform_key }}"
+          BUNDLE_KEY="${KEY_BASE}/${BUNDLE_NAME}"
+          SIG_KEY="${KEY_BASE}/${BUNDLE_NAME}.sig"
+          echo "Uploading bundle: $BUNDLE_KEY"
+          wrangler r2 object put "fmsdj-installers/${BUNDLE_KEY}" --file "$BUNDLE" --content-type "application/octet-stream" --remote
+          echo "Uploading signature: $SIG_KEY"
+          wrangler r2 object put "fmsdj-installers/${SIG_KEY}" --file "$SIG" --content-type "text/plain" --remote
+          # Capture the signature contents + bundle name for the manifest job
+          SIG_CONTENTS=$(cat "$SIG")
+          {
+            echo "bundle_name=$BUNDLE_NAME"
+            echo "bundle_key=$BUNDLE_KEY"
+            # Signature is a single-line base64 string; quote-escape just in case
+            echo "signature<<__SIG_EOF__"
+            echo "$SIG_CONTENTS"
+            echo "__SIG_EOF__"
+          } >> "$GITHUB_OUTPUT"
+
+      # Save just the signature + URL info so the manifest job can pick it
+      # up via download-artifact. We use a tiny JSON file because GH outputs
+      # don't cross job boundaries cleanly.
+      - name: Save platform manifest fragment
+        if: github.ref == 'refs/heads/main' && steps.upload_update.outputs.bundle_name != ''
+        shell: bash
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          BUNDLE_NAME: ${{ steps.upload_update.outputs.bundle_name }}
+          SIGNATURE: ${{ steps.upload_update.outputs.signature }}
+          PLATFORM_KEY: ${{ matrix.update_platform_key }}
+        run: |
+          mkdir -p manifest-fragments
+          DOWNLOAD_URL="https://api.findmesomedamnjobz.com/v1/update/download/${PLATFORM_KEY}/${VERSION}/${BUNDLE_NAME}"
+          # Single-line JSON for easy concatenation in the manifest job
+          jq -n \
+            --arg platform "$PLATFORM_KEY" \
+            --arg signature "$SIGNATURE" \
+            --arg url "$DOWNLOAD_URL" \
+            '{($platform): {signature: $signature, url: $url}}' \
+            > "manifest-fragments/${PLATFORM_KEY}.json"
+          cat "manifest-fragments/${PLATFORM_KEY}.json"
+
+      - name: Upload manifest fragment
+        if: github.ref == 'refs/heads/main' && steps.upload_update.outputs.bundle_name != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: manifest-fragment-${{ matrix.update_platform_key }}
+          path: manifest-fragments/${{ matrix.update_platform_key }}.json
+          retention-days: 1
+
+  # Aggregator job that runs once after all platform builds finish.
+  # Downloads each platform's manifest fragment, merges them into the
+  # final Tauri-shaped update manifest, and uploads it to R2. The Worker
+  # serves this exact JSON at /v1/update/latest.json on every app launch.
+  publish-manifest:
+    needs: build
+    # Only on main pushes — PR builds don't publish updates
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all manifest fragments
+        uses: actions/download-artifact@v4
+        with:
+          path: manifest-fragments
+          pattern: manifest-fragment-*
+          merge-multiple: true
+
+      - name: Read app version
+        id: version
+        run: |
+          VERSION=$(node -p "require('./desktop_app/src-tauri/tauri.conf.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Build manifest.json
+        run: |
+          # Tauri 2 update-manifest schema:
+          # {
+          #   "version": "X.Y.Z",
+          #   "notes": "...",
+          #   "pub_date": "ISO 8601 with TZ",
+          #   "platforms": {
+          #     "windows-x86_64": { "signature": "...", "url": "..." },
+          #     "darwin-aarch64": { ... },
+          #     "darwin-x86_64":  { ... }
+          #   }
+          # }
+          PLATFORMS=$(jq -s 'add // {}' manifest-fragments/*.json 2>/dev/null || echo '{}')
+          PUB_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          # Release notes come from the most recent commit subject — short and
+          # auto-derived. For richer notes, switch this to a CHANGELOG.md tail.
+          NOTES=$(git log -1 --pretty=%s)
+          jq -n \
+            --arg version "${{ steps.version.outputs.version }}" \
+            --arg notes "$NOTES" \
+            --arg pub_date "$PUB_DATE" \
+            --argjson platforms "$PLATFORMS" \
+            '{version: $version, notes: $notes, pub_date: $pub_date, platforms: $platforms}' \
+            > manifest.json
+          echo "Generated manifest.json:"
+          cat manifest.json
+
+      - name: Upload manifest.json to R2
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          npm install -g wrangler
+          wrangler r2 object put "fmsdj-installers/current/manifest.json" \
+            --file manifest.json \
+            --content-type "application/json" \
+            --remote
+          echo "Manifest published — testers will see the update on next app launch."

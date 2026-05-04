@@ -1,7 +1,9 @@
+import { useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 
 import { Sidebar } from '@/components/Sidebar'
+import { checkForUpdates } from '@/lib/updater'
 
 import Welcome from '@/pages/Welcome'
 import HowItWorks from '@/pages/HowItWorks'
@@ -19,6 +21,17 @@ import Settings from '@/pages/Settings'
 import Feedback from '@/pages/Feedback'
 
 export default function App() {
+  // Check for updates once shortly after the app mounts. The 3s delay
+  // gives the UI a moment to settle and the backend a moment to spin up
+  // before we hit the network for the manifest. Errors are swallowed
+  // inside checkForUpdates so a flaky connection won't break startup.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      checkForUpdates()
+    }, 3000)
+    return () => clearTimeout(t)
+  }, [])
+
   return (
     <Routes>
       {/* Root redirect: returning users with prior runs land on the

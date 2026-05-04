@@ -6,6 +6,7 @@ import {
 import { cn } from '@/lib/utils'
 import { motion } from 'framer-motion'
 import { ZMark } from './ZMark'
+import { useAppVersion } from '@/lib/updater'
 
 interface NavItem {
   to: string
@@ -25,6 +26,7 @@ const NAV: NavItem[] = [
 
 export function Sidebar() {
   const location = useLocation()
+  const version = useAppVersion()
 
   return (
     <aside className="glass-strong w-60 h-full flex flex-col border-r border-white/[0.06] relative z-10">
@@ -92,7 +94,7 @@ export function Sidebar() {
         </NavLink>
 
         <div className="px-3 pt-4 text-[10px] text-base-500 leading-tight">
-          <div>findmesomedamnjobz v0.1.0</div>
+          <div>findmesomedamnjobz v{version}</div>
           <div className="text-base-600">
             Built by{' '}
             <span className="text-base-400 font-medium">Ziad Haboush</span>

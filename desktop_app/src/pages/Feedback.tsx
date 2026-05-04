@@ -9,6 +9,7 @@ import { toast } from 'sonner'
 import { ZMark } from '@/components/ZMark'
 import { sendFeedback, ApiError, type FeedbackCategory } from '@/services/api'
 import { useAppStore } from '@/stores/appStore'
+import { useAppVersion } from '@/lib/updater'
 import type { Role } from '@/types'
 
 // Each category gets a short label, an icon, and a one-line example so the
@@ -55,8 +56,6 @@ const EXAMPLES = [
     text: 'After clicking Continue on Keywords, I expected to see results but got the dashboard. Wasn\'t obvious where to start the actual search.',
   },
 ]
-
-const APP_VERSION = '0.1.0'
 
 // Stable identifier for a role across "is this in the picker" / "is this
 // already chosen" comparisons. Mirrors the same shape the appStore uses
@@ -196,7 +195,7 @@ export default function Feedback() {
         category,
         message: refBlock + message.trim(),
         email: email.trim() || undefined,
-        appVersion: APP_VERSION,
+        appVersion,
       })
       setSubmitted(true)
       toast.success('Feedback sent — thank you!')

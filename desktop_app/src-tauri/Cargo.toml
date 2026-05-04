@@ -26,6 +26,12 @@ tauri-plugin-log = "2"
 # Sidecar shell plugin — used to spawn the bundled Python FastAPI backend
 # on app launch and tear it down on quit.
 tauri-plugin-shell = "2"
+# Auto-updater. Polls a manifest URL on app startup; if a newer version
+# is published, the JS side shows a toast and (with user consent) downloads
+# + applies the signed update bundle. Server side is a Cloudflare Worker
+# endpoint that reads R2 for the latest manifest. See
+# /v1/update/latest.json on the worker.
+tauri-plugin-updater = "2"
 # UUID v4 generation for anonymous per-tester identification.
 # Generated on first launch, persisted to app data folder, sent to the
 # backend as TESTER_UUID env var so audit JSONs can be uploaded keyed

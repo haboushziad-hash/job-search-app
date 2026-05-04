@@ -4,12 +4,14 @@ import { ArrowRight, Target, Compass, Compass as CompassFill, Sparkles, type Luc
 import { VantaBackground } from '@/components/VantaBackground'
 import { useAppStore } from '@/stores/appStore'
 import { ZMark } from '@/components/ZMark'
+import { useAppVersion } from '@/lib/updater'
 
 export default function Welcome() {
   const navigate = useNavigate()
   const profile = useAppStore((s) => s.profile)
   const lastRoles = useAppStore((s) => s.lastRoles)
   const hasPriorRun = !!profile && lastRoles.length > 0
+  const version = useAppVersion()
 
   return (
     <div className="relative h-screen w-screen overflow-hidden">
@@ -189,7 +191,7 @@ export default function Welcome() {
           </span>
           <span className="px-2 py-0.5 text-[10px] font-mono rounded
                            bg-white/[0.06] border border-white/[0.08] text-base-400">
-            v0.1.0
+            v{version}
           </span>
         </motion.div>
       </div>

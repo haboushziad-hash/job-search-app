@@ -30,8 +30,19 @@
       "csp": null
     }
   },
+  "plugins": {
+    "updater": {
+      "active": true,
+      "endpoints": [
+        "https://api.findmesomedamnjobz.com/v1/update/latest.json"
+      ],
+      "dialog": false,
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDg3NDEwNjM4N0ZDODFEQkMKUldTOEhjaC9PQVpCaCs5NEhBVitmczlaOTRQbnM0TWZzbFBpWTFWaTFFMGFXNTB5UHFGNWhMMnIK"
+    }
+  },
   "bundle": {
     "active": true,
+    "createUpdaterArtifacts": true,
     "targets": ["msi", "nsis", "dmg", "app"],
     "publisher": "Ziad Haboush",
     "category": "Productivity",

@@ -71,6 +71,11 @@ fn get_or_create_tester_uuid(app: &tauri::AppHandle) -> String {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        // Auto-updater plugin — exposes JS APIs to check + apply updates.
+        // The manifest URL and pubkey are configured in tauri.conf.json.
+        // The frontend (App.tsx) calls check() shortly after startup and
+        // shows a toast when a new version is available.
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(BackendProcess(std::sync::Mutex::new(None)))
         .setup(|app| {
             if cfg!(debug_assertions) {

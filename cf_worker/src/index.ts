@@ -104,6 +104,26 @@ export default {
       return withCors(req, env, await submitFeedback(req, env));
     }
 
+    // Auto-updater manifest. Tauri's updater plugin polls this on app
+    // startup; if the JSON body advertises a version newer than what's
+    // installed, the app shows the user a toast offering to install.
+    // The manifest itself lives in R2 at current/manifest.json — GHA
+    // writes it after every successful build. We just stream it through
+    // with appropriate cache headers (short TTL because we want testers
+    // to pick up new releases within a few minutes of publish).
+    if (path === "/v1/update/latest.json") {
+      return await serveUpdateManifest(env);
+    }
+
+    // Update bundle download — Tauri's updater fetches the actual
+    // signed installer (NSIS .exe.zip on Windows, .app.tar.gz on macOS)
+    // from a URL it reads out of the manifest. Each platform maps to a
+    // versioned R2 object. Origin lock + signature verification (done
+    // app-side using the baked-in pubkey) prevent tampering.
+    if (path.startsWith("/v1/update/download/")) {
+      return await serveUpdateBundle(req, env, path);
+    }
+
     // Tester UUID required for everything else
     const testerUuid = req.headers.get("X-Tester-UUID");
     if (!testerUuid || !isValidUuid(testerUuid)) {
@@ -289,6 +309,77 @@ async function listMyRuns(env: Env, uuid: string): Promise<Response> {
   const indexKey = `runs:${uuid}`;
   const existing = await env.TESTER_KV.get(indexKey);
   return json({ runs: existing ? JSON.parse(existing) : [] });
+}
+
+// ============================================================================
+// Auto-updater manifest + bundle download
+// ============================================================================
+//
+// Storage layout (written by GHA on each successful build):
+//
+//   R2 (INSTALLERS_R2):
+//     current/manifest.json                        — what /v1/update/latest.json serves
+//     current/update/{version}/windows-x86_64.exe  — NSIS update bundle for Windows
+//     current/update/{version}/windows-x86_64.exe.sig
+//     current/update/{version}/darwin-aarch64.app.tar.gz
+//     current/update/{version}/darwin-aarch64.app.tar.gz.sig
+//     current/update/{version}/darwin-x86_64.app.tar.gz
+//     current/update/{version}/darwin-x86_64.app.tar.gz.sig
+//
+// The manifest references the bundles via /v1/update/download/{platform}
+// URLs which this Worker serves (origin-locked similarly to /v1/dl/).
+// App-side signature verification (using the baked-in pubkey) is the
+// real security layer; the origin check is a soft layer to avoid trivial
+// abuse like third-party sites hot-linking the binary.
+
+async function serveUpdateManifest(env: Env): Promise<Response> {
+  const obj = await env.INSTALLERS_R2.get("current/manifest.json");
+  if (!obj) {
+    // No manifest yet (e.g., on a fresh deploy before GHA has pushed
+    // one). Return a 204 — Tauri treats absent/empty as "no update".
+    return new Response(null, {
+      status: 204,
+      headers: { "Cache-Control": "no-store" },
+    });
+  }
+  return new Response(obj.body, {
+    headers: {
+      "Content-Type": "application/json",
+      // Short TTL — we want testers to pick up new versions within a
+      // couple minutes of GHA publishing the manifest, but no point
+      // hammering R2 if a thousand testers happen to launch the app
+      // simultaneously.
+      "Cache-Control": "public, max-age=120",
+    },
+  });
+}
+
+async function serveUpdateBundle(req: Request, env: Env, path: string): Promise<Response> {
+  // /v1/update/download/{platform}/{version}/{filename}
+  // e.g. /v1/update/download/windows-x86_64/0.1.1/findmesomedamnjobz_0.1.1_x64-setup.nsis.zip
+  // The same URL is also used to serve the .sig sibling — clients append
+  // ".sig" themselves following Tauri's convention.
+  const r2Key = "current/update/" + path.slice("/v1/update/download/".length);
+  if (r2Key.includes("..") || !r2Key.startsWith("current/update/")) {
+    return json({ error: "invalid_path" }, 400);
+  }
+  const obj = await env.INSTALLERS_R2.get(r2Key);
+  if (!obj) {
+    return json({ error: "update_bundle_not_found", key: r2Key }, 404);
+  }
+  // Filename inferred from the URL — used in Content-Disposition so the
+  // file lands with a sensible name on disk if the OS prompts to save.
+  const filename = r2Key.split("/").pop() || "update";
+  return new Response(obj.body, {
+    headers: {
+      "Content-Type": filename.endsWith(".sig")
+        ? "text/plain"
+        : "application/octet-stream",
+      "Content-Disposition": `attachment; filename="${filename}"`,
+      "Content-Length": String(obj.size),
+      "Cache-Control": "public, max-age=300",
+    },
+  });
 }
 
 // ============================================================================
