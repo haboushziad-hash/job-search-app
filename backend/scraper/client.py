@@ -90,10 +90,22 @@ class ScraperClient:
         self._domain_pacing: dict[str, DomainPacing] = {}
 
     async def __aenter__(self) -> "ScraperClient":
+        # v0.1.4: when running in Worker proxy mode, every Worker-bound
+        # request needs the X-Tester-UUID header. Inject it as a default
+        # so every scraper proxy call (Adzuna/USAJOBS/Findwork/JSearch)
+        # passes the Worker's auth gate. Headers added here also propagate
+        # to direct (non-proxy) requests, but those endpoints ignore the
+        # header so it's harmless.
+        from backend.config import config
+        merged_headers = dict(self._default_headers)
+        tester_uuid = (config.TESTER_UUID or "").strip()
+        if tester_uuid:
+            merged_headers.setdefault("X-Tester-UUID", tester_uuid)
         self._client = httpx.AsyncClient(
             timeout=self._timeout,
             follow_redirects=True,
             http2=False,  # http2 occasionally breaks with stricter sites
+            headers=merged_headers if merged_headers else None,
         )
         return self
 
