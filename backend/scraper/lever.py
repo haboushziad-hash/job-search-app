@@ -24,20 +24,27 @@ from backend.scraper import _keyword_match as _kw_match
 # Curated list of companies known to use Lever for hiring.
 # Expand as we discover more — easy to maintain.
 LEVER_COMPANIES: list[tuple[str, str]] = [
-    # (display_name, slug) � VERIFIED LIVE 2026-05-03 via probe_lever_health.py
-    # Of 99 originally configured tokens, 90 had migrated off Lever (404).
-    # This curated list contains only the 10 confirmed-working entries.
-    # Re-probe periodically: scripts/probe_lever_health.py
-    ("Binance",     "binance"),     # 381 jobs � crypto exchange
-    ("Spotify",     "spotify"),     # 198 jobs � streaming/audio
-    ("Whoop",       "whoop"),       # 169 jobs � fitness/wearables
-    ("Mistral AI",  "mistral"),     # 161 jobs � AI/EU
-    ("Ro",          "ro"),          #  48 jobs � telehealth
-    ("Outreach",    "outreach"),    #  30 jobs � sales SaaS
-    ("Houzz",       "houzz"),       #  11 jobs � home/design marketplace
-    ("Highspot",    "highspot"),    #   6 jobs � sales enablement
-    ("Clari",       "clari"),       #   6 jobs � revenue ops
-    ("Skillshare",  "skillshare"),  #   2 jobs � education/learning
+    # (display_name, slug)
+    # Re-probed 2026-05-04: original prune was too aggressive (probe script
+    # didn't distinguish "endpoint live with 0 current postings" from "endpoint
+    # 404"). Re-added Palantir (live, 235 jobs), Netflix and KPMG and Plaid
+    # (endpoints live with 0 current jobs but may post). Keeping all roles
+    # below for periodic re-probe.
+    ("Binance",     "binance"),     # 383 jobs - crypto exchange
+    ("Palantir",    "palantir"),    # 235 jobs - data/intel
+    ("Spotify",     "spotify"),     # 196 jobs - streaming/audio
+    ("Whoop",       "whoop"),       # 169 jobs - fitness/wearables
+    ("Mistral AI",  "mistral"),     # 161 jobs - AI/EU
+    ("Ro",          "ro"),          #  48 jobs - telehealth
+    ("Outreach",    "outreach"),    #  30 jobs - sales SaaS
+    ("Houzz",       "houzz"),       #  11 jobs - home/design marketplace
+    ("Highspot",    "highspot"),    #   6 jobs - sales enablement
+    ("Clari",       "clari"),       #   6 jobs - revenue ops
+    ("Skillshare",  "skillshare"),  #   2 jobs - education/learning
+    # Endpoints live but currently 0 jobs (kept in case they post)
+    ("Netflix",     "netflix"),     # 0 current jobs but endpoint live
+    ("KPMG",        "kpmg"),        # 0 current jobs but endpoint live
+    ("Plaid",       "plaid"),       # 0 current jobs but endpoint live
 ]
 
 

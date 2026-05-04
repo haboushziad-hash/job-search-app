@@ -99,6 +99,15 @@ class BuiltInScraper(BaseScraper):
             except Exception:
                 break
             if resp.status_code != 200:
+                # BuiltIn returns 403 on some keyword queries (anti-bot or
+                # rate-limit). Skip this keyword/page and move on instead of
+                # treating it as "no results." The scraper still tries other
+                # keywords; one query failing doesn't kill the whole search.
+                if resp.status_code == 403:
+                    try:
+                        print(f"[builtin] 403 on '{keyword}' page {page} — skipping")
+                    except Exception:
+                        pass
                 break
             body = resp.text or ""
 
