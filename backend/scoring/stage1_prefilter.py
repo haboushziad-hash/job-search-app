@@ -128,7 +128,7 @@ async def stage1_prefilter(
     profile: CandidateProfile,
     roles: list[Role],
     client: Optional[LLMClient] = None,
-    concurrency: int = 6,
+    concurrency: int = 10,
     run_id: Optional[str] = None,
 ) -> list[Role]:
     """Run Stage 1 pre-filter across roles. Returns only roles flagged keep=True.

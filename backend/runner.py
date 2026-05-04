@@ -196,13 +196,25 @@ async def run_search(
     _tag_matched_keywords(filtered, profile)
 
     # ---- 4. Liveness check ----
+    # Speed win (S3): only verify roles that DON'T already have a JD body.
+    # Roles with a JD have already proven their URL works (the scraper
+    # successfully fetched the JD content). Hitting HEAD on them is wasted
+    # work — we skip them and trust the JD presence as proof of liveness.
+    # This typically saves ~1 min on a search where Greenhouse contributes
+    # most of the roles (Greenhouse roles always have JD bodies at scrape
+    # time, while Workday/iCIMS lazy-fetch and need verification).
+    roles_with_jd = [r for r in filtered if r.job_description_full]
+    roles_without_jd = [r for r in filtered if not r.job_description_full]
     _emit(
         35, "Filtering + verifying liveness", 3,
-        f"Verifying {len(filtered):,} URLs are still live...",
+        f"Verifying {len(roles_without_jd):,} URLs are still live "
+        f"({len(roles_with_jd):,} have JD already, skipping)...",
     )
     if log:
-        print(f"\n[4/9] Verifying liveness...")
-    alive = await verify_liveness(filtered, drop_dead=True, log=log)
+        print(f"\n[4/9] Verifying liveness on {len(roles_without_jd)} roles "
+              f"(skipping {len(roles_with_jd)} that already have JD)...")
+    alive_lazy = await verify_liveness(roles_without_jd, drop_dead=True, log=log)
+    alive = roles_with_jd + alive_lazy
 
     # ---- 4.5 Fetch missing JDs ----
     # Some scrapers (Workday) return search results without JD bodies.
