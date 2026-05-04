@@ -27,9 +27,16 @@ ENV = "production"
 # the check (NOT recommended for production).
 ALLOWED_DOWNLOAD_ORIGIN = "https://findmesomedamnjobz.com"
 
-# Observability — logs go to dashboard
-[observability]
+# Observability — logs go to dashboard.
+# Cloudflare changed the schema in mid-2026: the old single `enabled = true`
+# under [observability] is rejected by wrangler deploy. The new schema
+# splits logs and traces into their own nested tables.
+[observability.logs]
 enabled = true
+invocation_logs = true
+
+[observability.traces]
+enabled = false
 
 # To deploy:
 #   1. wrangler login
