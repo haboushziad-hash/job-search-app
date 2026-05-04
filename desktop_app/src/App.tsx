@@ -20,7 +20,6 @@ import Run from '@/pages/Run'
 import Running from '@/pages/Running'
 import Tracker from '@/pages/Tracker'
 import History from '@/pages/History'
-import SavedSearches from '@/pages/SavedSearches'
 import SavedJobs from '@/pages/SavedJobs'
 import HiddenJobs from '@/pages/HiddenJobs'
 import Settings from '@/pages/Settings'
@@ -187,7 +186,6 @@ function AppShell() {
             <Route path="/history" element={<AnimatedPage><History /></AnimatedPage>} />
             <Route path="/saved-jobs" element={<AnimatedPage><SavedJobs /></AnimatedPage>} />
             <Route path="/hidden" element={<AnimatedPage><HiddenJobs /></AnimatedPage>} />
-            <Route path="/saved" element={<AnimatedPage><SavedSearches /></AnimatedPage>} />
             <Route path="/settings" element={<AnimatedPage><Settings /></AnimatedPage>} />
             <Route path="/feedback" element={<AnimatedPage><Feedback /></AnimatedPage>} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />

@@ -1,7 +1,7 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
   Compass, PlayCircle, Briefcase,
-  History, Bookmark, BookmarkCheck, EyeOff, Settings, MessageCircle, Loader2,
+  History, BookmarkCheck, EyeOff, Settings, MessageCircle, Loader2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { motion } from 'framer-motion'
@@ -22,7 +22,6 @@ const NAV: NavItem[] = [
   { to: '/saved-jobs', label: 'Saved Jobs',      icon: BookmarkCheck },
   { to: '/tracker',    label: 'Applications',    icon: Briefcase },
   { to: '/history',    label: 'Run History',     icon: History },
-  { to: '/saved',      label: 'Saved Searches',  icon: Bookmark },
   { to: '/hidden',     label: 'Hidden Roles',    icon: EyeOff },
   { to: '/feedback',   label: 'Send Feedback',   icon: MessageCircle },
 ]
@@ -50,9 +49,10 @@ export function Sidebar() {
       <nav className="flex-1 px-2.5 space-y-0.5">
         {NAV.map((item) => {
           const Icon = item.icon
-          // Exact-match active state so /saved doesn't activate when the
-          // user is on /saved-jobs. Pathname must equal the route exactly
-          // (or be the route + a trailing slash).
+          // Exact-match active state so prefixes don't bleed (e.g. /run
+          // shouldn't highlight when the user is on /running). Pathname
+          // must equal the route exactly (or be the route + a trailing
+          // slash).
           const active = (
             location.pathname === item.to ||
             location.pathname === item.to + "/"

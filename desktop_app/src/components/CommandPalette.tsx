@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Command } from 'cmdk'
 import { useNavigate } from 'react-router-dom'
 import {
-  Compass, PlayCircle, Briefcase, History, Bookmark,
+  Compass, PlayCircle, Briefcase, History,
   Settings, Sparkles, Filter, Download, FileSpreadsheet, FileText,
 } from 'lucide-react'
 import { MOD_KEY } from '@/lib/utils'
@@ -79,7 +79,6 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
             <Item icon={PlayCircle} label="New Search"   shortcut={sc('2')} onSelect={go('/run')} />
             <Item icon={Briefcase} label="Applications"  shortcut={sc('3')} onSelect={go('/tracker')} />
             <Item icon={History} label="Run History"     shortcut={sc('4')} onSelect={go('/history')} />
-            <Item icon={Bookmark} label="Saved Searches" shortcut={sc('5')} onSelect={go('/saved')} />
             <Item icon={Settings} label="Settings"       onSelect={go('/settings')} />
           </Command.Group>
 
