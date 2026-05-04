@@ -93,7 +93,7 @@ class RunState(BaseModel):
 app = FastAPI(
     title="Job Search API",
     description="Local bridge between the React desktop app and the Python search backend.",
-    version="0.1.5",
+    version="0.1.6",
 )
 
 app.add_middleware(
@@ -152,12 +152,34 @@ async def _init_archive() -> None:
 async def health() -> dict[str, Any]:
     return {
         "status": "ok",
-        "version": "0.1.5",
+        "version": "0.1.6",
         "env": {
             "google_keys_configured": len(config.google_api_keys()),
             "dev_mode": config.DEV_MODE,
         },
     }
+
+
+# ============================================================================
+# Identity
+# ============================================================================
+
+@app.get("/identity")
+async def identity() -> dict[str, Any]:
+    """Return the anonymous tester UUID for this install.
+
+    The Rust shim generates a UUID v4 on first launch and persists it to
+    `%APPDATA%\\com.findmesomedamnjobz.app\\tester_id.txt` (Windows). It
+    passes that UUID to the backend as the TESTER_UUID env var on every
+    sidecar spawn, where config.TESTER_UUID picks it up.
+
+    The Settings page reads this so users can copy their tester ID and
+    share it with the operator (Ziad) for support / triage. Without this
+    endpoint, the UUID was hidden in a file folder users wouldn't think
+    to dig into.
+    """
+    tester_uuid = (config.TESTER_UUID or "").strip()
+    return {"tester_uuid": tester_uuid}
 
 
 # ============================================================================
@@ -902,6 +924,75 @@ async def set_audit_folder_endpoint(req: AuditFolderRequest) -> dict[str, Any]:
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Could not open folder: {e}")
     return {"ok": True, "path": str(archive.folder)}
+
+
+@app.post("/reset")
+async def reset_all_data() -> dict[str, Any]:
+    """Wipe all local user data and return to a fresh-install state.
+
+    Backs the Settings → Reset all data button. Replaces the manual
+    `rmdir /s /q` dance testers had to run during v0.1.5 testing.
+
+    Steps, in order:
+      1. Cancel any in-progress search task (mirrors /search/cancel logic
+         per run, but applied to every active task at once).
+      2. Drop the in-memory _RUNS and _BUILDS registries so stale state
+         from this session can't leak into the next.
+      3. archive.reset() — wipes runs.db + audit JSONs + diffs and
+         reopens on a fresh empty schema.
+
+    What's intentionally NOT wiped:
+      - The audit folder path itself (so the user's chosen folder
+        location persists — they don't have to re-pick it).
+      - tester_id.txt — lives in the OS app-data dir managed by the
+        Tauri shell; preserving it keeps Worker budget continuity.
+      - cost_log.db — operational spend tracking, not user content.
+
+    The frontend is responsible for the Tauri-side cleanup after this
+    returns: clearing localStorage (Zustand persist) and calling
+    relaunch(). The two halves are split so each side controls its own
+    state — the backend doesn't reach into the webview, the frontend
+    doesn't reach into runs.db.
+    """
+    # 1. Cancel any in-progress search tasks. Snapshot the task list first
+    # because cancellation triggers done callbacks that mutate _RUN_TASKS.
+    cancelled_runs: list[str] = []
+    for run_id, task in list(_RUN_TASKS.items()):
+        if not task.done():
+            task.cancel()
+            cancelled_runs.append(run_id)
+        # Mirror what /search/cancel does to in-memory state, so any
+        # frontend still polling sees the cancelled status before the
+        # reset relaunches.
+        st = _RUNS.get(run_id)
+        if st and st.status not in ("completed", "failed", "cancelled"):
+            st.status = "cancelled"
+            st.current_step = "Cancelled"
+
+    # 2. Drop in-memory run / build state. After reset, no run should be
+    # discoverable via /search/status or /profile/status — they're gone.
+    _RUNS.clear()
+    _BUILDS.clear()
+
+    # 3. Wipe the on-disk archive (runs.db + audits + diffs). If the
+    # archive isn't initialized for some reason (rare — would only happen
+    # if startup init failed), there's nothing to wipe and we still
+    # report success since the goal state ("clean slate") is achieved.
+    removed = {"db_files": 0, "audit_files": 0, "diff_files": 0, "other": 0}
+    try:
+        from backend.storage import get_archive
+        archive = get_archive()
+        removed = archive.reset()
+    except RuntimeError:
+        pass
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Archive reset failed: {e}")
+
+    return {
+        "ok": True,
+        "cancelled_runs": cancelled_runs,
+        "removed": removed,
+    }
 
 
 # ============================================================================

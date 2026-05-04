@@ -15,6 +15,7 @@
       ]
     },
     "updater:default",
+    "process:default",
     "dialog:default",
     "fs:default",
     {

@@ -653,6 +653,98 @@ class Archive:
             )
             return cur.fetchall()
 
+    # ----------------------------------------------------------------------
+    # Reset — wipe everything, leave an empty initialized archive
+    # ----------------------------------------------------------------------
+
+    def reset(self) -> dict[str, Any]:
+        """Wipe runs.db + audit JSONs + diffs in this archive's folder, then
+        reopen on a fresh empty schema. Used by the Settings → Reset all data
+        flow when a tester wants to simulate a clean install without manually
+        running rmdir against the OS app-data dirs.
+
+        What gets removed:
+          1. runs.db (and the -wal / -shm sidecar files SQLite leaves around
+             in WAL mode — orphaned sidecars without a primary DB confuse
+             SQLite on the next open)
+          2. <folder>/runs/*.json + *.md  (per-run audit + summary files)
+          3. <folder>/diffs/*.md          (run-vs-run comparisons)
+          4. <folder>/market_contributions.jsonl  (sibling export, if present)
+
+        What's left untouched:
+          - The audit folder itself (so the user's chosen path stays valid)
+          - tester_id.txt — that lives in the OS app-data dir, not here
+          - cost.db (managed by cost_tracker, owned by a different module —
+            caller is responsible for clearing it if desired)
+
+        Returns a dict describing what was removed, useful for diagnostics.
+        Idempotent: calling reset() on an already-empty folder is a no-op.
+        """
+        # Close the live SQLite connection first so we can delete the DB file
+        # cleanly — Windows holds an exclusive lock on open SQLite files and
+        # silently fails the unlink if the connection is still alive.
+        with self._lock:
+            try:
+                self._conn.close()
+            except Exception:
+                pass
+
+        removed = {"db_files": 0, "audit_files": 0, "diff_files": 0, "other": 0}
+
+        # 1. SQLite primary + WAL/SHM sidecars
+        for sidecar_suffix in ("", "-wal", "-shm"):
+            p = self.db_path.with_name(self.db_path.name + sidecar_suffix) \
+                if sidecar_suffix else self.db_path
+            try:
+                if p.exists():
+                    p.unlink()
+                    removed["db_files"] += 1
+            except Exception:
+                pass
+
+        # 2. Per-run audit JSONs + summary MDs
+        runs_dir = self.folder / "runs"
+        if runs_dir.exists():
+            for f in runs_dir.iterdir():
+                try:
+                    if f.is_file():
+                        f.unlink()
+                        removed["audit_files"] += 1
+                except Exception:
+                    pass
+
+        # 3. Run-to-run diff files
+        diffs_dir = self.folder / "diffs"
+        if diffs_dir.exists():
+            for f in diffs_dir.iterdir():
+                try:
+                    if f.is_file():
+                        f.unlink()
+                        removed["diff_files"] += 1
+                except Exception:
+                    pass
+
+        # 4. Sibling-readable market contributions export (only present if
+        # the user has run at least one search). Drops one file if there.
+        market_jsonl = self.folder / "market_contributions.jsonl"
+        try:
+            if market_jsonl.exists():
+                market_jsonl.unlink()
+                removed["other"] += 1
+        except Exception:
+            pass
+
+        # Reopen on a fresh empty DB at the same path. _init_schema creates
+        # all tables from scratch (CREATE TABLE IF NOT EXISTS is fine because
+        # the file is brand new).
+        self._conn = sqlite3.connect(self.db_path, check_same_thread=False)
+        self._conn.row_factory = sqlite3.Row
+        self._conn.execute("PRAGMA journal_mode = WAL")
+        self._conn.execute("PRAGMA foreign_keys = ON")
+        self._init_schema()
+
+        return removed
+
 
 # ---------------------------------------------------------------------------
 # Helpers

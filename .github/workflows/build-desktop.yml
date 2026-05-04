@@ -29,6 +29,11 @@ on:
       - '**.md'
       - '.gitignore'
       - 'scripts/**'
+      # Worker workflow file — only affects the deploy-worker pipeline,
+      # never the desktop build. Without this, Worker workflow tweaks
+      # (e.g. wranglerVersion changes) trigger redundant 10-min desktop
+      # rebuilds that produce identical artifacts.
+      - '.github/workflows/deploy-worker.yml'
     # Trigger on version tags too — `publish-manifest` and the R2 upload
     # steps inside each build job both require `refs/tags/v*` context to
     # actually upload artifacts. Without this, `git push --tags` would

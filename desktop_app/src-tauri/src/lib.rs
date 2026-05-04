@@ -83,6 +83,9 @@ pub fn run() {
         // user explicitly picks the path via the OS-native dialog.
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
+        // Process plugin — backs JS-side relaunch() / exit() calls. Used by
+        // the auto-updater and the Settings reset flow.
+        .plugin(tauri_plugin_process::init())
         .manage(BackendProcess(std::sync::Mutex::new(None)))
         .setup(|app| {
             if cfg!(debug_assertions) {

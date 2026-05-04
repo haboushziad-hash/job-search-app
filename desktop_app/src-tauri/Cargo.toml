@@ -1,6 +1,6 @@
 [package]
 name = "app"
-version = "0.1.5"
+version = "0.1.6"
 description = "A Tauri App"
 authors = ["you"]
 license = ""
@@ -37,6 +37,10 @@ tauri-plugin-updater = "2"
 # instead of it silently dumping into Downloads.
 tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
+# Process control — exposes relaunch() to the JS side. Used by the
+# auto-updater (after applying a downloaded bundle) and by the
+# Settings → Reset all data flow (after wiping local data).
+tauri-plugin-process = "2"
 # UUID v4 generation for anonymous per-tester identification.
 # Generated on first launch, persisted to app data folder, sent to the
 # backend as TESTER_UUID env var so audit JSONs can be uploaded keyed

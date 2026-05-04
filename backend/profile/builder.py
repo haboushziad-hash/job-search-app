@@ -501,10 +501,21 @@ _RESPONSE_SCHEMA = {
         "negative_signals": {"type": "array", "items": {"type": "string"}},
         "excluded_title_patterns": {"type": "array", "items": {"type": "string"}},
         "profile_tags": {"type": "array", "items": {"type": "string"}},
-        "keywords_tier_1": {"type": "array", "items": {"type": "string"}},
-        "keywords_tier_2": {"type": "array", "items": {"type": "string"}},
-        "keywords_tier_3": {"type": "array", "items": {"type": "string"}},
-        "search_terms": {"type": "array", "items": {"type": "string"}},
+        # v0.1.6 stability fix: enforce a MINIMUM array size via schema
+        # so keyword counts don't drift below a usable floor across runs
+        # (we observed 12-then-10 search_terms variance from the same
+        # resume, which silently changed search results downstream).
+        # Schema-level minItems is a hard floor — far more reliable than
+        # prompt instructions which the LLM sometimes ignores.
+        #
+        # Deliberately NO maxItems: if the model identifies 15 strong
+        # keywords from a particularly rich resume, capping at 12 would
+        # discard signal we want. The AI's job is to determine the right
+        # upper bound based on what the resume actually warrants.
+        "keywords_tier_1": {"type": "array", "items": {"type": "string"}, "minItems": 6},
+        "keywords_tier_2": {"type": "array", "items": {"type": "string"}, "minItems": 6},
+        "keywords_tier_3": {"type": "array", "items": {"type": "string"}, "minItems": 4},
+        "search_terms": {"type": "array", "items": {"type": "string"}, "minItems": 10},
         "resume_emphases": {
             "type": "array",
             "items": {

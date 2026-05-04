@@ -46,6 +46,17 @@ export async function healthCheck(): Promise<{ status: string; version: string; 
 }
 
 // ----------------------------------------------------------------------------
+// Identity — anonymous tester UUID (generated on first launch, persisted in
+// app data, sent to the backend as TESTER_UUID env var on every spawn).
+// Surfaced in Settings so users can copy/share their ID for support.
+// ----------------------------------------------------------------------------
+
+export async function getIdentity(): Promise<{ tester_uuid: string }> {
+  const res = await fetch(`${API_BASE}/identity`)
+  return handle(res)
+}
+
+// ----------------------------------------------------------------------------
 // Profile build (multipart upload)
 // ----------------------------------------------------------------------------
 
@@ -472,6 +483,33 @@ export async function listApplications(): Promise<ApplicationRecord[]> {
   const res = await fetch(`${API_BASE}/applications`)
   const data = await handle<{ applications: ApplicationRecord[] }>(res)
   return data.applications
+}
+
+// ----------------------------------------------------------------------------
+// Reset all data — Settings → Danger Zone
+// ----------------------------------------------------------------------------
+// Wipes runs.db, audit JSONs, diffs, and in-memory run/build state on the
+// backend. The frontend half (clearing Zustand's localStorage and relaunching
+// the app) is the caller's responsibility — see Settings.tsx for the wiring.
+//
+// Only the backend cleanup happens here. Splitting it this way keeps the
+// API client a thin transport layer and lets the page own UX choices like
+// when to relaunch and what to show during the wipe.
+
+export interface ResetResult {
+  ok: boolean
+  cancelled_runs: string[]
+  removed: {
+    db_files: number
+    audit_files: number
+    diff_files: number
+    other: number
+  }
+}
+
+export async function resetAllData(): Promise<ResetResult> {
+  const res = await fetch(`${API_BASE}/reset`, { method: 'POST' })
+  return handle(res)
 }
 
 export { ApiError }

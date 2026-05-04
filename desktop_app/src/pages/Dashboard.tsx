@@ -190,6 +190,13 @@ export default function Dashboard() {
     MAYBE: lastRoles.filter((r) => r.final_tier === 'MAYBE').length,
     STRETCH: lastRoles.filter((r) => r.final_tier === 'STRETCH').length,
   }
+  // Header count = sum of the four tier cards. Using lastRoles.length
+  // here is wrong because lastRoles can include roles whose final_tier
+  // isn't one of the named tiers (e.g., null/below-threshold edge
+  // cases), which causes the header total to silently overshoot the
+  // visible tier breakdown. Forcing this invariant keeps the math
+  // honest: header total ≡ STRONG + GOOD + MAYBE + STRETCH, always.
+  const qualifyingCount = counts.STRONG + counts.GOOD + counts.MAYBE + counts.STRETCH
 
   const hideSalarylessRoles = useAppStore((s) => s.hideSalarylessRoles)
 
@@ -364,7 +371,7 @@ export default function Dashboard() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
           <p className="text-sm text-base-400 mt-1">
-            Last run · {runDate} · {lastRoles.length} qualifying roles
+            Last run · {runDate} · {qualifyingCount} qualifying roles
             {lastSummary && (
               <>
                 {' '}from {lastSummary.roles_scraped.toLocaleString()} scraped
