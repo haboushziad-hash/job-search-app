@@ -117,19 +117,29 @@ class JSearchScraper(BaseScraper):
         api_key: str, base_url: str,
     ) -> list[Role]:
         # JSearch returns ~10 results per page, ranked by relevance.
-        # v0.1.4 (post-Pro-upgrade): num_pages=2 doubles the yield.
-        # Math: 11 search_terms × 2 pages = 22 calls/search.
-        # Pro tier (10K calls/month) covers ~450 searches/month — plenty for
-        # 4 testers × 2 searches/week. Page 2 is still high-quality
-        # (relevance-ranked); diminishing returns kick in around page 3.
-        # Audit confirmed JSearch converts raw -> qualifying at 30.6%, the
-        # highest of any source — worth pushing the recall window wider.
+        # v0.1.4 (post-Pro-upgrade tuning):
+        #   - num_pages=3: pulls 30 results per keyword (vs the prior 10).
+        #     JSearch's relevance ranking is strong (uses LinkedIn /
+        #     Indeed / Glassdoor signals), so even page 3 is high-quality.
+        #     Audit showed 30.6% raw->qualifying conversion at p1; p2/p3
+        #     should hold ~25-30% based on the ranking model.
+        #   - employment_types=FULLTIME: drops contract/intern/part-time
+        #     noise. Most testers want full-time roles; including the
+        #     others dilutes the embedding pre-filter without adding
+        #     signal. Keeps roughly the same qualifying count from a
+        #     smaller raw pool.
+        #
+        # Math: 11 search_terms × 3 pages = 33 calls/search.
+        # Pro tier (10K/month, overage @ $0.003): covers ~300 searches at
+        # zero overage. 4 testers × 2 searches/wk × 4 wk = 32 searches/mo
+        # = 1,056 calls/mo = 11% of Pro quota.
         params = {
             "query": keyword,
             "page": "1",
-            "num_pages": "2",
+            "num_pages": "3",
             "date_posted": date_filter,
             "country": "us",
+            "employment_types": "FULLTIME",
         }
         headers: dict[str, str] = {"Accept": "application/json"}
         # In proxy mode, Worker injects X-RapidAPI-Key + X-RapidAPI-Host.
