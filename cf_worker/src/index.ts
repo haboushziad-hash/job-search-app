@@ -479,13 +479,26 @@ async function checkAndIncrementCallCap(
   }
   // Sample 1-in-CAP_SAMPLE_EVERY requests; on a hit, write +CAP_SAMPLE_EVERY.
   // On a miss, return the unchanged read value — no PUT.
+  //
+  // KV PUT is wrapped in try/catch and treated as non-fatal: this is
+  // bookkeeping (cap accounting), not gatekeeping. The Anthropic call
+  // already succeeded by the time we get here, so failing to write the
+  // sample shouldn't crash the search. Worst case: counter undercounts
+  // by ~$0.50-2 per missed PUT, which the daily $-cap headroom absorbs.
   if (Math.random() * CAP_SAMPLE_EVERY < 1) {
-    // 36-hour TTL safely covers the next day cycle
-    await env.TESTER_KV.put(
-      key, String(n + CAP_SAMPLE_EVERY),
-      { expirationTtl: 60 * 60 * 36 },
-    );
-    return { over: false, current: n + CAP_SAMPLE_EVERY };
+    try {
+      // 36-hour TTL safely covers the next day cycle
+      await env.TESTER_KV.put(
+        key, String(n + CAP_SAMPLE_EVERY),
+        { expirationTtl: 60 * 60 * 36 },
+      );
+      return { over: false, current: n + CAP_SAMPLE_EVERY };
+    } catch (err) {
+      console.warn(`KV put failed for cap sample (key=${key}):`, err);
+      // Return unchanged value — equivalent to "this request was a miss"
+      // from the caller's perspective. The actual call already happened.
+      return { over: false, current: n };
+    }
   }
   return { over: false, current: n };
 }
@@ -515,13 +528,22 @@ async function uploadRun(req: Request, env: Env, uuid: string): Promise<Response
       uploaded_at: new Date().toISOString(),
     },
   });
-  // Append to a KV index for fast list-by-tester
+  // Append to a KV index for fast list-by-tester. The R2 audit JSON above
+  // is the source of truth — this index is just a convenience for fast
+  // listing. So if the KV write fails, log it but don't fail the request:
+  // the run is already safely stored in R2 and the user's local SQLite.
   const indexKey = `runs:${uuid}`;
-  const existing = await env.TESTER_KV.get(indexKey);
-  const list = existing ? JSON.parse(existing) : [];
-  list.unshift({ key, ts, run_id: runId, qualifying: data?.pipeline_funnel?.qualifying_final });
-  // Keep last 50 per tester
-  await env.TESTER_KV.put(indexKey, JSON.stringify(list.slice(0, 50)));
+  try {
+    const existing = await env.TESTER_KV.get(indexKey);
+    const list = existing ? JSON.parse(existing) : [];
+    list.unshift({ key, ts, run_id: runId, qualifying: data?.pipeline_funnel?.qualifying_final });
+    // Keep last 50 per tester
+    await env.TESTER_KV.put(indexKey, JSON.stringify(list.slice(0, 50)));
+  } catch (err) {
+    console.warn(`KV put failed for run index (uuid=${uuid}):`, err);
+    // Non-fatal — the audit JSON is in R2 and the desktop app's local
+    // SQLite holds the run. Cloud-side index just misses this entry.
+  }
   return json({ ok: true, key, run_id: runId });
 }
 
