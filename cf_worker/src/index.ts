@@ -623,9 +623,9 @@ async function serveUpdateBundle(req: Request, env: Env, path: string): Promise<
   if (!obj) {
     return json({ error: "update_bundle_not_found", key: r2Key }, 404);
   }
-  // Filename inferred from the URL — used in Content-Disposition so the
-  // file lands with a sensible name on disk if the OS prompts to save.
-  const filename = r2Key.split("/").pop() || "update";
+  // {filename} from the destructuring above is used directly in
+  // Content-Disposition so the file lands with a sensible name on
+  // disk if the OS prompts to save.
   return new Response(obj.body, {
     headers: {
       "Content-Type": filename.endsWith(".sig")
