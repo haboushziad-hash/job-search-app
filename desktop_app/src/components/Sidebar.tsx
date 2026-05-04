@@ -1,12 +1,14 @@
-import { NavLink, useLocation } from 'react-router-dom'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
   Compass, PlayCircle, Briefcase,
-  History, Bookmark, BookmarkCheck, Settings, MessageCircle,
+  History, Bookmark, BookmarkCheck, Settings, MessageCircle, Loader2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { motion } from 'framer-motion'
 import { ZMark } from './ZMark'
 import { useAppVersion } from '@/lib/updater'
+import { useAppStore } from '@/stores/appStore'
+import { useActiveSearchStatus } from '@/hooks/useActiveSearchPoll'
 
 interface NavItem {
   to: string
@@ -26,7 +28,11 @@ const NAV: NavItem[] = [
 
 export function Sidebar() {
   const location = useLocation()
+  const navigate = useNavigate()
   const version = useAppVersion()
+  const activeRunId = useAppStore((s) => s.activeRunId)
+  const status = useActiveSearchStatus()
+  const showRunningIndicator = !!activeRunId && status?.status === 'running'
 
   return (
     <aside className="glass-strong w-60 h-full flex flex-col border-r border-white/[0.06] relative z-10">
@@ -75,6 +81,36 @@ export function Sidebar() {
           )
         })}
       </nav>
+
+      {/* Active search indicator — shows whenever a search is running.
+          Click to navigate back to the Running page. Lets the user
+          "Continue in background" without losing track of their search. */}
+      {showRunningIndicator && (
+        <button
+          onClick={() => navigate('/running')}
+          className="mx-2.5 mb-2 px-3 py-2.5 rounded-lg flex items-center gap-2.5
+                     bg-accent-500/[0.08] border border-accent-500/30
+                     hover:bg-accent-500/[0.14] hover:border-accent-500/50
+                     transition-colors text-left group"
+          title="Click to view running search"
+        >
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ repeat: Infinity, duration: 1.4, ease: 'linear' }}
+            className="flex-shrink-0"
+          >
+            <Loader2 size={14} className="text-accent-300" />
+          </motion.div>
+          <div className="flex-1 min-w-0">
+            <div className="text-[11px] font-medium text-accent-200 truncate">
+              Search running
+            </div>
+            <div className="text-[10px] text-accent-300/70 truncate">
+              {Math.round(status?.progress ?? 0)}% &middot; click to view
+            </div>
+          </div>
+        </button>
+      )}
 
       {/* Settings (bottom) */}
       <div className="px-2.5 pb-4 pt-2 border-t border-white/[0.04]">

@@ -6,8 +6,9 @@ import { ZMark } from '@/components/ZMark'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/stores/appStore'
-import { getSearchStatus, getSearchResults, cancelSearch, ApiError } from '@/services/api'
+import { cancelSearch, ApiError } from '@/services/api'
 import type { SearchStatus } from '@/services/api'
+import { useActiveSearchStatus } from '@/hooks/useActiveSearchPoll'
 
 const STEPS = [
   { id: 1, label: 'Profile + keywords ready' },
@@ -23,23 +24,33 @@ const STEPS = [
 // generic "current_step" string with something that tells the user the tool
 // is actually working — "1,847 roles scraped from 3 of 6 sources" beats
 // "scraping job boards" any day.
+// Backend now emits a fine-grained `current_step_detail` from each stage.
+// Use that as the primary live text. Fall back to derived hints based on
+// counters if the backend is older / hasn't emitted yet, so we degrade
+// gracefully on the brief window between mount and first poll response.
 function describeProgress(stepIdx: number, status: SearchStatus | null): string | null {
   if (!status) return null
+  // Primary source — live text emitted by backend at each stage transition.
+  if (status.current_step_detail && status.current_step_detail.trim()) {
+    return status.current_step_detail
+  }
+  // Fallback — synthesize from counters (works even if backend predates
+  // the current_step_detail field).
   const scraped = status.roles_scraped || 0
   const qualifying = status.roles_qualifying || 0
   switch (stepIdx) {
-    case 0:  // Profile + keywords
+    case 0:
       return null
-    case 1:  // Scraping
+    case 1:
       return scraped > 0 ? `${scraped.toLocaleString()} roles found so far` : 'Querying career pages…'
-    case 2:  // Filtering + liveness
+    case 2:
       return scraped > 0 ? `Filtering ${scraped.toLocaleString()} roles by your preferences` : null
-    case 3:  // Embedding
+    case 3:
       return 'Comparing each role against your profile semantically'
-    case 4:  // Scoring cascade
+    case 4:
       if (qualifying > 0) return `${qualifying} qualifying so far · evaluating remainder`
       return 'Reading job descriptions in detail'
-    case 5:  // Building dashboard
+    case 5:
       return 'Assembling your scored results'
     default:
       return status.current_step || null
@@ -49,80 +60,30 @@ function describeProgress(stepIdx: number, status: SearchStatus | null): string 
 export default function Running() {
   const navigate = useNavigate()
   const runId = useAppStore((s) => s.activeRunId)
-  const setLastResults = useAppStore((s) => s.setLastResults)
   const setActiveRunId = useAppStore((s) => s.setActiveRunId)
-  const [status, setStatus] = useState<SearchStatus | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  // Status comes from the GLOBAL active-search poll (mounted at App root in
+  // App.tsx via useActiveSearchPoll). This means the search keeps being
+  // polled even if the user clicks "Continue in background" and navigates
+  // away — that's the v0.1.3 fix. The toast + dashboard refresh on
+  // completion all happen there too. This page is now just a viewer.
+  const status = useActiveSearchStatus()
   const [cancelling, setCancelling] = useState(false)
 
-  // No active run — bounce back to Run setup
+  // No active run AND no terminal-state status to show → bounce back to
+  // Run setup. (We DO want to render briefly when a search just finished
+  // and runId got cleared, but in practice the global hook redirects via
+  // the success toast's "View results" button.)
   useEffect(() => {
-    if (!runId) {
+    if (!runId && (!status || status.status === 'completed')) {
       navigate('/run')
     }
-  }, [runId, navigate])
+  }, [runId, status, navigate])
 
-  // Poll status every 2 seconds. Track when this page mounted so we don't
-  // instantly auto-navigate away on cache-hit completions — users need a
-  // visible window to see progress AND have access to the Cancel button
-  // before we whisk them off to the dashboard.
-  const MIN_VISIBLE_MS = 2500
-  const mountedAtRef = (typeof performance !== 'undefined' ? performance : { now: () => Date.now() })
-  const mountedAt = mountedAtRef.now()
-
-  useEffect(() => {
-    if (!runId) return
-    let cancelled = false
-
-    const tick = async () => {
-      if (cancelled) return
-      try {
-        const s = await getSearchStatus(runId)
-        if (cancelled) return
-        setStatus(s)
-
-        if (s.status === 'completed') {
-          // Pull final results
-          const results = await getSearchResults(runId)
-          // Honor minimum visible time so the running page isn't a blink-and-
-          // miss flash on cache hits. Gives the user a chance to see + cancel.
-          const elapsed = mountedAtRef.now() - mountedAt
-          const wait = Math.max(0, MIN_VISIBLE_MS - elapsed)
-          if (wait > 0) {
-            await new Promise((r) => setTimeout(r, wait))
-            if (cancelled) return
-          }
-          setLastResults(results.roles, results.summary)
-          toast.success(
-            `Search complete · ${results.roles.length} qualifying roles found`
-          )
-          navigate('/dashboard')
-          return
-        }
-
-        if (s.status === 'failed') {
-          setError(s.error || 'Run failed')
-          return
-        }
-
-        if (s.status === 'cancelled') {
-          // User cancelled. Polling stops; toast was already shown by the
-          // cancel handler. Bounce back to the search setup page.
-          return
-        }
-
-        // Keep polling
-        setTimeout(tick, 2000)
-      } catch (e) {
-        if (cancelled) return
-        const msg = e instanceof ApiError ? e.detail : 'Connection error'
-        setError(msg)
-      }
-    }
-
-    tick()
-    return () => { cancelled = true }
-  }, [runId, navigate, setLastResults])
+  // Show the failed state directly when the search fails. activeRunId gets
+  // cleared by the global hook on failure, but the last-known status is
+  // preserved in the module-scope store so this component can still show
+  // the error UI before the user navigates away.
+  const error = status?.status === 'failed' ? (status.error || 'Run failed') : null
 
   // Map server progress → UI step index
   const activeStep = status ? Math.max(0, status.current_step_index - 1) : 0
@@ -180,7 +141,7 @@ export default function Running() {
           <>
             <p className="text-sm text-base-400 mb-7">
               {progress < 100
-                ? "This will take 5–15 minutes. You can leave this screen open."
+                ? "This will take 10–20 minutes. You can leave this screen open."
                 : 'Done! Loading your results...'}
             </p>
 

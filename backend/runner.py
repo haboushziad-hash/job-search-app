@@ -275,6 +275,51 @@ async def run_search(
             print(f"[runner] Post-Stage-3 salary re-filter: demoted {salary_demoted} "
                   f"roles whose JD-extracted salary was below the soft floor.")
 
+    # ---- Regional-variant dedup (Writer-style) -----------------------------
+    # Some companies post the same role in 3-4 regional variants
+    # (Writer "Enterprise AI transformation lead (East)" / "(West)" /
+    # "(Central)" / "(UK)"). Run 3 had 11 Writer roles, half of which were
+    # region clones. We collapse them by stripping a trailing parenthetical
+    # region and keeping only the highest-scoring variant per (company, base_title).
+    # The other variants stay in the audit JSON for visibility but don't
+    # double-count in the qualifying pool.
+    import re as _re_dedup
+    _REGION_RE = _re_dedup.compile(
+        r"\s*\(\s*(east|west|central|north|south|uk|eu|emea|apac|latam|us|usa|canada|na|amer|americas|na/emea|hybrid|remote)\s*\)\s*$",
+        _re_dedup.IGNORECASE,
+    )
+    def _base_title(t: str) -> str:
+        return _REGION_RE.sub("", (t or "").strip()).strip().lower()
+
+    region_keep: dict[tuple[str, str], "Role"] = {}
+    region_drop_count = 0
+    for r in scored:
+        if (r.final_score or 0) < 40:
+            continue
+        company_key = (r.company or "").strip().lower()
+        title_key = _base_title(r.job_title or "")
+        if not company_key or not title_key:
+            continue
+        composite_key = (company_key, title_key)
+        existing = region_keep.get(composite_key)
+        if existing is None:
+            region_keep[composite_key] = r
+        else:
+            # Keep the higher-scoring variant; demote the loser to STRETCH-or-below
+            # so it disappears from qualifying.
+            keeper, loser = (
+                (r, existing) if (r.final_score or 0) > (existing.final_score or 0)
+                else (existing, r)
+            )
+            region_keep[composite_key] = keeper
+            loser.final_score = min(loser.final_score or 39, 39)
+            from backend.models import Tier
+            loser.final_tier = Tier.SKIP
+            region_drop_count += 1
+    if log and region_drop_count > 0:
+        print(f"[runner] Regional-variant dedup: collapsed {region_drop_count} roles "
+              f"(kept highest-scoring variant per company+base_title).")
+
     _emit(95, "Building dashboard", 6, "Assembling your scored results...")
     # Attach per-source health captured during scrape phase. This persists
     # in audit JSON + lets the dashboard / health monitor flag broken

@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 
 import { Sidebar } from '@/components/Sidebar'
 import { checkForUpdates } from '@/lib/updater'
+import { useActiveSearchPoll } from '@/hooks/useActiveSearchPoll'
 
 import Welcome from '@/pages/Welcome'
 import HowItWorks from '@/pages/HowItWorks'
@@ -31,6 +32,12 @@ export default function App() {
     }, 3000)
     return () => clearTimeout(t)
   }, [])
+
+  // Global active-search poll — runs regardless of route so "Continue in
+  // background" actually works. Fires the success toast + updates results
+  // when the search completes, even if the user has navigated away from
+  // /running.
+  useActiveSearchPoll()
 
   return (
     <Routes>
