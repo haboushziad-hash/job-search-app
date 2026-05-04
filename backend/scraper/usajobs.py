@@ -119,6 +119,9 @@ class USAJobsScraper(BaseScraper):
         except Exception:
             return []
         if resp.status_code != 200:
+            if resp.status_code in (403, 429):
+                self.quota_exhausted = True
+                self.quota_exhausted_reason = f"USAJOBS HTTP {resp.status_code} (rate limit or auth)"
             return []
         try:
             data = resp.json()

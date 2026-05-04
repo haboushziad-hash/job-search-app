@@ -137,13 +137,19 @@ async def scrape_all(
             timings[source_name] = time.time() - t0
             raise
 
+    # Keep a reference to each scraper instance so we can read its
+    # quota_exhausted state after the run finishes (v0.1.4).
+    scrapers_by_name: dict[str, BaseScraper] = {}
     async with ScraperClient() as http:
         tasks = []
+        valid_sources = []
         for source_name in selected:
             cls = SCRAPER_REGISTRY.get(source_name)
             if not cls:
                 continue
             scraper = cls(client=http)
+            scrapers_by_name[source_name] = scraper
+            valid_sources.append(source_name)
             tasks.append(timed_run(source_name, scraper))
 
         results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -151,8 +157,13 @@ async def scrape_all(
     all_roles: list[Role] = []
     by_source: dict[str, int] = {}
     health: dict[str, dict] = {}
-    for source, result in zip(selected, results):
+    for source, result in zip(valid_sources, results):
         elapsed = timings.get(source, 0.0)
+        scraper_inst = scrapers_by_name.get(source)
+        # v0.1.4: per-source quota state — surfaces "Adzuna hit cap"
+        # vs "Adzuna found 0 matches" so testers know which it is.
+        quota_exhausted = bool(getattr(scraper_inst, "quota_exhausted", False))
+        quota_reason = str(getattr(scraper_inst, "quota_exhausted_reason", "") or "")
         if isinstance(result, Exception):
             if log:
                 print(f"[scraper] {source} FAILED: {type(result).__name__}: {result}")
@@ -162,6 +173,8 @@ async def scrape_all(
                 "elapsed_s": round(elapsed, 1),
                 "errored": True,
                 "error": f"{type(result).__name__}: {str(result)[:200]}",
+                "quota_exhausted": quota_exhausted,
+                "quota_exhausted_reason": quota_reason if quota_exhausted else "",
             }
             continue
         by_source[source] = len(result)
@@ -170,7 +183,11 @@ async def scrape_all(
             "elapsed_s": round(elapsed, 1),
             "errored": False,
             "error": None,
+            "quota_exhausted": quota_exhausted,
+            "quota_exhausted_reason": quota_reason if quota_exhausted else "",
         }
+        if quota_exhausted and log:
+            print(f"[scraper] {source} quota exhausted: {quota_reason}")
         all_roles.extend(result)
 
     # Centralized post-fetch sanity filter.

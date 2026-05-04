@@ -144,6 +144,13 @@ class AdzunaScraper(BaseScraper):
             except Exception:
                 break
             if resp.status_code != 200:
+                # v0.1.4: surface quota-exhausted state to orchestrator.
+                # Adzuna returns 429 (rate limit) or 403 (monthly quota
+                # exceeded on free tier). Either way, all subsequent calls
+                # will fail too, so flag it.
+                if resp.status_code in (403, 429):
+                    self.quota_exhausted = True
+                    self.quota_exhausted_reason = f"Adzuna HTTP {resp.status_code} (likely monthly quota exceeded)"
                 break
             try:
                 data = resp.json()

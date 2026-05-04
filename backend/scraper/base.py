@@ -25,6 +25,14 @@ class BaseScraper(ABC):
     def __init__(self, client: Optional[ScraperClient] = None):
         self._client = client
         self._owns_client = client is None
+        # v0.1.4: surfaces upstream API quota state to the orchestrator.
+        # When a scraper detects a 429 (rate limit) or 403 (often quota
+        # exceeded) from its upstream API, it sets quota_exhausted=True
+        # so the orchestrator can surface "Adzuna hit monthly cap — your
+        # other sources still ran" in the audit JSON instead of silently
+        # showing 0 roles. Tester transparency.
+        self.quota_exhausted: bool = False
+        self.quota_exhausted_reason: str = ""
 
     async def __aenter__(self):
         if self._client is None:

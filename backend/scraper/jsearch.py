@@ -155,6 +155,11 @@ class JSearchScraper(BaseScraper):
         except Exception:
             return []
         if resp.status_code != 200:
+            # v0.1.4: surface quota state to orchestrator. JSearch returns
+            # 429 when monthly quota is exhausted or rate limit hit.
+            if resp.status_code in (403, 429):
+                self.quota_exhausted = True
+                self.quota_exhausted_reason = f"JSearch HTTP {resp.status_code} (rate limit or monthly quota)"
             return []
         try:
             data = resp.json()
