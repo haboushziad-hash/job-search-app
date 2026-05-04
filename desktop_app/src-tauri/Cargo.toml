@@ -1,6 +1,6 @@
 [package]
 name = "app"
-version = "0.1.0"
+version = "0.1.1"
 description = "A Tauri App"
 authors = ["you"]
 license = ""
@@ -32,6 +32,11 @@ tauri-plugin-shell = "2"
 # endpoint that reads R2 for the latest manifest. See
 # /v1/update/latest.json on the worker.
 tauri-plugin-updater = "2"
+# Native Save As dialog + arbitrary-path file writes — used by the
+# dashboard Export feature so users pick where their .xlsx/.csv lands
+# instead of it silently dumping into Downloads.
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
 # UUID v4 generation for anonymous per-tester identification.
 # Generated on first launch, persisted to app data folder, sent to the
 # backend as TESTER_UUID env var so audit JSONs can be uploaded keyed

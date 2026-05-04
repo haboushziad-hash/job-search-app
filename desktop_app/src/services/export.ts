@@ -3,9 +3,22 @@
  *
  * Uses SheetJS (xlsx) for binary formats. CSV/Markdown are hand-rolled
  * so we don't pull in extra deps.
+ *
+ * Save flow (Tauri-native):
+ *   1. Generate the file content in-memory as a Uint8Array (xlsx) or
+ *      string (csv / markdown).
+ *   2. Show the OS-native Save As dialog so the user picks where it lands
+ *      (instead of the previous "silent dump into Downloads" behavior).
+ *   3. Write the bytes to the chosen path via the fs plugin.
+ *
+ * Returns the chosen file path on success, or null if the user cancelled
+ * the dialog. The caller uses that to show a meaningful toast (or skip
+ * the toast on cancel).
  */
 
 import * as XLSX from 'xlsx'
+import { save } from '@tauri-apps/plugin-dialog'
+import { writeFile } from '@tauri-apps/plugin-fs'
 import type { Role, RunSummary } from '@/types'
 import type { RoleStatusEntry } from '@/stores/appStore'
 
@@ -73,7 +86,10 @@ function roleToRow(role: Role, status?: RoleStatusEntry): FlatRow {
 // Excel (.xlsx) export
 // ----------------------------------------------------------------------------
 
-export function exportToExcel(ctx: ExportContext, filename = 'job-search-results.xlsx') {
+export async function exportToExcel(
+  ctx: ExportContext,
+  defaultFilename = 'job-search-results.xlsx',
+): Promise<string | null> {
   const sortedRoles = [...ctx.roles].sort(
     (a, b) => (b.final_score ?? 0) - (a.final_score ?? 0)
   )
@@ -135,14 +151,26 @@ export function exportToExcel(ctx: ExportContext, filename = 'job-search-results
     XLSX.utils.book_append_sheet(wb, sheet, 'Applied')
   }
 
-  XLSX.writeFile(wb, filename)
+  // Generate the .xlsx as an ArrayBuffer and pass to the save-dialog helper.
+  // SheetJS supports `bookType: 'xlsx'` with `type: 'array'` returning a
+  // Uint8Array-compatible buffer that the fs plugin can write directly.
+  const buffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' }) as ArrayBuffer
+  return saveWithDialog({
+    defaultFilename,
+    bytes: new Uint8Array(buffer),
+    filterName: 'Excel Workbook',
+    extensions: ['xlsx'],
+  })
 }
 
 // ----------------------------------------------------------------------------
 // CSV export
 // ----------------------------------------------------------------------------
 
-export function exportToCSV(ctx: ExportContext, filename = 'job-search-results.csv') {
+export async function exportToCSV(
+  ctx: ExportContext,
+  defaultFilename = 'job-search-results.csv',
+): Promise<string | null> {
   const sortedRoles = [...ctx.roles].sort(
     (a, b) => (b.final_score ?? 0) - (a.final_score ?? 0)
   )
@@ -150,7 +178,7 @@ export function exportToCSV(ctx: ExportContext, filename = 'job-search-results.c
     const key = `${(r.company || '').toLowerCase()}::${(r.job_title || '').toLowerCase()}`
     return roleToRow(r, ctx.statuses?.[key])
   })
-  if (rows.length === 0) return
+  if (rows.length === 0) return null
   const headers = Object.keys(rows[0]) as (keyof FlatRow)[]
   const escapeCsv = (v: unknown) => {
     const s = String(v ?? '')
@@ -163,14 +191,22 @@ export function exportToCSV(ctx: ExportContext, filename = 'job-search-results.c
     headers.join(','),
     ...rows.map((row) => headers.map((h) => escapeCsv(row[h])).join(',')),
   ]
-  triggerDownload(lines.join('\n'), filename, 'text/csv')
+  return saveWithDialog({
+    defaultFilename,
+    bytes: new TextEncoder().encode(lines.join('\n')),
+    filterName: 'CSV',
+    extensions: ['csv'],
+  })
 }
 
 // ----------------------------------------------------------------------------
 // Markdown export — drag into Claude.ai for analysis
 // ----------------------------------------------------------------------------
 
-export function exportToMarkdown(ctx: ExportContext, filename = 'job-search-results.md') {
+export async function exportToMarkdown(
+  ctx: ExportContext,
+  defaultFilename = 'job-search-results.md',
+): Promise<string | null> {
   const sortedRoles = [...ctx.roles].sort(
     (a, b) => (b.final_score ?? 0) - (a.final_score ?? 0)
   )
@@ -203,7 +239,12 @@ export function exportToMarkdown(ctx: ExportContext, filename = 'job-search-resu
     }
   }
 
-  triggerDownload(lines.join('\n'), filename, 'text/markdown')
+  return saveWithDialog({
+    defaultFilename,
+    bytes: new TextEncoder().encode(lines.join('\n')),
+    filterName: 'Markdown',
+    extensions: ['md'],
+  })
 }
 
 // ----------------------------------------------------------------------------
@@ -222,14 +263,27 @@ function applyColumnWidths(sheet: XLSX.WorkSheet, rows: FlatRow[]) {
   })
 }
 
-function triggerDownload(text: string, filename: string, mime: string) {
-  const blob = new Blob([text], { type: `${mime};charset=utf-8` })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  setTimeout(() => URL.revokeObjectURL(url), 1000)
+/**
+ * Native Save As dialog → writes the bytes to the chosen path.
+ *
+ * Returns the chosen path on success, or null if the user clicked Cancel
+ * (or escaped out of the dialog). Callers distinguish between cancel
+ * (don't toast / silent) and success (show "Exported to <path>").
+ *
+ * Errors during the actual file write throw — caller wraps in try/catch
+ * and surfaces a toast.
+ */
+async function saveWithDialog(opts: {
+  defaultFilename: string
+  bytes: Uint8Array
+  filterName: string
+  extensions: string[]
+}): Promise<string | null> {
+  const filePath = await save({
+    defaultPath: opts.defaultFilename,
+    filters: [{ name: opts.filterName, extensions: opts.extensions }],
+  })
+  if (!filePath) return null
+  await writeFile(filePath, opts.bytes)
+  return filePath
 }

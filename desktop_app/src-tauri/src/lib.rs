@@ -76,6 +76,13 @@ pub fn run() {
         // The frontend (App.tsx) calls check() shortly after startup and
         // shows a toast when a new version is available.
         .plugin(tauri_plugin_updater::Builder::new().build())
+        // Save As dialog + arbitrary-path file writes for the export feature.
+        // The fs plugin's default scope is restrictive (app data dir only);
+        // capabilities/default.json grants `**` scope so users can save
+        // exports anywhere they choose. Security-wise this is fine — the
+        // user explicitly picks the path via the OS-native dialog.
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_fs::init())
         .manage(BackendProcess(std::sync::Mutex::new(None)))
         .setup(|app| {
             if cfg!(debug_assertions) {

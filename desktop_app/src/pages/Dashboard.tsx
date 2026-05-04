@@ -50,26 +50,39 @@ export default function Dashboard() {
     return () => document.removeEventListener('mousedown', onClick)
   }, [exportMenuOpen])
 
-  const handleExport = (format: 'excel' | 'csv' | 'markdown') => {
+  // Each export now opens an OS-native Save As dialog instead of silently
+  // dumping into Downloads. Returns the chosen path on success, null if the
+  // user cancelled. The path is shown in the success toast so the user
+  // knows exactly where the file landed (which was the actual confusion
+  // before — silent downloads to a hardcoded folder felt like nothing
+  // happened). Errors during write surface a red toast.
+  const handleExport = async (format: 'excel' | 'csv' | 'markdown') => {
+    setExportMenuOpen(false)
     const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 16)
     const ctx = { roles: lastRoles, summary: lastSummary, statuses: roleStatuses }
     try {
+      let savedPath: string | null = null
       if (format === 'excel') {
-        exportToExcel(ctx, `job-search-${ts}.xlsx`)
-        toast.success('Exported to Excel')
+        savedPath = await exportToExcel(ctx, `job-search-${ts}.xlsx`)
       } else if (format === 'csv') {
-        exportToCSV(ctx, `job-search-${ts}.csv`)
-        toast.success('Exported to CSV')
+        savedPath = await exportToCSV(ctx, `job-search-${ts}.csv`)
       } else {
-        exportToMarkdown(ctx, `job-search-${ts}.md`)
-        toast.success('Exported to Markdown', {
-          description: 'Drop the .md file into Claude.ai for analysis',
-        })
+        savedPath = await exportToMarkdown(ctx, `job-search-${ts}.md`)
       }
+      if (!savedPath) return // user cancelled — don't toast at all
+      // Truncate the path display so the toast doesn't get unwieldy.
+      // ~50 chars is enough to identify the location; the full path is
+      // still in the underlying state if we ever surface it.
+      const display = savedPath.length > 60
+        ? '…' + savedPath.slice(-57)
+        : savedPath
+      const description = format === 'markdown'
+        ? `Saved to ${display}. Drop the .md into Claude.ai for analysis.`
+        : `Saved to ${display}`
+      toast.success('Exported', { description })
     } catch (e) {
       toast.error(`Export failed: ${e instanceof Error ? e.message : 'unknown'}`)
     }
-    setExportMenuOpen(false)
   }
 
   // Fire confetti once when this Dashboard mount has STRONG-tier hits and
