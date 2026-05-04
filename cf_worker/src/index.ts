@@ -597,11 +597,25 @@ async function serveUpdateManifest(env: Env): Promise<Response> {
 }
 
 async function serveUpdateBundle(req: Request, env: Env, path: string): Promise<Response> {
-  // /v1/update/download/{platform}/{version}/{filename}
-  // e.g. /v1/update/download/windows-x86_64/0.1.1/findmesomedamnjobz_0.1.1_x64-setup.nsis.zip
-  // The same URL is also used to serve the .sig sibling — clients append
-  // ".sig" themselves following Tauri's convention.
-  const r2Key = "current/update/" + path.slice("/v1/update/download/".length);
+  // URL: /v1/update/download/{platform}/{version}/{filename}
+  // e.g. /v1/update/download/windows-x86_64/0.1.5/findmesomedamnjobz_0.1.5_x64-setup.exe
+  //
+  // R2 layout (from build-desktop.yml upload step):
+  //   current/update/{version}/{platform}/{filename}
+  //
+  // The orderings are intentionally different — the URL is platform-first
+  // for Tauri's convention, but the R2 layout is version-first to make
+  // version pruning easy (one prefix, all platforms). We reorder here.
+  //
+  // Clients also fetch the .sig sibling by appending ".sig" to this URL,
+  // which works transparently since {filename}.sig sits next to {filename}
+  // in R2.
+  const parts = path.slice("/v1/update/download/".length).split("/");
+  if (parts.length !== 3) {
+    return json({ error: "invalid_path", expected: "platform/version/filename" }, 400);
+  }
+  const [platform, version, filename] = parts;
+  const r2Key = `current/update/${version}/${platform}/${filename}`;
   if (r2Key.includes("..") || !r2Key.startsWith("current/update/")) {
     return json({ error: "invalid_path" }, 400);
   }
