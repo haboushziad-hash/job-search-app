@@ -199,12 +199,12 @@ jobs:
       # via the landing page.
 
       - name: Install wrangler
-        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
         run: npm install -g wrangler
 
       - name: Read app version
         id: version
-        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
         shell: bash
         run: |
           # Single source of truth: tauri.conf.json's version field.
@@ -215,7 +215,7 @@ jobs:
           echo "App version: $VERSION"
 
       - name: Publish installer to R2
-        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         shell: bash
@@ -250,7 +250,7 @@ jobs:
       # to re-download the file from R2.
       - name: Publish update bundle to R2
         id: upload_update
-        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           VERSION: ${{ steps.version.outputs.version }}
@@ -292,7 +292,9 @@ jobs:
       # up via download-artifact. We use a tiny JSON file because GH outputs
       # don't cross job boundaries cleanly.
       - name: Save platform manifest fragment
-        if: github.ref == 'refs/heads/main' && steps.upload_update.outputs.bundle_name != ''
+        if: |
+          (startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch')
+          && steps.upload_update.outputs.bundle_name != ''
         shell: bash
         env:
           VERSION: ${{ steps.version.outputs.version }}
@@ -312,7 +314,9 @@ jobs:
           cat "manifest-fragments/${PLATFORM_KEY}.json"
 
       - name: Upload manifest fragment
-        if: github.ref == 'refs/heads/main' && steps.upload_update.outputs.bundle_name != ''
+        if: |
+          (startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch')
+          && steps.upload_update.outputs.bundle_name != ''
         uses: actions/upload-artifact@v4
         with:
           name: manifest-fragment-${{ matrix.update_platform_key }}
@@ -324,18 +328,25 @@ jobs:
   # final Tauri-shaped update manifest, and uploads it to R2. The Worker
   # serves this exact JSON at /v1/update/latest.json on every app launch.
   #
-  # `if: always()` so we publish even when one matrix entry fails or is
-  # cancelled — e.g., if a macOS-13 Intel runner stays queued forever and
-  # the operator cancels just that one job, the manifest still gets built
-  # for Windows + macOS-arm64 from their fragments. The downloaded-
-  # fragments merge step uses `add // {}` which gracefully no-ops on
-  # missing platforms (testers on a platform with no fragment simply
-  # don't see an update offered, which is the correct behavior — there's
-  # no signed bundle to point them at).
+  # GATING: this job ONLY runs on tag pushes (`v0.1.x`) or manual
+  # workflow_dispatch. Plain pushes to main run the build for CI safety
+  # but DO NOT publish a new manifest. This prevents accidental ship-to-
+  # testers when iterating on code locally — the operator must explicitly
+  # tag a release or hit "Run workflow" in the GitHub Actions UI to push
+  # a new version into the auto-update channel.
+  #
+  # `always()` is layered on top so that even if some matrix entries
+  # failed/cancelled (e.g., a macOS-13 Intel runner stalled and was
+  # cancelled), the manifest still publishes for the platforms that did
+  # succeed. The `add // {}` merge in the manifest builder handles
+  # missing platforms gracefully — testers on those platforms just don't
+  # see an update offered until the next release, which is correct.
   publish-manifest:
     needs: build
-    # Run on every main push, even if some matrix entries failed/cancelled
-    if: always() && github.ref == 'refs/heads/main'
+    # Tag-only or manual-trigger releases. Pushes to main do NOT publish.
+    if: |
+      always() &&
+      (startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
