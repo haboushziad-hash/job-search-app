@@ -94,7 +94,14 @@ export default function Keywords() {
       const res = await runSearch({
         profile: updatedProfile,
         keywords: keywords.filter((k) => k.tier <= 2).map((k) => k.text),
-        sources: ['Greenhouse', 'Lever', 'Ashby', 'Workday'],
+        // Omit `sources` so the backend uses ALL active scrapers in the
+        // registry (Greenhouse, Lever, Ashby, Workday, iCIMS, BuiltIn,
+        // TheMuse, Remotive, USAJOBS, Adzuna, Climatebase, SmartRecruiters,
+        // Arbeitnow, HN-WhoIsHiring). Hardcoding 4 here meant testers got
+        // a Greenhouse-heavy view with all the other coverage missing.
+        // Sources requiring API keys (USAJOBS, Adzuna, Findwork) gracefully
+        // no-op when the key isn't set, so this is safe even for testers
+        // who haven't configured their own keys.
         postedWithinDays: 30,
         appliedRoles,
         cacheMaxAgeDays,

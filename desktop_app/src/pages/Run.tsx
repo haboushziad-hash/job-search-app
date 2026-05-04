@@ -58,7 +58,8 @@ export default function Run() {
         profile,
         // Default: tier 1+2 keywords
         keywords: profile.keywords.filter((k) => k.tier <= 2).map((k) => k.text),
-        sources: ['Greenhouse', 'Lever', 'Ashby', 'Workday'],
+        // Omit `sources` so backend uses ALL active scrapers (14 total).
+        // See Keywords.tsx for full reasoning.
         postedWithinDays: 30,
         appliedRoles,
         cacheMaxAgeDays,
