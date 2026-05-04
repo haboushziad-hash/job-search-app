@@ -60,14 +60,21 @@ jobs:
             target_triple: "aarch64-apple-darwin"
             update_glob: "**/bundle/macos/*.app.tar.gz"
             update_platform_key: "darwin-aarch64"
-          - os: macos-13                       # Intel (x86_64) — last Intel-supporting runner
-            target: macos-x64
-            artifact_pattern: "**/*.dmg"
-            artifact_name: macos-x64-installer
-            r2_key: "current/job-search-app-x64.dmg"
-            target_triple: "x86_64-apple-darwin"
-            update_glob: "**/bundle/macos/*.app.tar.gz"
-            update_platform_key: "darwin-x86_64"
+          # macos-13 (Intel) intentionally NOT in the default matrix.
+          # GitHub's macOS-13 runners are chronically queue-starved (often
+          # hours of wait), which blocks the publish-manifest aggregator
+          # job. Most testers are on Apple Silicon (2020+) anyway. To
+          # include it for a specific release, manually run the workflow
+          # with workflow_dispatch + matrix override, or temporarily
+          # un-comment this entry and push.
+          # - os: macos-13
+          #   target: macos-x64
+          #   artifact_pattern: "**/*.dmg"
+          #   artifact_name: macos-x64-installer
+          #   r2_key: "current/job-search-app-x64.dmg"
+          #   target_triple: "x86_64-apple-darwin"
+          #   update_glob: "**/bundle/macos/*.app.tar.gz"
+          #   update_platform_key: "darwin-x86_64"
 
     runs-on: ${{ matrix.os }}
 
@@ -316,10 +323,19 @@ jobs:
   # Downloads each platform's manifest fragment, merges them into the
   # final Tauri-shaped update manifest, and uploads it to R2. The Worker
   # serves this exact JSON at /v1/update/latest.json on every app launch.
+  #
+  # `if: always()` so we publish even when one matrix entry fails or is
+  # cancelled — e.g., if a macOS-13 Intel runner stays queued forever and
+  # the operator cancels just that one job, the manifest still gets built
+  # for Windows + macOS-arm64 from their fragments. The downloaded-
+  # fragments merge step uses `add // {}` which gracefully no-ops on
+  # missing platforms (testers on a platform with no fragment simply
+  # don't see an update offered, which is the correct behavior — there's
+  # no signed bundle to point them at).
   publish-manifest:
     needs: build
-    # Only on main pushes — PR builds don't publish updates
-    if: github.ref == 'refs/heads/main'
+    # Run on every main push, even if some matrix entries failed/cancelled
+    if: always() && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
