@@ -29,6 +29,14 @@ on:
       - '**.md'
       - '.gitignore'
       - 'scripts/**'
+    # Trigger on version tags too — `publish-manifest` and the R2 upload
+    # steps inside each build job both require `refs/tags/v*` context to
+    # actually upload artifacts. Without this, `git push --tags` would
+    # only fire the in-flight branch-push workflow (github.ref =
+    # refs/heads/main), the publish gates would skip, and we'd build
+    # installers without ever uploading them. The `tags: ['v*']` filter
+    # makes tag pushes their own first-class trigger for the workflow.
+    tags: ['v*']
   workflow_dispatch:
 
 permissions:
