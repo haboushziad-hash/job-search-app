@@ -227,6 +227,20 @@ def passes_location(
     state = (role.state or "").lower()
     haystack = f"{loc_text} {city} {state}".strip()
 
+    # Non-US guard runs FIRST (before any early returns) against a title-
+    # augmented haystack so role titles like "Strategic AI adoption lead (UK)"
+    # are caught even when location data is missing. Several scrapers
+    # (Ashby/Workday) leave location=None when the country is only embedded
+    # in the title parenthetical — those roles previously slipped through
+    # via the empty-haystack early return below.
+    # We use a SEPARATE haystack here (only for this non-US check) to avoid
+    # false-positive city/state matches in the inclusion logic below
+    # ("VP, New York Sales" would otherwise match the NY metro).
+    title_lower = (role.job_title or "").lower()
+    non_us_haystack = f"{haystack} {title_lower}".strip()
+    if _is_non_us_remote(non_us_haystack):
+        return False
+
     if not haystack.strip():
         # Generous: no usable location data → include and let LLM decide
         return True
@@ -237,16 +251,11 @@ def passes_location(
             if ex and ex in haystack:
                 return False
 
-    # Remote roles pass when user accepts remote — but with a country guard:
-    # "Remote India", "Remote (UK)", "Remote – Singapore" should NOT pass
-    # for a US-based candidate. We reject if the haystack contains a non-US
-    # country/region token. This is intentionally a denylist (small, common
-    # offenders) rather than an allowlist — too many US-only roles use
-    # ambiguous strings like "Remote" / "US Remote" / state abbreviations.
+    # Remote roles pass when user accepts remote.
+    # The non-US country guard above already ran; if we reached here, the
+    # role is not flagged as a non-US remote.
     if "remote" in loc_type or "remote" in loc_text:
         if not ("remote" in arrangements or not arrangements):
-            return False
-        if _is_non_us_remote(haystack):
             return False
         return True
 

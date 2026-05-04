@@ -15,9 +15,10 @@ Pipeline:
 """
 from __future__ import annotations
 
+import re
 import time
 import uuid
-from typing import Optional
+from typing import Callable, Optional
 
 from backend.config import config
 from backend.filter.hard_filters import apply_hard_filters
@@ -51,13 +52,42 @@ async def run_search(
     cache_max_age_days: int = 7,
     force_refresh: bool = False,
     log: bool = True,
+    progress: Optional[Callable[[int, str, int], None]] = None,
 ) -> tuple[list[Role], RunSummary]:
     """End-to-end search → scrape → filter → score → return.
 
     Returns (scored_roles, run_summary).
+
+    `progress`: optional callback invoked as the pipeline advances. Signature
+    is `progress(pct, current_step_label, current_step_index)` where:
+      - pct is 0-100 progress through the whole search
+      - current_step_label is a human-readable stage name
+      - current_step_index is the 1-based step index used by the Running
+        page UI (matches its STEPS array: 1=Profile/keywords ready,
+        2=Scraping, 3=Filtering+liveness, 4=Embedding pre-filter,
+        5=Scoring with AI cascade, 6=Building dashboard)
+    Callback errors are swallowed so a misbehaving caller can't break a run.
     """
     started_at = time.perf_counter()
     run_id = run_id or str(uuid.uuid4())
+
+    # Local helper — guards against caller-side exceptions in the progress
+    # callback so they can't bubble up and abort the run mid-stage. The
+    # `detail` arg is optional granular text shown under the active step
+    # (e.g. "Scoring 47 of 120 with Flash") — falls back to "" when the
+    # caller doesn't provide one.
+    def _emit(pct: int, stage: str, step_index: int, detail: str = "") -> None:
+        if progress is None:
+            return
+        try:
+            # Best-effort 4-arg call; fall back to 3-arg for older callers
+            try:
+                progress(pct, stage, step_index, detail)
+            except TypeError:
+                progress(pct, stage, step_index)
+        except Exception as e:
+            if log:
+                print(f"[progress] callback raised (ignored): {e}")
 
     if log:
         print(f"\n{'='*70}\nJOB SEARCH RUN STARTING (run_id={run_id})\n{'='*70}")
@@ -121,6 +151,7 @@ async def run_search(
             return scored, summary
 
     # ---- 1. Scrape ----
+    _emit(5, "Scraping job boards", 2, "Querying 14 job boards in parallel...")
     if log:
         print(f"\n[1/9] Scraping job boards...")
     scrape_health: dict = {}
@@ -141,6 +172,10 @@ async def run_search(
             print(f"[scraper] [!] ZERO-ROLE SOURCES (investigate): {zero_sources}")
 
     # ---- 2. Salary enrichment ----
+    _emit(
+        25, "Filtering + verifying liveness", 3,
+        f"Filtering {len(raw_roles):,} scraped roles by salary, location, and applied list...",
+    )
     if log:
         print(f"\n[2/9] Enriching salary data from JDs...")
     enrich_salaries(raw_roles, log=log)
@@ -161,6 +196,10 @@ async def run_search(
     _tag_matched_keywords(filtered, profile)
 
     # ---- 4. Liveness check ----
+    _emit(
+        35, "Filtering + verifying liveness", 3,
+        f"Verifying {len(filtered):,} URLs are still live...",
+    )
     if log:
         print(f"\n[4/9] Verifying liveness...")
     alive = await verify_liveness(filtered, drop_dead=True, log=log)
@@ -170,6 +209,10 @@ async def run_search(
     # Fetch them now for roles surviving hard filters, before scoring.
     missing_jd = [r for r in alive if not r.job_description_full]
     if missing_jd:
+        _emit(
+            42, "Filtering + verifying liveness", 3,
+            f"Fetching missing job descriptions for {len(missing_jd)} roles...",
+        )
         if log:
             print(f"\n[4.5/9] Fetching missing JDs for {len(missing_jd)} roles...")
         await _fetch_missing_jds(missing_jd, log=log)
@@ -188,6 +231,8 @@ async def run_search(
         print(f"[dead_listing] dropped {dead_dropped} 'no longer hiring' roles before scoring")
 
     # ---- 5-9. Cascade scoring (embedding + Stage 1/2/3) ----
+    # Hand the progress callback through; score_roles emits its own
+    # finer-grained progress events (50% embedding → 90% Stage 3).
     if log:
         print(f"\n[5-9/9] Running scoring cascade on {len(alive)} roles...")
     scored, summary = await score_roles(
@@ -195,11 +240,76 @@ async def run_search(
         roles=alive,
         license_key=license_key,
         log=log,
+        progress=progress,
     )
+
+    # ---- Post-scoring salary re-filter -------------------------------------
+    # Stage 3 reads JD bodies and extracts salary text the regex-based
+    # extractor missed. That extracted salary lives on role.salary_min /
+    # role.salary_max AFTER scoring. The hard salary filter ran BEFORE
+    # scoring, so any role that passed with "no salary listed" but whose
+    # JD body actually contained a sub-floor salary slipped through.
+    #
+    # Example from Run 3: Evidence Action "Manager, AI Strategy & Adoption"
+    # passed hard filters with no salary, then Stage 3 extracted $84-94K
+    # from the JD body — well below the $130K floor with 10% softness ($117K).
+    # This loop catches those leaks by re-checking the post-scoring salary
+    # against the same soft-floor rule.
+    if profile.salary_minimum:
+        from backend.filter.hard_filters import passes_salary_floor
+        salary_demoted = 0
+        for r in scored:
+            if (r.final_score or 0) < 40:
+                continue  # already below qualifying threshold
+            # Re-check using current salary_max (which Stage 3 may have populated)
+            if not passes_salary_floor(r, minimum=profile.salary_minimum):
+                # Demote to STRETCH-or-below by clamping the final score.
+                # We don't drop entirely (the user can still see it for context
+                # in the audit JSON) but we ensure it doesn't surface as a
+                # qualifying match.
+                r.final_score = min(r.final_score or 39, 39)
+                from backend.models import Tier
+                r.final_tier = Tier.SKIP
+                salary_demoted += 1
+        if log and salary_demoted > 0:
+            print(f"[runner] Post-Stage-3 salary re-filter: demoted {salary_demoted} "
+                  f"roles whose JD-extracted salary was below the soft floor.")
+
+    _emit(95, "Building dashboard", 6, "Assembling your scored results...")
     # Attach per-source health captured during scrape phase. This persists
     # in audit JSON + lets the dashboard / health monitor flag broken
     # scrapers per-run.
     summary.per_source_counts = scrape_health
+
+    # ---- Per-source funnel: how many roles each source contributed at every
+    # pipeline stage. Critical for diagnosing "Workday scraped 8147 roles but
+    # 0 qualified" — without this we can't tell if they died at hard filter,
+    # liveness, dead-listing, or scoring. Audit JSON consumers can spot the
+    # broken stage at a glance. -----------------------------------------------
+    def _count_by_source(rs: list[Role]) -> dict[str, int]:
+        counts: dict[str, int] = {}
+        for r in rs:
+            src = getattr(r, "primary_source", None) or getattr(r, "source", None) or "unknown"
+            counts[src] = counts.get(src, 0) + 1
+        return counts
+
+    funnel: dict[str, dict[str, int]] = {}
+    for src, h in scrape_health.items():
+        funnel[src] = {"raw_scraped": int(h.get("roles", 0))}
+    for src, n in _count_by_source(raw_roles).items():
+        funnel.setdefault(src, {})["after_dedup"] = n
+    for src, n in _count_by_source(filtered).items():
+        funnel.setdefault(src, {})["after_hard_filters"] = n
+    for src, n in _count_by_source(alive).items():
+        funnel.setdefault(src, {})["after_liveness_and_deadlist"] = n
+    qualifying_for_funnel = [r for r in scored if (getattr(r, "final_score", None) or 0) >= 40]
+    for src, n in _count_by_source(qualifying_for_funnel).items():
+        funnel.setdefault(src, {})["qualifying_final"] = n
+    # Make sure every source has a "qualifying_final" entry even if 0 — that's
+    # exactly the case we want visible (Workday 8147 raw → 0 qualifying).
+    for src in funnel:
+        funnel[src].setdefault("qualifying_final", 0)
+    summary.per_source_funnel = funnel
 
     # Final summary patches not handled by score_roles
     summary.roles_scraped = len(raw_roles)
@@ -405,60 +515,92 @@ def _safe_json_loads(s):
         return None
 
 
+# Stopwords used by the keyword tagger's tokenizer. Mirrors greenhouse.py's
+# matcher — keeps "ai" / "lead" as content tokens while dropping "and" / "of".
+_TAG_STOPWORDS = frozenset({
+    "a", "an", "and", "or", "for", "of", "to", "the", "in", "on",
+    "with", "at", "by", "as", "&",
+})
+
+
+def _tag_tokenize(text: str) -> list[str]:
+    """Lowercase + split on non-word chars. Filters stopwords + 1-char tokens.
+    Same rules as Greenhouse scraper's matcher so the tagger and the scraper
+    agree on what counts as a 'match'."""
+    return [
+        t for t in re.split(r"[^a-z0-9]+", (text or "").lower())
+        if t and len(t) > 1 and t not in _TAG_STOPWORDS
+    ]
+
+
 def _tag_matched_keywords(roles: list[Role], profile) -> None:
     """For each role, set role.matched_keyword to the single most relevant
     keyword from profile.keywords that the role actually matched.
 
+    Uses TOKEN-OVERLAP matching (same logic as the Greenhouse scraper's
+    `_matches_any_keyword`). This catches near-misses like "AI Enablement
+    Services Lead" matching keyword "AI Enablement Lead" — substring matching
+    missed those because the literal phrase isn't present.
+
+    Match rule (mirrors greenhouse.py):
+      - Short keywords (1-2 content tokens): ALL tokens must appear
+      - Longer keywords (3+ tokens): 60%+ of tokens must appear
+
     Priority order (best → worst):
-      1. Tier-1 keyword phrase appearing in job title
-      2. Tier-2 keyword phrase appearing in job title
-      3. Tier-1 keyword phrase appearing in JD body (first 2000 chars)
-      4. Tier-2 keyword phrase appearing in JD body
+      1. Tier-1 keyword in job title
+      2. Tier-2 keyword in job title
+      3. Tier-1 keyword in JD body (first 2000 chars)
+      4. Tier-2 keyword in JD body
     Within the same band, longer keywords win (more specific = more meaningful).
+    Tier-3 keywords are intentionally excluded — they're noisy and would dilute
+    the "via X" UI label.
     """
     keywords = list(getattr(profile, "keywords", None) or [])
     if not keywords:
         return
 
-    # Group by tier and sort each tier longest-first (so the first match
-    # within a tier is the most specific). Also lowercase for matching.
-    by_tier: dict[int, list[tuple[str, str]]] = {1: [], 2: [], 3: []}
+    # Pre-tokenize each keyword and group by tier, longest-first within tier
+    # so the first match we find is also the most specific one. Tier 3 dropped.
+    by_tier: dict[int, list[tuple[str, list[str]]]] = {1: [], 2: []}
     for kw in keywords:
         text = (getattr(kw, "text", "") or "").strip()
         tier = getattr(kw, "tier", 3) or 3
-        if not text:
+        if not text or tier not in (1, 2):
             continue
-        by_tier.setdefault(tier, []).append((text, text.lower()))
+        tokens = _tag_tokenize(text)
+        if tokens:
+            by_tier[tier].append((text, tokens))
     for t in by_tier:
         by_tier[t].sort(key=lambda p: -len(p[0]))
 
-    def _find_match(text_lower: str, tier: int) -> str:
-        for kw_orig, kw_lower in by_tier.get(tier, []):
-            if kw_lower in text_lower:
-                return kw_orig
+    def _matches(role_tokens: set, kw_tokens: list[str]) -> bool:
+        """Token-overlap rule (mirrors Greenhouse scraper exactly)."""
+        if not kw_tokens:
+            return False
+        if len(kw_tokens) <= 2:
+            return all(t in role_tokens for t in kw_tokens)
+        return sum(1 for t in kw_tokens if t in role_tokens) / len(kw_tokens) >= 0.60
+
+    def _best_match(role_tokens: set) -> str:
+        """Return the longest keyword in the highest-priority tier that matches."""
+        for tier in (1, 2):
+            for kw_text, kw_tokens in by_tier[tier]:
+                if _matches(role_tokens, kw_tokens):
+                    return kw_text
         return ""
 
     for role in roles:
-        title_l = (role.job_title or "").lower()
-        jd_l = (role.job_description_full or "")[:2000].lower()
+        title_tokens = set(_tag_tokenize(role.job_title or ""))
+        jd_excerpt = (role.job_description_full or "")[:2000]
+        full_tokens = title_tokens | set(_tag_tokenize(jd_excerpt))
 
-        # 1. Tier 1 in title
-        m = _find_match(title_l, 1)
+        # Pass 1: title-only (preferred — title matches are the strongest signal)
+        m = _best_match(title_tokens)
         if m:
             role.matched_keyword = m
             continue
-        # 2. Tier 2 in title
-        m = _find_match(title_l, 2)
-        if m:
-            role.matched_keyword = m
-            continue
-        # 3. Tier 1 in JD
-        m = _find_match(jd_l, 1)
-        if m:
-            role.matched_keyword = m
-            continue
-        # 4. Tier 2 in JD
-        m = _find_match(jd_l, 2)
+        # Pass 2: fall back to title + first 2000 chars of JD
+        m = _best_match(full_tokens)
         if m:
             role.matched_keyword = m
 
