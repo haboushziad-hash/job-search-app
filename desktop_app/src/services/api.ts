@@ -94,7 +94,7 @@ export async function startProfileBuild(input: BuildProfileInput): Promise<Build
 export interface BuildProgress {
   build_id: string
   started_at: string
-  status: 'pending' | 'running' | 'completed' | 'failed'
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
   progress: number       // 0-100
   current_step: string
   error?: string | null
@@ -219,7 +219,7 @@ export async function getRun(runId: string): Promise<{
 export interface SearchStatus {
   run_id: string
   started_at: string
-  status: 'pending' | 'running' | 'completed' | 'failed'
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
   progress: number
   current_step: string
   current_step_index: number

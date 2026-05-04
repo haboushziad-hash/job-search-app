@@ -2,7 +2,6 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 
 import { Sidebar } from '@/components/Sidebar'
-import { useAppStore } from '@/stores/appStore'
 
 import Welcome from '@/pages/Welcome'
 import HowItWorks from '@/pages/HowItWorks'
