@@ -175,14 +175,14 @@ async def scrape_all(
     if log:
         dropped_total = len(all_roles) - len(filtered_roles)
         if dropped_total > 0:
-            print(f"[scraper] post-fetch sanity filter: {len(all_roles)} → {len(filtered_roles)} "
+            print(f"[scraper] post-fetch sanity filter: {len(all_roles)} -> {len(filtered_roles)} "
                   f"(dropped {dropped_total} non-matching)")
             # Per-source delta — useful for diagnosing which sources had
             # loose upstream search.
             for src, raw_n in by_source.items():
                 kept = by_source_filtered.get(src, 0)
                 if raw_n > 0 and kept < raw_n:
-                    print(f"  {src}: {raw_n} → {kept}")
+                    print(f"  {src}: {raw_n} -> {kept}")
 
     deduped = _cross_board_dedupe(filtered_roles)
     capped = _cap_per_company(deduped, max_per_company=50)
