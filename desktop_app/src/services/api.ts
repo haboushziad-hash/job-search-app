@@ -162,6 +162,26 @@ export interface RunSearchResult {
   status: string
 }
 
+// ----------------------------------------------------------------------------
+// v0.1.4 — Pre-flight budget check
+// ----------------------------------------------------------------------------
+
+export interface BudgetStatus {
+  used: number
+  cap: number
+  remaining: number
+  typical_run_calls: number
+  can_run: boolean
+  sampling_note: string
+}
+
+/** Pre-flight: check whether today's Worker cap has enough headroom for a
+ *  full search. In dev mode, returns can_run=true with sentinel values. */
+export async function getBudget(): Promise<BudgetStatus> {
+  const res = await fetch(`${API_BASE}/llm/budget`)
+  return handle(res)
+}
+
 export async function runSearch(input: RunSearchInput): Promise<RunSearchResult> {
   const res = await fetch(`${API_BASE}/search/run`, {
     method: 'POST',
@@ -223,6 +243,9 @@ export interface SearchStatus {
   progress: number
   current_step: string
   current_step_index: number
+  // Granular live text shown under the active step
+  // (e.g. "Stage 3 deep evaluation on 51 qualifying roles (Pro, ~5-10s each)...")
+  current_step_detail?: string
   total_steps: number
   roles_scraped: number
   roles_qualifying: number

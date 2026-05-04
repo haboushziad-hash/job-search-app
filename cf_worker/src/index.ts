@@ -63,13 +63,14 @@ export interface Env {
 // Configuration
 // ============================================================================
 
-// Per-UUID per-day cap for LLM calls routed through the Worker. A single
-// full search burns ~330 calls (Stage 1: ~160 + Stage 2: ~120 + Stage 3:
-// ~50). At the previous 250/day cap, no tester could even complete ONE
-// search. 2000/day allows ~6 full searches per tester per day, which is
-// plenty for the pilot. Cap exists primarily to catch runaway-loop bugs;
-// if a tester hits 2000 calls in a day, something is genuinely wrong.
-const DAILY_CALL_CAP = 2000;       // per UUID per day
+// Per-UUID per-day cap for LLM calls routed through the Worker.
+// v0.1.4: bumped 2000 -> 5000. A typical search now uses ~1000 LLM calls
+// (Phase 12 search-terms split fans out 8-12 broad queries × 14 sources
+// × multiple Stage 2/3 evals). At 2000, testers running 2 searches/day
+// would brush the cap. 5000 gives ~5 searches/day per tester, which
+// comfortably covers iteration without losing the runaway-loop guardrail
+// (any single user hitting 5000 calls in a day is a bug).
+const DAILY_CALL_CAP = 5000;       // per UUID per day
 const MONTHLY_SPEND_CAP_USD = 5.0; // per UUID per month
 const MAX_AUDIT_JSON_BYTES = 5 * 1024 * 1024; // 5 MB
 
@@ -176,6 +177,15 @@ export default {
       }
       if (path === "/v1/runs/me" && req.method === "GET") {
         return await listMyRuns(env, testerUuid);
+      }
+
+      // v0.1.4 Phase 15: pre-flight budget check. App calls this before
+      // kicking off a search so it can warn the user if cap is too low to
+      // complete the run. Uses the SAMPLED counter value (multiplied by
+      // CAP_SAMPLE_EVERY internally) so the reported number is approximate
+      // ±50 — fine for budget triage.
+      if (path === "/v1/llm/budget" && req.method === "GET") {
+        return await checkBudget(env, testerUuid);
       }
 
       // v0.1.4 — keyed-scraper proxies. Inject API keys from Worker secrets
@@ -432,6 +442,30 @@ async function proxyJSearch(req: Request, env: Env, reqUrl: URL): Promise<Respon
 // concurrent requests both winning the lottery only ever OVERCOUNTS, which
 // is the safe direction for a budget cap.
 const CAP_SAMPLE_EVERY = 50;
+
+// v0.1.4 Phase 15b: read-only budget check. Lets the app warn the user
+// pre-flight when the daily cap doesn't have enough headroom for a full
+// search (~1000 calls). Returns counter and remaining estimate.
+async function checkBudget(env: Env, uuid: string): Promise<Response> {
+  const today = new Date().toISOString().slice(0, 10);
+  const key = `cap:${uuid}:${today}`;
+  const cur = await env.TESTER_KV.get(key);
+  const used = cur ? parseInt(cur, 10) : 0;
+  const remaining = Math.max(0, DAILY_CALL_CAP - used);
+  // A typical full search burns ~1000 LLM calls (post v0.1.4). Anything
+  // under that is "not enough headroom for a full run."
+  const TYPICAL_RUN_CALLS = 1000;
+  const can_run = remaining >= TYPICAL_RUN_CALLS;
+  return json({
+    used,
+    cap: DAILY_CALL_CAP,
+    remaining,
+    typical_run_calls: TYPICAL_RUN_CALLS,
+    can_run,
+    sampling_note:
+      "Counter is sampled (1-in-50 writes); actual usage is approximate ±50.",
+  });
+}
 
 async function checkAndIncrementCallCap(
   env: Env, uuid: string,

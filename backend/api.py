@@ -705,6 +705,77 @@ class AuditFolderRequest(BaseModel):
     path: str
 
 
+# ============================================================================
+# v0.1.4 Phase 15b — Pre-flight budget check
+# ============================================================================
+# Hits the Worker's /v1/llm/budget endpoint (which the app cannot reach
+# directly from the browser-equivalent context due to X-Tester-UUID
+# requirements + cross-origin concerns). Returns the daily-cap state so
+# the frontend can warn the user pre-flight when budget can't cover a run.
+
+@app.get("/llm/budget")
+async def llm_budget() -> dict[str, Any]:
+    """Pre-flight check: how many LLM calls are left in today's daily cap?
+
+    Returns:
+        {used, cap, remaining, typical_run_calls, can_run, sampling_note}
+
+    can_run is False when remaining < typical_run_calls (~1000) — the
+    frontend should show a modal warning the user that today's quota is
+    too low for a full search.
+
+    When LLM_PROXY_URL is unset (local dev mode), returns can_run=True
+    with a synthetic response since the app uses local API keys directly
+    and the Worker cap doesn't apply.
+    """
+    proxy = (config.LLM_PROXY_URL or "").rstrip("/")
+    if not proxy:
+        # Dev mode: no Worker cap to check, the app uses local keys.
+        return {
+            "used": 0,
+            "cap": 0,
+            "remaining": -1,  # sentinel: dev-mode, unlimited
+            "typical_run_calls": 1000,
+            "can_run": True,
+            "sampling_note": "Dev mode — Worker cap not applicable (local keys).",
+        }
+    uuid = (config.TESTER_UUID or "").strip()
+    if not uuid:
+        # Configured for proxy but no UUID — can't query the per-tester counter
+        return {
+            "used": 0,
+            "cap": 0,
+            "remaining": -1,
+            "typical_run_calls": 1000,
+            "can_run": True,
+            "sampling_note": "No tester UUID configured — budget check skipped.",
+        }
+    import httpx
+    url = f"{proxy}/v1/llm/budget"
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            r = await client.get(url, headers={"X-Tester-UUID": uuid})
+            if r.status_code == 200:
+                return r.json()
+            return {
+                "used": 0,
+                "cap": 0,
+                "remaining": -1,
+                "typical_run_calls": 1000,
+                "can_run": True,
+                "sampling_note": f"Budget endpoint returned {r.status_code} — defaulting to allow.",
+            }
+    except Exception as e:
+        return {
+            "used": 0,
+            "cap": 0,
+            "remaining": -1,
+            "typical_run_calls": 1000,
+            "can_run": True,
+            "sampling_note": f"Budget check failed ({type(e).__name__}) — defaulting to allow.",
+        }
+
+
 @app.get("/settings/audit-folder")
 async def get_audit_folder() -> dict[str, Any]:
     """Return the currently-configured audit folder path."""

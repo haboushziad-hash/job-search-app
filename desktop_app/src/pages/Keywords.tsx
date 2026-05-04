@@ -9,7 +9,7 @@ import { toast } from 'sonner'
 import { ZMark } from '@/components/ZMark'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/stores/appStore'
-import { runSearch, ApiError } from '@/services/api'
+import { runSearch, getBudget, ApiError } from '@/services/api'
 import type { Keyword } from '@/types'
 
 export default function Keywords() {
@@ -106,6 +106,30 @@ export default function Keywords() {
       .filter((r) => r.company && r.title)
 
     setSubmitting(true)
+    // v0.1.4 Phase 15b: pre-flight budget check. Warn the user if today's
+    // Worker cap doesn't have enough headroom for a full search (~1000
+    // LLM calls). In dev mode the budget endpoint returns can_run=true
+    // with sentinel values so this is a no-op.
+    try {
+      const budget = await getBudget()
+      if (!budget.can_run && budget.remaining >= 0) {
+        const proceed = confirm(
+          `Today's API budget is low.\n\n` +
+          `Used: ${budget.used} / ${budget.cap} calls\n` +
+          `Remaining: ${budget.remaining} (a full search needs ~${budget.typical_run_calls})\n\n` +
+          `The search may complete partially or fail mid-run if the cap is hit.\n` +
+          `Try again tomorrow when the daily counter resets, or proceed anyway?`
+        )
+        if (!proceed) {
+          setSubmitting(false)
+          return
+        }
+      }
+    } catch (e) {
+      // Budget check failed — don't block the search. Soft-fail.
+      console.warn('[budget] pre-flight check failed:', e)
+    }
+
     try {
       const res = await runSearch({
         profile: updatedProfile,

@@ -95,14 +95,40 @@ export default function Setup() {
   // when the user uploads a new resume). Currently unused — Building.tsx
   // owns the profile-setting flow after the async build completes.
   const _setProfile = useAppStore((s) => s.setProfile); void _setProfile
+
+  // v0.1.4 Phase 15a: persist preferences across profile rebuilds. When
+  // the user is rebuilding from a new resume, we pre-populate salary,
+  // arrangements, and locations from their PRIOR profile. This prevents
+  // the $130K -> $120K -> $100K drift that happens when AI re-infers
+  // salary on each rebuild and the user has to re-enter it. Manual user
+  // input still wins (this just provides better defaults).
+  const priorProfile = useAppStore((s) => s.profile)
+  const priorArrangementsSet = new Set(priorProfile?.work_arrangements || [])
+
   const [resumes, setResumes] = useState<UploadedResume[]>([])
   const [extraContext, setExtraContext] = useState('')
   const [submitting, setSubmitting] = useState(false)
   // Default $100K — reasonable for the test cohort (DC/VA professional roles).
   // User can drag down to $0 (no minimum) or up to $350K.
-  const [salaryMin, setSalaryMin] = useState(100_000)
-  const [arrangements, setArrangements] = useState({ remote: true, hybrid: true, onsite: false })
-  const [locations, setLocations] = useState<LocationChip[]>([])
+  // Pre-populate from prior profile if rebuilding (v0.1.4 Phase 15a).
+  const [salaryMin, setSalaryMin] = useState(
+    priorProfile?.salary_minimum ?? 100_000
+  )
+  const [arrangements, setArrangements] = useState(
+    priorProfile?.work_arrangements && priorProfile.work_arrangements.length > 0
+      ? {
+          remote: priorArrangementsSet.has('remote'),
+          hybrid: priorArrangementsSet.has('hybrid'),
+          onsite: priorArrangementsSet.has('on-site') || priorArrangementsSet.has('onsite'),
+        }
+      : { remote: true, hybrid: true, onsite: false }
+  )
+  const [locations, setLocations] = useState<LocationChip[]>(
+    (priorProfile?.acceptable_locations || []).map((name, idx) => ({
+      name,
+      radius: priorProfile?.acceptable_location_radii?.[idx] ?? 50,
+    }))
+  )
   const [locationInput, setLocationInput] = useState('')
 
   const handleFiles = (files: FileList | null) => {

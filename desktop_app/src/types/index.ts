@@ -60,6 +60,7 @@ export interface CandidateProfile {
   salary_minimum?: number | null
   work_arrangements: string[]
   acceptable_locations: string[]
+  acceptable_location_radii?: number[]
   excluded_locations: string[]
   // Specific job titles ("AI Enablement Lead", "Senior Tax Accountant")
   // Used by the scoring rubric and "via X" tag matcher.
