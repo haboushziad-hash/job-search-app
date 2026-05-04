@@ -113,8 +113,10 @@ const APP_SIZE = "107 MB";
         <a href={DMG_X64_URL} data-platform="mac-x64" class="hover:text-base-300 transition-colors underline-offset-4 hover:underline">Mac (Intel)</a>
       </div>
 
-      <!-- Stats strip -->
-      <div class="reveal-stagger mt-14 grid grid-cols-3 gap-3 sm:gap-6 max-w-3xl mx-auto">
+      <!-- Stats strip — stack on mobile (the big numbers like "Thousands"
+           and "10–20 min" overflow each other in a 3-col layout below
+           ~640px), three-up on sm and above. -->
+      <div class="reveal-stagger mt-14 grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 max-w-3xl mx-auto">
         <Stat number="Thousands" label="of roles per search" />
         <Stat number="10–20 min" label="per fresh search" />
         <Stat number="4-Stage" label="AI cascade logic" />
