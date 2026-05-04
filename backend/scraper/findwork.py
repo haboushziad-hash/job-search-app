@@ -24,6 +24,18 @@ from backend.scraper.greenhouse import _strip_html
 FINDWORK_API = "https://findwork.dev/api/jobs/"
 
 
+def _findwork_base_and_key() -> tuple[str, Optional[str]]:
+    """Return (base_url, api_key) honoring proxy mode (v0.1.4).
+
+    Proxy mode: route through Worker, key empty (Worker injects).
+    Local mode: direct Findwork URL with key from .env.
+    """
+    proxy = (config.LLM_PROXY_URL or "").rstrip("/")
+    if proxy:
+        return f"{proxy}/v1/scraper/findwork/api/jobs/", ""
+    return FINDWORK_API, config.FINDWORK_API_KEY
+
+
 class FindworkScraper(BaseScraper):
     source_name = "Findwork"
 
@@ -34,9 +46,10 @@ class FindworkScraper(BaseScraper):
         limit_per_keyword: int = 50,
         posted_within_days: Optional[int] = 30,
     ) -> list[Role]:
-        api_key = config.FINDWORK_API_KEY
-        if not api_key:
-            return []  # silent no-op when unset
+        base_url, api_key = _findwork_base_and_key()
+        proxy_mode = bool((config.LLM_PROXY_URL or "").strip())
+        if not proxy_mode and not api_key:
+            return []  # silent no-op when unset locally
 
         sem = asyncio.Semaphore(3)
 
@@ -44,7 +57,8 @@ class FindworkScraper(BaseScraper):
             async with sem:
                 try:
                     return await asyncio.wait_for(
-                        self._search_keyword(kw, limit_per_keyword, api_key),
+                        self._search_keyword(kw, limit_per_keyword,
+                                             api_key or "", base_url),
                         timeout=20.0,
                     )
                 except (asyncio.TimeoutError, Exception):
@@ -68,17 +82,19 @@ class FindworkScraper(BaseScraper):
 
     async def _search_keyword(
         self, keyword: str, limit: int, api_key: str,
+        base_url: str,
     ) -> list[Role]:
         # Findwork accepts `sort_by=date_posted` (not `order_by`); default
         # ordering already returns newest-first so the param is optional.
         params = {"search": keyword}
+        # In proxy mode the Worker injects Authorization: Token <key>.
+        # In direct mode we set it ourselves from .env.
+        headers: dict[str, str] = {"Accept": "application/json"}
+        if api_key:
+            headers["Authorization"] = f"Token {api_key}"
         try:
             resp = await self.client._client.get(  # type: ignore[union-attr]
-                FINDWORK_API, params=params,
-                headers={
-                    "Accept": "application/json",
-                    "Authorization": f"Token {api_key}",
-                },
+                base_url, params=params, headers=headers,
             )
         except Exception:
             return []

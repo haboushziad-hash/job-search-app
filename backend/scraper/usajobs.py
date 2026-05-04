@@ -32,8 +32,23 @@ from backend.scraper.base import BaseScraper
 USAJOBS_API_BASE = "https://data.usajobs.gov/api/search"
 
 
+def _usajobs_base_and_keys() -> tuple[str, Optional[str], Optional[str]]:
+    """Return (base_url, api_key, user_agent) honoring proxy mode (v0.1.4).
+
+    Proxy mode: base = {LLM_PROXY_URL}/v1/scraper/usajobs/api/search
+                api_key + user_agent are empty (Worker injects them)
+    Local mode: base = USAJOBS_API_BASE, keys read from .env
+    """
+    proxy = (config.LLM_PROXY_URL or "").rstrip("/")
+    if proxy:
+        return f"{proxy}/v1/scraper/usajobs/api/search", "", ""
+    return USAJOBS_API_BASE, config.USAJOBS_API_KEY, config.USAJOBS_USER_AGENT
+
+
 class USAJobsScraper(BaseScraper):
-    """Scrapes federal jobs from the USAJOBS public API."""
+    """Scrapes federal jobs from the USAJOBS public API.
+
+    v0.1.4: routes through Worker proxy in production, direct in dev mode."""
 
     source_name = "USAJOBS"
 
@@ -44,12 +59,10 @@ class USAJobsScraper(BaseScraper):
         limit_per_keyword: int = 50,
         posted_within_days: Optional[int] = 30,
     ) -> list[Role]:
-        # USAJOBS requires a free API key (sign up at developer.usajobs.gov)
-        # Without a key, the API returns 401. Skip silently if not configured.
-        user_agent = config.USAJOBS_USER_AGENT
-        api_key = config.USAJOBS_API_KEY
-        if not api_key:
-            return []
+        base_url, api_key, user_agent = _usajobs_base_and_keys()
+        proxy_mode = bool((config.LLM_PROXY_URL or "").strip())
+        if not proxy_mode and not api_key:
+            return []  # silent no-op when not configured locally
 
         sem = asyncio.Semaphore(6)
 
@@ -57,7 +70,9 @@ class USAJobsScraper(BaseScraper):
             async with sem:
                 try:
                     return await asyncio.wait_for(
-                        self._search_keyword(kw, limit_per_keyword, user_agent, api_key),
+                        self._search_keyword(kw, limit_per_keyword,
+                                             user_agent or "", api_key or "",
+                                             base_url),
                         timeout=30.0,
                     )
                 except (asyncio.TimeoutError, Exception):
@@ -82,21 +97,24 @@ class USAJobsScraper(BaseScraper):
 
     async def _search_keyword(
         self, keyword: str, limit: int, user_agent: str, api_key: str,
+        base_url: str,
     ) -> list[Role]:
         params = {
             "Keyword": keyword,
             "ResultsPerPage": min(500, limit * 5),
         }
-        headers = {
-            "User-Agent": user_agent,
-            "Host": "data.usajobs.gov",
-        }
+        # In proxy mode the Worker injects auth + Host. In direct mode we
+        # set them ourselves from .env.
+        headers: dict[str, str] = {}
+        if user_agent:
+            headers["User-Agent"] = user_agent
         if api_key:
             headers["Authorization-Key"] = api_key
+            headers["Host"] = "data.usajobs.gov"
 
         try:
             resp = await self.client._client.get(  # type: ignore[union-attr]
-                USAJOBS_API_BASE, params=params, headers=headers,
+                base_url, params=params, headers=headers,
             )
         except Exception:
             return []

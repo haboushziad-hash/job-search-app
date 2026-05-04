@@ -32,12 +32,23 @@
  */
 
 export interface Env {
-  // Secrets
+  // LLM secrets
   GOOGLE_API_KEY: string;
   GOOGLE_API_KEY_2?: string;
   GOOGLE_API_KEY_3?: string;
   ANTHROPIC_API_KEY: string;
   ADMIN_TOKEN: string;
+
+  // v0.1.4 — keyed-scraper secrets, proxied through Worker so testers
+  // get full coverage without needing to manage their own API keys.
+  // Each scraper has a /v1/scraper/{name}/* endpoint that forwards
+  // requests upstream with these keys injected.
+  ADZUNA_APP_ID?: string;
+  ADZUNA_APP_KEY?: string;
+  USAJOBS_API_KEY?: string;
+  USAJOBS_USER_AGENT?: string;
+  FINDWORK_API_KEY?: string;
+  JSEARCH_RAPIDAPI_KEY?: string;
 
   // Bindings (set via wrangler.toml)
   AUDIT_R2: R2Bucket;          // R2 bucket for audit JSON storage
@@ -167,6 +178,24 @@ export default {
         return await listMyRuns(env, testerUuid);
       }
 
+      // v0.1.4 — keyed-scraper proxies. Inject API keys from Worker secrets
+      // and forward to the upstream API. Lets testers use Adzuna/USAJOBS/
+      // Findwork/JSearch without managing their own keys. NOT counted
+      // against the LLM daily call cap (those are scraper API quotas, not
+      // LLM token spend) — but we do log them for visibility.
+      if (path.startsWith("/v1/scraper/adzuna")) {
+        return await proxyAdzuna(req, env, url);
+      }
+      if (path.startsWith("/v1/scraper/usajobs")) {
+        return await proxyUSAJobs(req, env, url);
+      }
+      if (path.startsWith("/v1/scraper/findwork")) {
+        return await proxyFindwork(req, env, url);
+      }
+      if (path.startsWith("/v1/scraper/jsearch")) {
+        return await proxyJSearch(req, env, url);
+      }
+
       return json({ error: "not_found" }, 404);
     } catch (e: any) {
       return json({ error: "internal", message: String(e?.message || e) }, 500);
@@ -243,6 +272,133 @@ async function proxyAnthropicDeep(req: Request, env: Env, reqUrl: URL): Promise<
   const beta = req.headers.get("anthropic-beta");
   if (beta) upstreamHeaders.set("anthropic-beta", beta);
 
+  const resp = await fetch(upstreamUrl, {
+    method: req.method,
+    headers: upstreamHeaders,
+    body: req.method === "GET" || req.method === "HEAD" ? undefined : req.body,
+  });
+  return new Response(resp.body, {
+    status: resp.status,
+    headers: {
+      "Content-Type": resp.headers.get("Content-Type") || "application/json",
+      "X-Proxied-By": "fmsdj-worker",
+    },
+  });
+}
+
+// ============================================================================
+// v0.1.4 — Keyed-scraper proxies
+// ============================================================================
+//
+// All four follow the same pattern: strip the /v1/scraper/{name} prefix,
+// inject the upstream API's auth (URL params, header, or both), forward
+// the rest of the request, stream response back. Tester apps see a single
+// uniform endpoint per scraper; the Worker hides the upstream auth.
+
+// Adzuna — auth is two URL params (app_id + app_key).
+//   /v1/scraper/adzuna/v1/api/jobs/us/search/1?what=...&where=...
+//     → https://api.adzuna.com/v1/api/jobs/us/search/1?what=...&app_id=X&app_key=Y
+async function proxyAdzuna(req: Request, env: Env, reqUrl: URL): Promise<Response> {
+  if (!env.ADZUNA_APP_ID || !env.ADZUNA_APP_KEY) {
+    return json({ error: "adzuna_keys_not_configured" }, 500);
+  }
+  const upstreamPath = reqUrl.pathname.replace(/^\/v1\/scraper\/adzuna/, "") || "/";
+  const upstreamSearch = new URLSearchParams(reqUrl.search);
+  upstreamSearch.set("app_id", env.ADZUNA_APP_ID);
+  upstreamSearch.set("app_key", env.ADZUNA_APP_KEY);
+  const upstreamUrl = `https://api.adzuna.com${upstreamPath}?${upstreamSearch.toString()}`;
+  const upstreamHeaders = new Headers();
+  upstreamHeaders.set("Content-Type", req.headers.get("Content-Type") || "application/json");
+  const accept = req.headers.get("Accept");
+  if (accept) upstreamHeaders.set("Accept", accept);
+  const resp = await fetch(upstreamUrl, {
+    method: req.method,
+    headers: upstreamHeaders,
+    body: req.method === "GET" || req.method === "HEAD" ? undefined : req.body,
+  });
+  return new Response(resp.body, {
+    status: resp.status,
+    headers: {
+      "Content-Type": resp.headers.get("Content-Type") || "application/json",
+      "X-Proxied-By": "fmsdj-worker",
+    },
+  });
+}
+
+// USAJOBS — auth via two headers (Authorization-Key + User-Agent).
+//   /v1/scraper/usajobs/api/search?Keyword=...&ResultsPerPage=500
+//     → https://data.usajobs.gov/api/search?...
+//     headers: Authorization-Key + User-Agent
+async function proxyUSAJobs(req: Request, env: Env, reqUrl: URL): Promise<Response> {
+  if (!env.USAJOBS_API_KEY || !env.USAJOBS_USER_AGENT) {
+    return json({ error: "usajobs_keys_not_configured" }, 500);
+  }
+  const upstreamPath = reqUrl.pathname.replace(/^\/v1\/scraper\/usajobs/, "") || "/";
+  const upstreamUrl = `https://data.usajobs.gov${upstreamPath}${reqUrl.search}`;
+  const upstreamHeaders = new Headers();
+  upstreamHeaders.set("Authorization-Key", env.USAJOBS_API_KEY);
+  upstreamHeaders.set("User-Agent", env.USAJOBS_USER_AGENT);
+  upstreamHeaders.set("Host", "data.usajobs.gov");
+  const accept = req.headers.get("Accept");
+  if (accept) upstreamHeaders.set("Accept", accept);
+  else upstreamHeaders.set("Accept", "application/json");
+  const resp = await fetch(upstreamUrl, {
+    method: req.method,
+    headers: upstreamHeaders,
+    body: req.method === "GET" || req.method === "HEAD" ? undefined : req.body,
+  });
+  return new Response(resp.body, {
+    status: resp.status,
+    headers: {
+      "Content-Type": resp.headers.get("Content-Type") || "application/json",
+      "X-Proxied-By": "fmsdj-worker",
+    },
+  });
+}
+
+// Findwork — auth via Authorization: Token <key> header.
+//   /v1/scraper/findwork/api/jobs/?search=...
+//     → https://findwork.dev/api/jobs/?search=...
+async function proxyFindwork(req: Request, env: Env, reqUrl: URL): Promise<Response> {
+  if (!env.FINDWORK_API_KEY) {
+    return json({ error: "findwork_key_not_configured" }, 500);
+  }
+  const upstreamPath = reqUrl.pathname.replace(/^\/v1\/scraper\/findwork/, "") || "/";
+  const upstreamUrl = `https://findwork.dev${upstreamPath}${reqUrl.search}`;
+  const upstreamHeaders = new Headers();
+  upstreamHeaders.set("Authorization", `Token ${env.FINDWORK_API_KEY}`);
+  upstreamHeaders.set("Content-Type", req.headers.get("Content-Type") || "application/json");
+  const accept = req.headers.get("Accept");
+  if (accept) upstreamHeaders.set("Accept", accept);
+  const resp = await fetch(upstreamUrl, {
+    method: req.method,
+    headers: upstreamHeaders,
+    body: req.method === "GET" || req.method === "HEAD" ? undefined : req.body,
+  });
+  return new Response(resp.body, {
+    status: resp.status,
+    headers: {
+      "Content-Type": resp.headers.get("Content-Type") || "application/json",
+      "X-Proxied-By": "fmsdj-worker",
+    },
+  });
+}
+
+// JSearch (RapidAPI) — auth via two headers: X-RapidAPI-Key + X-RapidAPI-Host.
+//   /v1/scraper/jsearch/search?query=...&page=1&num_pages=1&date_posted=month
+//     → https://jsearch.p.rapidapi.com/search?...
+async function proxyJSearch(req: Request, env: Env, reqUrl: URL): Promise<Response> {
+  if (!env.JSEARCH_RAPIDAPI_KEY) {
+    return json({ error: "jsearch_key_not_configured" }, 500);
+  }
+  const upstreamPath = reqUrl.pathname.replace(/^\/v1\/scraper\/jsearch/, "") || "/";
+  const upstreamUrl = `https://jsearch.p.rapidapi.com${upstreamPath}${reqUrl.search}`;
+  const upstreamHeaders = new Headers();
+  upstreamHeaders.set("X-RapidAPI-Key", env.JSEARCH_RAPIDAPI_KEY);
+  upstreamHeaders.set("X-RapidAPI-Host", "jsearch.p.rapidapi.com");
+  upstreamHeaders.set("Content-Type", req.headers.get("Content-Type") || "application/json");
+  const accept = req.headers.get("Accept");
+  if (accept) upstreamHeaders.set("Accept", accept);
   const resp = await fetch(upstreamUrl, {
     method: req.method,
     headers: upstreamHeaders,

@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import asyncio
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Any, Optional
 
 from backend.config import config
 from backend.models import Role
@@ -33,8 +33,28 @@ from backend.scraper.greenhouse import _strip_html
 ADZUNA_API_BASE = "https://api.adzuna.com/v1/api/jobs"
 
 
+def _adzuna_base_and_keys() -> tuple[str, Optional[str], Optional[str]]:
+    """Return (base_url, app_id, app_key) honoring proxy mode (v0.1.4).
+
+    When LLM_PROXY_URL is set (production / tester builds), route through
+    the Worker's /v1/scraper/adzuna proxy. The Worker injects app_id +
+    app_key from its own secrets, so we send empty strings here and the
+    proxy fills them in.
+
+    When LLM_PROXY_URL is unset (local dev), call Adzuna directly with
+    keys from .env.
+    """
+    proxy = (config.LLM_PROXY_URL or "").rstrip("/")
+    if proxy:
+        # Worker handles auth — pass empty so URL params don't double-set
+        return f"{proxy}/v1/scraper/adzuna/v1/api/jobs", "", ""
+    return ADZUNA_API_BASE, config.ADZUNA_APP_ID, config.ADZUNA_APP_KEY
+
+
 class AdzunaScraper(BaseScraper):
-    """Scrapes Adzuna's licensed job search API."""
+    """Scrapes Adzuna's licensed job search API.
+
+    v0.1.4: routes through Worker proxy in production, direct in dev mode."""
 
     source_name = "Adzuna"
 
@@ -45,10 +65,11 @@ class AdzunaScraper(BaseScraper):
         limit_per_keyword: int = 50,
         posted_within_days: Optional[int] = 30,
     ) -> list[Role]:
-        app_id = config.ADZUNA_APP_ID
-        app_key = config.ADZUNA_APP_KEY
-        if not app_id or not app_key:
-            return []  # silent no-op when not configured
+        base_url, app_id, app_key = _adzuna_base_and_keys()
+        # In dev mode we need keys; in proxy mode the Worker has them.
+        proxy_mode = bool((config.LLM_PROXY_URL or "").strip())
+        if not proxy_mode and (not app_id or not app_key):
+            return []  # silent no-op when not configured locally
 
         # Country: profile.target_locations could imply non-US (e.g. UK
         # candidate). Default from .env is "us" but this could be expanded
@@ -64,8 +85,8 @@ class AdzunaScraper(BaseScraper):
                 try:
                     return await asyncio.wait_for(
                         self._search_keyword(kw, limit_per_keyword,
-                                             country, app_id, app_key,
-                                             posted_within_days),
+                                             country, app_id or "", app_key or "",
+                                             posted_within_days, base_url),
                         timeout=25.0,
                     )
                 except (asyncio.TimeoutError, Exception):
@@ -90,6 +111,7 @@ class AdzunaScraper(BaseScraper):
     async def _search_keyword(
         self, keyword: str, limit: int, country: str,
         app_id: str, app_key: str, max_age_days: Optional[int],
+        base_url: str,
     ) -> list[Role]:
         # Adzuna returns 50 results per page max. Paginate until we hit `limit`
         # or run out of results. Cap pages to a sensible number to avoid
@@ -99,15 +121,18 @@ class AdzunaScraper(BaseScraper):
 
         out: list[Role] = []
         for page in range(1, max_pages + 1):
-            url = f"{ADZUNA_API_BASE}/{country}/search/{page}"
-            params = {
-                "app_id": app_id,
-                "app_key": app_key,
+            url = f"{base_url}/{country}/search/{page}"
+            params: dict[str, Any] = {
                 "what": keyword,
                 "results_per_page": per_page,
                 "content-type": "application/json",
                 "sort_by": "date",
             }
+            # Only include keys when calling Adzuna directly (dev mode).
+            # In proxy mode the Worker injects them server-side.
+            if app_id and app_key:
+                params["app_id"] = app_id
+                params["app_key"] = app_key
             if max_age_days:
                 params["max_days_old"] = max_age_days
 

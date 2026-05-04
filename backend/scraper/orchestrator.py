@@ -30,6 +30,7 @@ from backend.scraper.smartrecruiters import SmartRecruitersScraper
 from backend.scraper.arbeitnow import ArbeitnowScraper
 from backend.scraper.hn_hiring import HNHiringScraper
 from backend.scraper.findwork import FindworkScraper
+from backend.scraper.jsearch import JSearchScraper
 from backend.scraper import _keyword_match as _kw_match
 
 
@@ -70,6 +71,11 @@ SCRAPER_REGISTRY: dict[str, type[BaseScraper]] = {
     "Arbeitnow":  ArbeitnowScraper,  # EU-leaning + remote (no key)
     "HN-WhoIsHiring": HNHiringScraper,    # Monthly HN thread, startup-direct (no key)
     "Findwork":   FindworkScraper,   # Aggregator (free tier needs FINDWORK_API_KEY)
+    # v0.1.4: JSearch (RapidAPI) — legitimate aggregator covering LinkedIn,
+    # Indeed, Glassdoor, ZipRecruiter via paid partnership. Free tier 200
+    # requests/month, Pro $25/mo for 10K. Routes through Worker proxy in
+    # production so testers don't need their own RapidAPI key.
+    "JSearch":    JSearchScraper,
 }
 
 # Deferred — anti-bot blocked, would require Playwright + ongoing maintenance
