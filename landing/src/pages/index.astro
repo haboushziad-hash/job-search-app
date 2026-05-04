@@ -26,8 +26,8 @@ const APP_SIZE = "107 MB";
     <!-- Top nav -->
     <nav class="max-w-6xl mx-auto px-6 pt-8 flex items-center justify-between">
       <div class="flex items-center gap-2.5">
-        <!-- Z mark — same PNG as the app icon. The image has its own
-             rounded-square baked in, so we don't add extra rounding. -->
+        <!-- Z mark — cleaned PNG (real transparency, auto-cropped to its
+             alpha bbox so the logo fills the canvas without dead padding). -->
         <img src="/z-mark.png" alt="findmesomedamnjobz" width="32" height="32" />
         <span class="font-semibold tracking-tight text-base-100 text-sm">findmesomedamnjobz</span>
       </div>
@@ -116,7 +116,7 @@ const APP_SIZE = "107 MB";
       <!-- Stats strip -->
       <div class="reveal-stagger mt-14 grid grid-cols-3 gap-3 sm:gap-6 max-w-3xl mx-auto">
         <Stat number="Thousands" label="of roles per search" />
-        <Stat number="≈11 min" label="per fresh search" />
+        <Stat number="≈15 min" label="per fresh search" />
         <Stat number="4-Stage" label="AI cascade logic" />
       </div>
 
@@ -265,16 +265,18 @@ const APP_SIZE = "107 MB";
              (Workday, Greenhouse, Lever, Ashby, iCIMS, SmartRecruiters) —
              niche-sounding names but they ARE the systems used by Fortune
              500 enterprises and most tech employers, so the company-side
-             recognition picks up the slack visually. Adzuna + USAJOBS are
-             real APIs we hit; specialty boards (BuiltIn, Muse, Remotive,
-             Climatebase, Findwork, Hacker News) are direct integrations.
-             We deliberately do NOT list LinkedIn / Indeed / Glassdoor —
-             we read individual LinkedIn JD bodies via Plan B but don't
-             scrape any of their listing indexes, so claiming them would
-             be misleading. -->
+             recognition picks up the slack visually. Adzuna + USAJOBS +
+             JSearch are real aggregator APIs we hit; specialty boards
+             (BuiltIn, Muse, Remotive, Climatebase, Findwork, Hacker News,
+             Arbeitnow) are direct integrations. JSearch (RapidAPI) gives
+             us legitimate access to LinkedIn / Indeed / Glassdoor /
+             ZipRecruiter listings via paid partnership — we never scrape
+             those platforms directly. -->
         <span class="opacity-70">Workday</span>
         <span class="text-base-700">·</span>
         <span class="opacity-70">Greenhouse</span>
+        <span class="text-base-700">·</span>
+        <span class="opacity-70">JSearch</span>
         <span class="text-base-700">·</span>
         <span class="opacity-70">USAJOBS</span>
         <span class="text-base-700">·</span>
@@ -297,6 +299,8 @@ const APP_SIZE = "107 MB";
         <span class="opacity-70">Remotive</span>
         <span class="text-base-700">·</span>
         <span class="opacity-70">Climatebase</span>
+        <span class="text-base-700">·</span>
+        <span class="opacity-70">Arbeitnow</span>
         <span class="text-base-700">·</span>
         <span class="opacity-70">Findwork</span>
         <span class="text-base-700">·</span>
@@ -305,6 +309,8 @@ const APP_SIZE = "107 MB";
         <span class="text-base-700">·</span>
         <span class="opacity-70">Greenhouse</span>
         <span class="text-base-700">·</span>
+        <span class="opacity-70">JSearch</span>
+        <span class="text-base-700">·</span>
         <span class="opacity-70">USAJOBS</span>
         <span class="text-base-700">·</span>
         <span class="opacity-70">Adzuna</span>
@@ -326,6 +332,8 @@ const APP_SIZE = "107 MB";
         <span class="opacity-70">Remotive</span>
         <span class="text-base-700">·</span>
         <span class="opacity-70">Climatebase</span>
+        <span class="text-base-700">·</span>
+        <span class="opacity-70">Arbeitnow</span>
         <span class="text-base-700">·</span>
         <span class="opacity-70">Findwork</span>
         <span class="text-base-700">·</span>
@@ -490,7 +498,7 @@ const APP_SIZE = "107 MB";
         <Feature title="Multi-industry by design"
                  desc="Tax accountants, software engineers, nurses, marketing directors, real estate analysts — same tool, different keyword universe. The AI builds your search around your resume, not a generic template." />
         <Feature title="Fast, free, no upsells"
-                 desc="A full search runs in ~11 minutes. No subscriptions, no monthly fees, no upsells, no marketing email — install once and use it as much as you want. The AI compute is covered during the pilot — no API keys to set up, no credit card, just download and run." />
+                 desc="A full search runs in 10–20 minutes (covers 14 job boards plus all the major ATS systems). No subscriptions, no monthly fees, no upsells, no marketing email — install once and use it as much as you want. The AI compute is covered during the pilot — no API keys to set up, no credit card, just download and run." />
         <Feature title="Smarter every run"
                  desc="The keyword generator learns from anonymized job titles found across the last several searches. Each run sharpens what the next one looks for, so your fifth search surfaces roles your first one would have missed. Your resume, profile data, and saved roles stay private to you." />
         <Feature title="Honest tier labels"
