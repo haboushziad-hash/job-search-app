@@ -19,6 +19,7 @@ from typing import Optional
 from backend.models import Role
 from backend.scraper.base import BaseScraper
 from backend.scraper.greenhouse import _strip_html
+from backend.scraper import _keyword_match as _kw_match
 
 
 SR_API_BASE = "https://api.smartrecruiters.com/v1/companies"
@@ -58,15 +59,19 @@ class SmartRecruitersScraper(BaseScraper):
         tasks = [fetch_company(d, s) for d, s in SMARTRECRUITERS_COMPANIES]
         all_roles_lists = await asyncio.gather(*tasks, return_exceptions=True)
 
-        # Flatten, then keyword-filter (substring match against title+JD-excerpt)
+        # Flatten, then keyword-filter (token-overlap via _keyword_match.py)
         seen: set[str] = set()
         out: list[Role] = []
         for rl in all_roles_lists:
             if isinstance(rl, BaseException):
                 continue
             for role in rl or []:
-                title_lower = (role.job_title or "").lower()
-                if not any(kw in title_lower for kw in keywords_lower):
+                # Token-overlap on title + JD (was title-only substring before)
+                if not _kw_match.matches_any_keyword(
+                    role.job_title or "",
+                    role.job_description_full or "",
+                    keywords_lower,
+                ):
                     continue
                 if role.job_url and role.job_url in seen:
                     continue

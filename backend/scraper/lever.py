@@ -18,25 +18,26 @@ from typing import Any, Optional
 from backend.models import Role
 from backend.scraper.base import BaseScraper
 from backend.scraper.greenhouse import _strip_html
+from backend.scraper import _keyword_match as _kw_match
 
 
 # Curated list of companies known to use Lever for hiring.
 # Expand as we discover more â€” easy to maintain.
 LEVER_COMPANIES: list[tuple[str, str]] = [
-    # (display_name, slug) — VERIFIED LIVE 2026-05-03 via probe_lever_health.py
+    # (display_name, slug) ï¿½ VERIFIED LIVE 2026-05-03 via probe_lever_health.py
     # Of 99 originally configured tokens, 90 had migrated off Lever (404).
     # This curated list contains only the 10 confirmed-working entries.
     # Re-probe periodically: scripts/probe_lever_health.py
-    ("Binance",     "binance"),     # 381 jobs — crypto exchange
-    ("Spotify",     "spotify"),     # 198 jobs — streaming/audio
-    ("Whoop",       "whoop"),       # 169 jobs — fitness/wearables
-    ("Mistral AI",  "mistral"),     # 161 jobs — AI/EU
-    ("Ro",          "ro"),          #  48 jobs — telehealth
-    ("Outreach",    "outreach"),    #  30 jobs — sales SaaS
-    ("Houzz",       "houzz"),       #  11 jobs — home/design marketplace
-    ("Highspot",    "highspot"),    #   6 jobs — sales enablement
-    ("Clari",       "clari"),       #   6 jobs — revenue ops
-    ("Skillshare",  "skillshare"),  #   2 jobs — education/learning
+    ("Binance",     "binance"),     # 381 jobs ï¿½ crypto exchange
+    ("Spotify",     "spotify"),     # 198 jobs ï¿½ streaming/audio
+    ("Whoop",       "whoop"),       # 169 jobs ï¿½ fitness/wearables
+    ("Mistral AI",  "mistral"),     # 161 jobs ï¿½ AI/EU
+    ("Ro",          "ro"),          #  48 jobs ï¿½ telehealth
+    ("Outreach",    "outreach"),    #  30 jobs ï¿½ sales SaaS
+    ("Houzz",       "houzz"),       #  11 jobs ï¿½ home/design marketplace
+    ("Highspot",    "highspot"),    #   6 jobs ï¿½ sales enablement
+    ("Clari",       "clari"),       #   6 jobs ï¿½ revenue ops
+    ("Skillshare",  "skillshare"),  #   2 jobs ï¿½ education/learning
 ]
 
 
@@ -88,11 +89,15 @@ class LeverScraper(BaseScraper):
                             continue
                     except (TypeError, ValueError):
                         pass
-                searchable = (
-                    (role.job_title or "") + " " +
-                    (role.job_description_full or "")[:2000]
-                ).lower()
-                if not any(kw in searchable for kw in keywords_lower):
+                # Token-overlap match (shared with all other scrapers via
+                # _keyword_match.py). Replaces substring matching that
+                # missed near-matches like "AI Enablement Services Lead"
+                # for keyword "AI Enablement Lead".
+                if not _kw_match.matches_any_keyword(
+                    role.job_title or "",
+                    role.job_description_full or "",
+                    keywords_lower,
+                ):
                     continue
                 if role.job_url:
                     seen_url.add(role.job_url)

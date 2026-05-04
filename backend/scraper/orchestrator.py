@@ -30,6 +30,7 @@ from backend.scraper.smartrecruiters import SmartRecruitersScraper
 from backend.scraper.arbeitnow import ArbeitnowScraper
 from backend.scraper.hn_hiring import HNHiringScraper
 from backend.scraper.findwork import FindworkScraper
+from backend.scraper import _keyword_match as _kw_match
 
 
 # Map source_name → scraper class.
@@ -149,11 +150,46 @@ async def scrape_all(
         }
         all_roles.extend(result)
 
-    deduped = _cross_board_dedupe(all_roles)
+    # Centralized post-fetch sanity filter.
+    # Server-side scrapers (Workday/iCIMS/TheMuse/BuiltIn/Remotive/Adzuna/
+    # USAJOBS/Climatebase/Findwork) trust their upstream search to do the
+    # matching. Empirically those upstreams return very loose results —
+    # Workday returned 8,317 roles for AI/strategy keywords with a Walmart
+    # store-manager fraction, TheMuse fetches whole categories. Apply the
+    # token-overlap matcher centrally so every scraper's output is sanity-
+    # checked against the keyword list. This is a no-op for scrapers that
+    # already filter at scrape time (Greenhouse/Lever/Ashby/Arbeitnow/HN/
+    # SmartRecruiters) — same matcher = same result.
+    keywords_lower = [k.lower() for k in keywords]
+    filtered_roles: list[Role] = []
+    by_source_filtered: dict[str, int] = {}
+    for r in all_roles:
+        if _kw_match.matches_any_keyword(
+            r.job_title or "",
+            r.job_description_full or "",
+            keywords_lower,
+        ):
+            filtered_roles.append(r)
+            src = getattr(r, "primary_source", None) or getattr(r, "source", None) or "unknown"
+            by_source_filtered[src] = by_source_filtered.get(src, 0) + 1
+    if log:
+        dropped_total = len(all_roles) - len(filtered_roles)
+        if dropped_total > 0:
+            print(f"[scraper] post-fetch sanity filter: {len(all_roles)} → {len(filtered_roles)} "
+                  f"(dropped {dropped_total} non-matching)")
+            # Per-source delta — useful for diagnosing which sources had
+            # loose upstream search.
+            for src, raw_n in by_source.items():
+                kept = by_source_filtered.get(src, 0)
+                if raw_n > 0 and kept < raw_n:
+                    print(f"  {src}: {raw_n} → {kept}")
+
+    deduped = _cross_board_dedupe(filtered_roles)
     capped = _cap_per_company(deduped, max_per_company=50)
     if log:
         print(f"[scraper] per-source: {by_source}")
-        print(f"[scraper] total before dedup: {len(all_roles)}, after dedup: {len(deduped)}, "
+        print(f"[scraper] total before dedup: {len(filtered_roles)} (after sanity filter), "
+              f"after dedup: {len(deduped)}, "
               f"after per-company cap (max 50): {len(capped)}")
 
     # Populate caller's health dict so the runner can persist this into

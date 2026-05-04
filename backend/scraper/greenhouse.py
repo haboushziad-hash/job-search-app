@@ -24,47 +24,26 @@ from backend.models import Role
 from backend.scraper.base import BaseScraper
 
 
-# Common short words ignored when comparing keyword tokens. Keeping the list
-# tight — we don't want to mistake "ai" or "lead" as stopwords, but "and" /
-# "of" / "the" carry no signal.
-_STOPWORDS = frozenset({
-    "a", "an", "and", "or", "for", "of", "to", "the", "in", "on",
-    "with", "at", "by", "as", "&",
-})
-
-
-def _tokenize(text: str) -> list[str]:
-    """Lowercase + split on non-word chars. Filters stopwords + 1-char tokens."""
-    return [
-        t for t in re.split(r"[^a-z0-9]+", (text or "").lower())
-        if t and len(t) > 1 and t not in _STOPWORDS
-    ]
+# Token-overlap matcher logic was extracted to backend.scraper._keyword_match
+# in v0.1.3 so all 14 scrapers can share the same matching rules. Re-export
+# the public functions under the original names for back-compat with anything
+# that imported them directly from this module.
+from backend.scraper import _keyword_match as _kw_match
+_STOPWORDS = _kw_match.STOPWORDS  # back-compat
+_tokenize = _kw_match.tokenize    # back-compat
 
 
 def _matches_any_keyword(role: Role, keywords_lower: list[str]) -> bool:
-    """Token-overlap match: keep role if any keyword's content tokens have
-    sufficient coverage in the title (or weaker coverage in title+JD)."""
-    title = role.job_title or ""
-    jd_excerpt = (role.job_description_full or "")[:2000]
-    title_tokens = set(_tokenize(title))
-    full_tokens = title_tokens | set(_tokenize(jd_excerpt))
+    """Back-compat shim — delegates to the shared matcher.
 
-    for kw in keywords_lower:
-        kw_tokens = _tokenize(kw)
-        if not kw_tokens:
-            continue
-        # Require ALL content tokens for short keywords (1-2 tokens), since
-        # missing one inverts the meaning ("AI Coach" without "AI" is wrong).
-        if len(kw_tokens) <= 2:
-            if all(t in full_tokens for t in kw_tokens):
-                return True
-            continue
-        # Longer keywords: 60% of tokens in title OR 50%+ in title+JD.
-        title_overlap = sum(1 for t in kw_tokens if t in title_tokens) / len(kw_tokens)
-        full_overlap = sum(1 for t in kw_tokens if t in full_tokens) / len(kw_tokens)
-        if title_overlap >= 0.60 or full_overlap >= 0.75:
-            return True
-    return False
+    Boolean: does any keyword's content tokens overlap with this role's
+    title+JD (excerpt)? See _keyword_match.matches_any_keyword for rules.
+    """
+    return _kw_match.matches_any_keyword(
+        role.job_title or "",
+        role.job_description_full or "",
+        keywords_lower,
+    )
 
 
 # Curated list of companies known to use Greenhouse. Expand as we discover more.

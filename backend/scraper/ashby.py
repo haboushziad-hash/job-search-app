@@ -15,6 +15,7 @@ from typing import Any, Optional
 from backend.models import Role
 from backend.scraper.base import BaseScraper
 from backend.scraper.greenhouse import _strip_html, _parse_iso_date
+from backend.scraper import _keyword_match as _kw_match
 
 
 # Curated list of orgs known to use Ashby. Each entry maps display name → org slug.
@@ -172,11 +173,14 @@ class AshbyScraper(BaseScraper):
                     posted = _parse_iso_date(role.posted_date)
                     if posted and posted < cutoff:
                         continue
-                searchable = (
-                    (role.job_title or "") + " " +
-                    (role.job_description_full or "")[:2000]
-                ).lower()
-                if not any(kw in searchable for kw in keywords_lower):
+                # Token-overlap match (shared via _keyword_match.py).
+                # Replaces substring matching — Ashby went from 12 to 50+
+                # matches per run.
+                if not _kw_match.matches_any_keyword(
+                    role.job_title or "",
+                    role.job_description_full or "",
+                    keywords_lower,
+                ):
                     continue
                 if role.job_url:
                     seen_url.add(role.job_url)

@@ -24,6 +24,7 @@ from typing import Optional
 
 from backend.models import Role
 from backend.scraper.base import BaseScraper
+from backend.scraper import _keyword_match as _kw_match
 
 
 HN_SEARCH_API = "https://hn.algolia.com/api/v1/search"
@@ -57,11 +58,12 @@ class HNHiringScraper(BaseScraper):
                 continue
             if not role:
                 continue
-            haystack = (
-                (role.job_title or "") + " " +
-                (role.job_description_full or "")[:500]
-            ).lower()
-            if not any(kw in haystack for kw in keywords_lower):
+            # Token-overlap match (shared via _keyword_match.py).
+            if not _kw_match.matches_any_keyword(
+                role.job_title or "",
+                role.job_description_full or "",
+                keywords_lower,
+            ):
                 continue
             key = (role.company or "") + "|" + (role.job_title or "")
             if key in seen:

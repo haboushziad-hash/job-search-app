@@ -515,36 +515,15 @@ def _safe_json_loads(s):
         return None
 
 
-# Stopwords used by the keyword tagger's tokenizer. Mirrors greenhouse.py's
-# matcher — keeps "ai" / "lead" as content tokens while dropping "and" / "of".
-_TAG_STOPWORDS = frozenset({
-    "a", "an", "and", "or", "for", "of", "to", "the", "in", "on",
-    "with", "at", "by", "as", "&",
-})
-
-
-def _tag_tokenize(text: str) -> list[str]:
-    """Lowercase + split on non-word chars. Filters stopwords + 1-char tokens.
-    Same rules as Greenhouse scraper's matcher so the tagger and the scraper
-    agree on what counts as a 'match'."""
-    return [
-        t for t in re.split(r"[^a-z0-9]+", (text or "").lower())
-        if t and len(t) > 1 and t not in _TAG_STOPWORDS
-    ]
-
-
 def _tag_matched_keywords(roles: list[Role], profile) -> None:
     """For each role, set role.matched_keyword to the single most relevant
     keyword from profile.keywords that the role actually matched.
 
-    Uses TOKEN-OVERLAP matching (same logic as the Greenhouse scraper's
-    `_matches_any_keyword`). This catches near-misses like "AI Enablement
-    Services Lead" matching keyword "AI Enablement Lead" — substring matching
-    missed those because the literal phrase isn't present.
-
-    Match rule (mirrors greenhouse.py):
-      - Short keywords (1-2 content tokens): ALL tokens must appear
-      - Longer keywords (3+ tokens): 60%+ of tokens must appear
+    Uses the shared TOKEN-OVERLAP matcher (backend.scraper._keyword_match)
+    so the tagger agrees with what each scraper accepted as a match.
+    Substring matching previously missed near-matches like "AI Enablement
+    Services Lead" for keyword "AI Enablement Lead" — token overlap catches
+    those.
 
     Priority order (best → worst):
       1. Tier-1 keyword in job title
@@ -555,52 +534,32 @@ def _tag_matched_keywords(roles: list[Role], profile) -> None:
     Tier-3 keywords are intentionally excluded — they're noisy and would dilute
     the "via X" UI label.
     """
+    from backend.scraper import _keyword_match as _kw_match
+
     keywords = list(getattr(profile, "keywords", None) or [])
     if not keywords:
         return
 
-    # Pre-tokenize each keyword and group by tier, longest-first within tier
-    # so the first match we find is also the most specific one. Tier 3 dropped.
+    # Build the {tier: [(text, tokens)]} structure best_keyword_match expects,
+    # longest-first within each tier so the first match is the most specific.
     by_tier: dict[int, list[tuple[str, list[str]]]] = {1: [], 2: []}
     for kw in keywords:
         text = (getattr(kw, "text", "") or "").strip()
         tier = getattr(kw, "tier", 3) or 3
         if not text or tier not in (1, 2):
             continue
-        tokens = _tag_tokenize(text)
+        tokens = _kw_match.tokenize(text)
         if tokens:
             by_tier[tier].append((text, tokens))
     for t in by_tier:
         by_tier[t].sort(key=lambda p: -len(p[0]))
 
-    def _matches(role_tokens: set, kw_tokens: list[str]) -> bool:
-        """Token-overlap rule (mirrors Greenhouse scraper exactly)."""
-        if not kw_tokens:
-            return False
-        if len(kw_tokens) <= 2:
-            return all(t in role_tokens for t in kw_tokens)
-        return sum(1 for t in kw_tokens if t in role_tokens) / len(kw_tokens) >= 0.60
-
-    def _best_match(role_tokens: set) -> str:
-        """Return the longest keyword in the highest-priority tier that matches."""
-        for tier in (1, 2):
-            for kw_text, kw_tokens in by_tier[tier]:
-                if _matches(role_tokens, kw_tokens):
-                    return kw_text
-        return ""
-
     for role in roles:
-        title_tokens = set(_tag_tokenize(role.job_title or ""))
-        jd_excerpt = (role.job_description_full or "")[:2000]
-        full_tokens = title_tokens | set(_tag_tokenize(jd_excerpt))
-
-        # Pass 1: title-only (preferred — title matches are the strongest signal)
-        m = _best_match(title_tokens)
-        if m:
-            role.matched_keyword = m
-            continue
-        # Pass 2: fall back to title + first 2000 chars of JD
-        m = _best_match(full_tokens)
+        m = _kw_match.best_keyword_match(
+            role.job_title or "",
+            role.job_description_full or "",
+            by_tier,
+        )
         if m:
             role.matched_keyword = m
 

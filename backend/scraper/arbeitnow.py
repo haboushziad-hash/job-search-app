@@ -19,6 +19,7 @@ from typing import Optional
 from backend.models import Role
 from backend.scraper.base import BaseScraper
 from backend.scraper.greenhouse import _strip_html
+from backend.scraper import _keyword_match as _kw_match
 
 
 ARBEITNOW_API = "https://www.arbeitnow.com/api/job-board-api"
@@ -62,12 +63,12 @@ class ArbeitnowScraper(BaseScraper):
             title = (j.get("title") or "").strip()
             if not title:
                 continue
-            # Filter by keyword in title or short description
-            haystack = (
-                title + " " +
-                (j.get("description") or "")[:500]
-            ).lower()
-            if not any(kw in haystack for kw in keywords_lower):
+            # Token-overlap match (shared via _keyword_match.py).
+            if not _kw_match.matches_any_keyword(
+                title,
+                j.get("description") or "",
+                keywords_lower,
+            ):
                 continue
             url = j.get("url") or ""
             if url in seen:
