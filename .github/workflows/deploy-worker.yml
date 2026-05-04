@@ -55,6 +55,13 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           workingDirectory: 'cf_worker'
+          # Pin wrangler to v4. The action's default bundled wrangler is
+          # 3.90.0, which doesn't understand Cloudflare's mid-2026
+          # observability schema split (observability.logs / observability.
+          # traces nested tables) — deploys fail config validation. v4 is
+          # what cf_worker/package.json declares for local dev anyway, so
+          # CI and local should now match.
+          wranglerVersion: '4'
           # No `command` flag → defaults to `wrangler deploy`, which is
           # exactly what we want. The action also reads wrangler.toml's
           # bindings + observability config automatically.
