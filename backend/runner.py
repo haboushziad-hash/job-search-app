@@ -686,7 +686,25 @@ def _pct(roles: list[Role], predicate) -> float:
 
 async def _fetch_missing_jds(roles: list[Role], *, log: bool = True) -> None:
     """Fetch JD bodies for roles where the scraper didn't include them.
-    Mutates roles in place. Bounded concurrency so we don't hammer any one site."""
+
+    Source-aware dispatch (v0.1.3 hot-fix):
+      - Workday roles use WorkdayScraper.fetch_jd which calls the CXS detail
+        endpoint. This was the v0.1.3 silent killer: previously we did a
+        generic HTTP GET against the Workday URL, which returns the JS-shell
+        of a SPA-rendered careers page. The shell contains the title and
+        about 150 chars of company boilerplate but NO job description body.
+        Embedding pre-filter then sees "Title at Company" + 150 chars of
+        boilerplate, scores cosine similarity below the 40% cutoff, and
+        kills 100% of Workday roles. The CXS endpoint returns the full JD
+        as JSON — same path the Workday scraper already uses internally.
+        Diagnostic showed 0/12 -> 8/12 Workday roles survive embedding
+        with proper CXS-fetched JDs.
+      - Everything else uses generic HTTP GET (current behavior). Greenhouse
+        / Lever / Ashby / Remotive / etc. all serve real HTML pages with
+        the JD inline.
+
+    Mutates roles in place. Bounded concurrency to be polite to each tenant.
+    """
     import asyncio
     from backend.scraper.client import ScraperClient
     from backend.scraper.greenhouse import _strip_html
@@ -694,35 +712,62 @@ async def _fetch_missing_jds(roles: list[Role], *, log: bool = True) -> None:
     if not roles:
         return
 
+    # Partition by source for source-aware dispatch
+    workday_roles = [r for r in roles if (
+        getattr(r, "primary_source", None) == "Workday"
+        or getattr(r, "source", None) == "Workday"
+        or "myworkdayjobs.com" in (r.job_url or "")
+    )]
+    other_roles = [r for r in roles if r not in workday_roles]
+
     semaphore = asyncio.Semaphore(8)
 
-    async def _fetch_one(client: ScraperClient, role: Role) -> None:
+    async def _fetch_workday(scraper, role: Role) -> None:
+        """Use WorkdayScraper.fetch_jd which hits the CXS JSON endpoint."""
+        if not role.job_url or role.job_description_full:
+            return
+        async with semaphore:
+            try:
+                jd = await scraper.fetch_jd(role)
+                role.job_description_full = jd or ""
+                role.jd_completeness = (
+                    "Full" if len(role.job_description_full) > 500
+                    else ("Partial" if role.job_description_full else "Missing")
+                )
+            except Exception:
+                pass
+
+    async def _fetch_generic(client: ScraperClient, role: Role) -> None:
+        """Generic HTTP GET + HTML strip. Works for Greenhouse/Lever/Ashby/etc."""
         if not role.job_url or role.job_description_full:
             return
         async with semaphore:
             try:
                 response = await client.get(role.job_url)
-                # Strip HTML to plain text. Workday/iframe pages may have minimal content
-                # in the initial HTML — we get what we can.
                 text = _strip_html(response.text)
-                # Workday job pages often embed JD in JSON. Try regex extraction.
-                if "myworkdayjobs.com" in role.job_url and len(text) < 1500:
-                    import re
-                    # Look for jobDescription field in embedded JSON
-                    m = re.search(r'"jobDescription"\s*:\s*"((?:[^"\\]|\\.)*)"', response.text)
-                    if m:
-                        # Unescape JSON string
-                        jd = m.group(1).replace("\\n", "\n").replace("\\\"", '"').replace("\\/", "/")
-                        text = _strip_html(jd) or text
                 role.job_description_full = text
-                role.jd_completeness = "Full" if len(text) > 500 else ("Partial" if text else "Missing")
+                role.jd_completeness = (
+                    "Full" if len(text) > 500
+                    else ("Partial" if text else "Missing")
+                )
             except Exception:
                 pass
 
-    enriched = 0
     async with ScraperClient() as client:
-        tasks = [_fetch_one(client, r) for r in roles]
-        await asyncio.gather(*tasks)
+        # Workday batch — uses the scraper's own CXS-aware fetch_jd
+        if workday_roles:
+            from backend.scraper.workday import WorkdayScraper
+            wd_scraper = WorkdayScraper(client=client)
+            wd_tasks = [_fetch_workday(wd_scraper, r) for r in workday_roles]
+            await asyncio.gather(*wd_tasks)
+
+        # Everything else — generic HTML fetch
+        if other_roles:
+            other_tasks = [_fetch_generic(client, r) for r in other_roles]
+            await asyncio.gather(*other_tasks)
+
     enriched = sum(1 for r in roles if r.job_description_full)
+    wd_enriched = sum(1 for r in workday_roles if r.job_description_full)
     if log:
-        print(f"[fetch_jds] enriched {enriched}/{len(roles)} roles with full JD bodies")
+        print(f"[fetch_jds] enriched {enriched}/{len(roles)} roles with full JD bodies "
+              f"(Workday via CXS: {wd_enriched}/{len(workday_roles)})")
