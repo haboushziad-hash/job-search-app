@@ -12,7 +12,7 @@ import PrivacyChip from "../components/PrivacyChip.astro";
 const MSI_URL = import.meta.env.PUBLIC_MSI_URL || "https://api.findmesomedamnjobz.com/v1/dl/windows";
 const DMG_ARM64_URL = import.meta.env.PUBLIC_DMG_ARM64_URL || "https://api.findmesomedamnjobz.com/v1/dl/mac-arm64";
 const DMG_X64_URL = import.meta.env.PUBLIC_DMG_X64_URL || "https://api.findmesomedamnjobz.com/v1/dl/mac-x64";
-const VERSION = "0.2.2";
+const VERSION = "0.2.3";
 const APP_SIZE = "107 MB";
 ---
 <BaseLayout>
@@ -709,9 +709,9 @@ A few examples of the level of detail that helps:
       "mac-x64": "Download for Mac (Intel)",
     };
     const subheadByPlatform: Record<Platform, string> = {
-      "windows": "Version 0.2.2 · Windows 10 or 11.",
-      "mac-arm64": "Version 0.2.2 · macOS 12+ (Apple Silicon).",
-      "mac-x64": "Version 0.2.2 · macOS 12+ (Intel).",
+      "windows": "Version 0.2.3 · Windows 10 or 11.",
+      "mac-arm64": "Version 0.2.3 · macOS 12+ (Apple Silicon).",
+      "mac-x64": "Version 0.2.3 · macOS 12+ (Intel).",
     };
 
     // Primary buttons — swap href + label

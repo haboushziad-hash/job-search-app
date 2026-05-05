@@ -90,10 +90,14 @@ class RunState(BaseModel):
 # FastAPI app
 # ----------------------------------------------------------------------------
 
+from backend import __version__ as _APP_VERSION
+
 app = FastAPI(
     title="Job Search API",
     description="Local bridge between the React desktop app and the Python search backend.",
-    version="0.2.0",
+    # v0.2.3: was hardcoded "0.2.0" — read from package metadata so every
+    # release auto-reports correctly without a version-bump landmine.
+    version=_APP_VERSION,
 )
 
 app.add_middleware(
@@ -152,7 +156,8 @@ async def _init_archive() -> None:
 async def health() -> dict[str, Any]:
     return {
         "status": "ok",
-        "version": "0.2.0",
+        # v0.2.3: was hardcoded "0.2.0" — see _APP_VERSION import above.
+        "version": _APP_VERSION,
         "env": {
             "google_keys_configured": len(config.google_api_keys()),
             "dev_mode": config.DEV_MODE,

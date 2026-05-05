@@ -35,6 +35,19 @@ def _ts_filename() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%d_%H-%M")
 
 
+def _get_app_version() -> str:
+    """Read the package version dynamically. v0.2.3 fix: this used to
+    be a hardcoded string in write_audit_files, which meant every audit
+    JSON reported the version string the developer last typed manually
+    rather than the actual build version. Now reads from
+    backend.__version__ which is auto-bumped by sed during release."""
+    try:
+        from backend import __version__ as v
+        return v
+    except Exception:
+        return "unknown"
+
+
 def _iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -366,7 +379,11 @@ def write_audit_files(
             "sources_searched": sources_searched or summary_dump.get("boards_searched", []),
             "keywords_used": keywords,
             "cache_was_hit": cache_was_hit,
-            "app_version": "0.2.0",
+            # v0.2.3: was hardcoded "0.2.0" — read from package metadata
+            # so the audit JSON correctly reports whichever build wrote
+            # it. Imported lazily to avoid a circular dependency at
+            # module-load time.
+            "app_version": _get_app_version(),
         },
         "profile_snapshot": profile_dump,
         "pipeline_funnel": {
