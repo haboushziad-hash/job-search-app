@@ -201,6 +201,16 @@ async def run_search(
         print(f"\n[2/9] Enriching salary data from JDs...")
     enrich_salaries(raw_roles, log=log)
 
+    # ---- 2.5 Hybrid reclassification (v0.2.0) ----
+    # Run BEFORE hard filters so the location filter sees the corrected
+    # arrangement. Scrapers default to On-site when JD doesn't say "hybrid"
+    # literally, but multi-city listings + JDs with "X days in office"
+    # language are functionally hybrid. Reclassifying here means the
+    # Dashboard's Hybrid filter chip actually returns results, and stats
+    # accurately reflect arrangement breakdown.
+    from backend.filter.hard_filters import reclassify_hybrid_roles
+    reclassify_hybrid_roles(raw_roles, log=log)
+
     # ---- 3. Hard filters ----
     if log:
         print(f"\n[3/9] Applying hard filters...")
@@ -217,25 +227,28 @@ async def run_search(
     _tag_matched_keywords(filtered, profile)
 
     # ---- 4. Liveness check ----
-    # Speed win (S3): only verify roles that DON'T already have a JD body.
-    # Roles with a JD have already proven their URL works (the scraper
-    # successfully fetched the JD content). Hitting HEAD on them is wasted
-    # work — we skip them and trust the JD presence as proof of liveness.
-    # This typically saves ~1 min on a search where Greenhouse contributes
-    # most of the roles (Greenhouse roles always have JD bodies at scrape
-    # time, while Workday/iCIMS lazy-fetch and need verification).
-    roles_with_jd = [r for r in filtered if r.job_description_full]
-    roles_without_jd = [r for r in filtered if not r.job_description_full]
+    # v0.2.0: removed the v0.1.4 "skip if JD already fetched" optimization.
+    # The original logic assumed: if the scraper successfully fetched the
+    # JD body, the URL must be live. But the audit (May 4, 2026) showed
+    # that scrapers cache JDs at scrape time — those cached JDs can be
+    # for roles that were closed AFTER the scrape but BEFORE the user
+    # opens them. Closure banners get added to the live page while the
+    # cached JD body stays "fresh-looking." HEAD checks catch URLs that
+    # 404, 410, or redirect to careers home regardless of cached JD.
+    # The dead_listing regex (line ~261) catches the other failure mode:
+    # 200 OK pages with closure banners in the JD prose. Together they
+    # form a two-layer defense.
+    #
+    # Cost: adds ~30-60s to a typical run (HEAD requests on ~500 roles
+    # with concurrency). On a 10-15 min run that's a rounding error.
     _emit(
         35, "Filtering + verifying liveness", 3,
-        f"Verifying {len(roles_without_jd):,} URLs are still live "
-        f"({len(roles_with_jd):,} have JD already, skipping)...",
+        f"Verifying {len(filtered):,} URLs are still live...",
     )
     if log:
-        print(f"\n[4/9] Verifying liveness on {len(roles_without_jd)} roles "
-              f"(skipping {len(roles_with_jd)} that already have JD)...")
-    alive_lazy = await verify_liveness(roles_without_jd, drop_dead=True, log=log)
-    alive = roles_with_jd + alive_lazy
+        print(f"\n[4/9] Verifying liveness on all {len(filtered)} roles "
+              f"(v0.2.0: no longer skipping based on JD presence)...")
+    alive = await verify_liveness(filtered, drop_dead=True, log=log)
 
     # ---- 4.5 Fetch missing JDs ----
     # Some scrapers (Workday) return search results without JD bodies.

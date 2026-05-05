@@ -82,6 +82,12 @@ a = Analysis(
         "sphinx",
         "pytest",
         "test", "tests",
+        # v0.2.0: geonamescache is dev-only — used by scripts/regen_city_lists.py
+        # to expand the backend's CITIES dict from a public dataset, but the
+        # output is the static dict in geocoding.py. The bundled .exe doesn't
+        # need geonamescache at runtime (we wrote out the cities into the .py
+        # already). Excluding shaves ~32MB from the build.
+        "geonamescache",
     ],
     noarchive=False,
 )

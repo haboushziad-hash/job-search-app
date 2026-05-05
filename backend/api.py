@@ -93,7 +93,7 @@ class RunState(BaseModel):
 app = FastAPI(
     title="Job Search API",
     description="Local bridge between the React desktop app and the Python search backend.",
-    version="0.1.9",
+    version="0.2.0",
 )
 
 app.add_middleware(
@@ -152,7 +152,7 @@ async def _init_archive() -> None:
 async def health() -> dict[str, Any]:
     return {
         "status": "ok",
-        "version": "0.1.9",
+        "version": "0.2.0",
         "env": {
             "google_keys_configured": len(config.google_api_keys()),
             "dev_mode": config.DEV_MODE,
@@ -695,6 +695,48 @@ async def list_recent_profiles() -> dict[str, Any]:
         if len(out) >= 3:
             break
     return {"profiles": out}
+
+
+@app.get("/runs/{run_id}/audit")
+async def get_run_audit(run_id: str) -> dict[str, Any]:
+    """Return the full audit JSON for a completed run.
+
+    Used by the Stats page (v0.2.0) to surface aggregate statistics like
+    salary distribution, work-arrangement breakdown, top companies, top
+    keywords, etc. The audit JSON is the richest data source for a run
+    — it contains profile snapshot, pipeline funnel, per-source health,
+    all qualifying roles with full metadata, near-miss roles, keyword
+    effectiveness, salary coverage, and coverage gap analysis.
+
+    The runs.db tracks the audit JSON file path. This endpoint reads it
+    off disk and returns the contents directly. For runs older than the
+    audit format we currently support, fields may be missing — the
+    Stats page handles those gracefully on the frontend.
+    """
+    archive = _maybe_archive()
+    if archive is None:
+        raise HTTPException(status_code=404, detail="Archive not configured")
+    try:
+        with archive._cursor() as cur:
+            cur.execute(
+                "SELECT audit_file_path FROM runs WHERE run_id = ?",
+                (run_id,),
+            )
+            row = cur.fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
+            audit_path_str = row["audit_file_path"]
+        if not audit_path_str:
+            raise HTTPException(status_code=404, detail=f"Run {run_id} has no audit file")
+        audit_path = Path(audit_path_str)
+        if not audit_path.exists():
+            raise HTTPException(status_code=404, detail=f"Audit file not found at {audit_path}")
+        with audit_path.open("r", encoding="utf-8") as f:
+            return json.load(f)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.delete("/runs/{run_id}")

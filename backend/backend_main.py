@@ -28,6 +28,22 @@ def _user_data_dir() -> Path:
 
 
 def main() -> None:
+    # v0.2.0: force stdout/stderr to UTF-8 globally. Without this, any
+    # print() statement that contains non-ASCII characters (em-dashes,
+    # arrows, fancy bullets, foreign-language city names from scraper
+    # results, etc.) crashes the backend on Windows because the default
+    # console codec is cp1252. The previous v0.1.x backends had latent
+    # crashes from print statements like "Greenhouse — searching" that
+    # only manifested when the print was actually triggered.
+    # `errors='replace'` substitutes any unencodeable char with '?' so
+    # diagnostic logs never crash the app.
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        # Older Python or non-tty stdout — best effort.
+        pass
+
     user_dir = _user_data_dir()
     # Load .env from user-data dir if present (testers can drop one there)
     try:

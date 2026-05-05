@@ -21,15 +21,36 @@ interface LocationChip {
   id: string
   name: string
   radius: number
+  // v0.2.0: isRegion indicates a multi-state preset (e.g. DMV) where a
+  // single mile-radius doesn't make geographic sense — states are not
+  // points on a map. When true, the chip renders without a radius
+  // slider and `subCities` carries the additional anchor cities used
+  // for backend filtering. Backend logic (state fallback in
+  // hard_filters.py) catches roles in the represented states even if
+  // they fall outside any anchor city's radius.
+  isRegion?: boolean
+  displayName?: string
+  subCities?: string[]
 }
 
 // Pre-defined metro presets for one-click setup. Keep US-focused for v1.
 // Richmond + Washington at the top because that's where the test cohort
 // lives. Other US metros after, alphabetical.
-const METRO_PRESETS: { label: string; locations: string[] }[] = [
+//
+// Multi-state presets (e.g. DMV) are flagged isRegion=true. They render
+// as a single chip without a radius slider since "20mi from DMV" is
+// nonsensical — states aren't points. Backend's state-overlap fallback
+// in hard_filters.py:501 catches all roles in the represented states.
+interface MetroPreset {
+  label: string
+  locations: string[]
+  isRegion?: boolean  // True for multi-state regions (DMV, etc.)
+}
+
+const METRO_PRESETS: MetroPreset[] = [
   { label: 'Richmond, VA',                locations: ['Richmond VA'] },
   { label: 'Washington, DC',              locations: ['Washington DC'] },
-  { label: 'DMV (DC + MD + VA)',          locations: ['Washington DC', 'Arlington VA', 'Bethesda MD', 'Tysons VA'] },
+  { label: 'DMV (DC + MD + VA)',          locations: ['Washington DC', 'Arlington VA', 'Bethesda MD', 'Tysons VA'], isRegion: true },
   { label: 'Atlanta',                     locations: ['Atlanta GA', 'Alpharetta GA', 'Marietta GA'] },
   { label: 'Austin',                      locations: ['Austin TX', 'Round Rock TX'] },
   { label: 'Boston',                      locations: ['Boston MA', 'Cambridge MA', 'Waltham MA'] },
@@ -48,45 +69,11 @@ const METRO_PRESETS: { label: string; locations: string[] }[] = [
   { label: 'SF Bay Area',                 locations: ['San Francisco CA', 'Oakland CA', 'San Jose CA', 'Palo Alto CA'] },
 ]
 
-// Common US cities for autocomplete — covers all major metros + popular smaller ones
-const CITY_AUTOCOMPLETE: string[] = [
-  // East Coast / Mid-Atlantic
-  'Washington DC', 'Arlington VA', 'Alexandria VA', 'Tysons VA', 'McLean VA', 'Reston VA',
-  'Fairfax VA', 'Bethesda MD', 'Rockville MD', 'Silver Spring MD', 'Baltimore MD',
-  'Annapolis MD', 'Richmond VA', 'Charlottesville VA', 'Norfolk VA', 'Virginia Beach VA',
-  'Raleigh NC', 'Durham NC', 'Charlotte NC', 'Greensboro NC',
-  'Atlanta GA', 'Savannah GA', 'Charleston SC', 'Columbia SC',
-  // Northeast
-  'New York NY', 'Brooklyn NY', 'Manhattan NY', 'Queens NY', 'Bronx NY', 'Long Island NY',
-  'Jersey City NJ', 'Newark NJ', 'Hoboken NJ', 'Princeton NJ', 'Stamford CT', 'Hartford CT',
-  'Boston MA', 'Cambridge MA', 'Waltham MA', 'Worcester MA',
-  'Philadelphia PA', 'Pittsburgh PA', 'King of Prussia PA',
-  'Providence RI', 'Portland ME', 'Burlington VT',
-  // Florida
-  'Miami FL', 'Orlando FL', 'Tampa FL', 'Jacksonville FL', 'Fort Lauderdale FL', 'Tallahassee FL',
-  // Midwest
-  'Chicago IL', 'Evanston IL', 'Schaumburg IL', 'Naperville IL',
-  'Detroit MI', 'Ann Arbor MI', 'Grand Rapids MI',
-  'Minneapolis MN', 'St Paul MN', 'Cleveland OH', 'Columbus OH', 'Cincinnati OH',
-  'Indianapolis IN', 'Milwaukee WI', 'Madison WI', 'Kansas City MO', 'St Louis MO',
-  // South / Texas
-  'Austin TX', 'Houston TX', 'Dallas TX', 'San Antonio TX', 'Fort Worth TX', 'Plano TX',
-  'Nashville TN', 'Memphis TN', 'New Orleans LA', 'Birmingham AL', 'Louisville KY',
-  'Oklahoma City OK', 'Tulsa OK',
-  // Mountain / West
-  'Denver CO', 'Boulder CO', 'Colorado Springs CO',
-  'Salt Lake City UT', 'Phoenix AZ', 'Scottsdale AZ', 'Tucson AZ', 'Las Vegas NV', 'Reno NV',
-  'Albuquerque NM', 'Boise ID',
-  // West Coast
-  'San Francisco CA', 'Oakland CA', 'San Jose CA', 'Palo Alto CA', 'Mountain View CA',
-  'Sunnyvale CA', 'Santa Clara CA', 'Berkeley CA', 'Los Angeles CA', 'Santa Monica CA',
-  'Pasadena CA', 'Irvine CA', 'San Diego CA', 'Sacramento CA', 'Fresno CA',
-  'Seattle WA', 'Bellevue WA', 'Redmond WA', 'Tacoma WA', 'Spokane WA',
-  'Portland OR', 'Eugene OR',
-  'Honolulu HI', 'Anchorage AK',
-  // Remote
-  'Remote', 'Remote (US)',
-]
+// v0.2.0: location autocomplete extracted into a shared component
+// (src/components/LocationAutocomplete.tsx) so all 3 places that add
+// cities (Setup, Run.tsx Re-Run panel, StartSearch.tsx welcome panel)
+// use the same 2,096-city dropdown.
+import { LocationAutocomplete } from '@/components/LocationAutocomplete'
 
 export default function Setup() {
   const navigate = useNavigate()
@@ -153,6 +140,29 @@ export default function Setup() {
   }
 
   const addPreset = (preset: typeof METRO_PRESETS[number]) => {
+    if (preset.isRegion) {
+      // Multi-state preset: single chip, no radius. Skip if already
+      // present (matched by displayName which is the preset label).
+      const alreadyAdded = locations.some(
+        (l) => l.displayName?.toLowerCase() === preset.label.toLowerCase()
+      )
+      if (alreadyAdded) return
+      const [primary, ...rest] = preset.locations
+      setLocations([
+        ...locations,
+        {
+          id: crypto.randomUUID(),
+          name: primary,
+          displayName: preset.label,
+          subCities: rest,
+          radius: 50,           // unused for region chips, kept for type compat
+          isRegion: true,
+        },
+      ])
+      return
+    }
+    // Standard multi-city preset: each city becomes its own chip with
+    // its own radius slider (current behavior).
     const newOnes = preset.locations
       .filter((l) => !locations.find((x) => x.name.toLowerCase() === l.toLowerCase()))
       .map((l) => ({ id: crypto.randomUUID(), name: l, radius: 50 }))
@@ -177,6 +187,23 @@ export default function Setup() {
     }
     setSubmitting(true)
     try {
+      // Expand region chips (DMV) back to their underlying city list
+      // for the backend payload. Each subCity gets the same radius as
+      // the parent chip — the backend's state-overlap fallback in
+      // hard_filters.py:501 catches roles in the represented states
+      // even outside any individual city's radius.
+      const expandedLocations: string[] = []
+      const expandedRadii: number[] = []
+      for (const loc of locations) {
+        expandedLocations.push(loc.name)
+        expandedRadii.push(loc.radius)
+        if (loc.subCities && loc.subCities.length > 0) {
+          for (const sub of loc.subCities) {
+            expandedLocations.push(sub)
+            expandedRadii.push(loc.radius)
+          }
+        }
+      }
       const start = await startProfileBuild({
         files: resumes.map((r) => r.file),
         extraContext,
@@ -184,8 +211,8 @@ export default function Setup() {
         workArrangements: Object.entries(arrangements)
           .filter(([, v]) => v)
           .map(([k]) => (k === 'onsite' ? 'on-site' : k)),
-        acceptableLocations: locations.map((l) => l.name),
-        acceptableLocationRadii: locations.map((l) => l.radius),
+        acceptableLocations: expandedLocations,
+        acceptableLocationRadii: expandedRadii,
       })
       // Pass build_id to /building via history.state — Building page reads it
       navigate('/building', { state: { buildId: start.build_id } })
@@ -542,7 +569,11 @@ export default function Setup() {
                   existingLocations={locations.map((l) => l.name.toLowerCase())}
                 />
 
-                {/* Location chips with radius sliders */}
+                {/* Location chips with radius sliders.
+                    v0.2.0: isRegion chips (DMV) render WITHOUT a radius
+                    slider — instead they show a "Statewide match" badge
+                    explaining the special filtering behavior. The chip
+                    spans the full row so it's visually distinct. */}
                 {locations.length > 0 && (
                   <div className="mt-4 space-y-2">
                     {locations.map((loc) => (
@@ -555,25 +586,36 @@ export default function Setup() {
                       >
                         <MapPin size={13} className="text-accent-400 flex-shrink-0" />
                         <span className="text-sm flex-shrink-0 min-w-[140px] truncate">
-                          {loc.name}
+                          {loc.displayName || loc.name}
                         </span>
-                        <div className="flex-1 flex items-center gap-2.5">
-                          <span className="text-[10px] tracking-wider text-base-500 uppercase">
-                            Radius
-                          </span>
-                          <input
-                            type="range"
-                            min={5}
-                            max={75}
-                            step={5}
-                            value={loc.radius}
-                            onChange={(e) => updateRadius(loc.id, Number(e.target.value))}
-                            className="flex-1 accent-accent-500"
-                          />
-                          <span className="text-xs font-mono text-base-300 w-12 text-right">
-                            {loc.radius} mi
-                          </span>
-                        </div>
+                        {loc.isRegion ? (
+                          <div className="flex-1 flex items-center gap-2 text-[11px] text-base-400">
+                            <span className="px-2 py-0.5 rounded
+                                            bg-accent-500/[0.12] border border-accent-500/30
+                                            text-accent-200 text-[10px] uppercase tracking-wider">
+                              Statewide
+                            </span>
+                            <span>matches any role in the represented states — radius doesn't apply</span>
+                          </div>
+                        ) : (
+                          <div className="flex-1 flex items-center gap-2.5">
+                            <span className="text-[10px] tracking-wider text-base-500 uppercase">
+                              Radius
+                            </span>
+                            <input
+                              type="range"
+                              min={5}
+                              max={75}
+                              step={5}
+                              value={loc.radius}
+                              onChange={(e) => updateRadius(loc.id, Number(e.target.value))}
+                              className="flex-1 accent-accent-500"
+                            />
+                            <span className="text-xs font-mono text-base-300 w-12 text-right">
+                              {loc.radius} mi
+                            </span>
+                          </div>
+                        )}
                         <button
                           onClick={() => removeLocation(loc.id)}
                           className="text-base-500 hover:text-base-200"
@@ -713,108 +755,6 @@ function Tip({ bold, text }: { bold: string; text: string }) {
       <span className="text-base-100 font-medium">{bold}</span>{' '}
       {text}
     </p>
-  )
-}
-
-function LocationAutocomplete({
-  value,
-  onChange,
-  onAdd,
-  existingLocations,
-}: {
-  value: string
-  onChange: (v: string) => void
-  onAdd: (v: string) => void
-  existingLocations: string[]
-}) {
-  const [showSuggestions, setShowSuggestions] = useState(false)
-  const [highlightedIdx, setHighlightedIdx] = useState(0)
-
-  const suggestions = value.trim().length >= 1
-    ? CITY_AUTOCOMPLETE.filter(
-        (city) =>
-          city.toLowerCase().includes(value.toLowerCase()) &&
-          !existingLocations.includes(city.toLowerCase())
-      ).slice(0, 6)
-    : []
-
-  const handleAdd = (text: string) => {
-    onAdd(text)
-    setShowSuggestions(false)
-    setHighlightedIdx(0)
-  }
-
-  return (
-    <div className="relative">
-      <div className="flex gap-2">
-        <input
-          type="text"
-          value={value}
-          onChange={(e) => {
-            onChange(e.target.value)
-            setShowSuggestions(true)
-            setHighlightedIdx(0)
-          }}
-          onFocus={() => setShowSuggestions(true)}
-          onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault()
-              if (suggestions.length > 0 && showSuggestions) {
-                handleAdd(suggestions[highlightedIdx])
-              } else if (value.trim()) {
-                handleAdd(value)
-              }
-            } else if (e.key === 'ArrowDown') {
-              e.preventDefault()
-              setHighlightedIdx((i) => Math.min(i + 1, suggestions.length - 1))
-            } else if (e.key === 'ArrowUp') {
-              e.preventDefault()
-              setHighlightedIdx((i) => Math.max(i - 1, 0))
-            } else if (e.key === 'Escape') {
-              setShowSuggestions(false)
-            }
-          }}
-          placeholder="Type a city — e.g. Richmond VA, Charlotte NC, Denver CO..."
-          className="flex-1 px-3 py-2 rounded-lg
-                     bg-white/[0.04] border border-white/[0.08]
-                     text-sm placeholder:text-base-500
-                     focus:outline-none focus:border-accent-500/50"
-        />
-        <button
-          onClick={() => value.trim() && handleAdd(value)}
-          disabled={!value.trim()}
-          className="px-4 py-2 rounded-lg bg-white/[0.06] hover:bg-white/[0.10]
-                     text-sm text-base-200 disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          Add
-        </button>
-      </div>
-
-      {/* Suggestion popover */}
-      {showSuggestions && suggestions.length > 0 && (
-        <div className="absolute top-full left-0 right-16 mt-1 z-10
-                        glass-strong rounded-lg border border-white/[0.10]
-                        max-h-64 overflow-y-auto py-1">
-          {suggestions.map((city, idx) => (
-            <button
-              key={city}
-              onMouseDown={() => handleAdd(city)}
-              onMouseEnter={() => setHighlightedIdx(idx)}
-              className={cn(
-                'w-full px-3 py-2 text-left text-sm transition-colors',
-                idx === highlightedIdx
-                  ? 'bg-accent-500/[0.10] text-base-50'
-                  : 'text-base-300 hover:text-base-100'
-              )}
-            >
-              <MapPin size={11} className="inline mr-2 text-accent-400" />
-              {city}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
   )
 }
 

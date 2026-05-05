@@ -35,6 +35,59 @@ from backend.scraper.greenhouse import _strip_html
 JSEARCH_API_BASE = "https://jsearch.p.rapidapi.com/search"
 
 
+def _classify_from_jd(jd: str) -> Optional[str]:
+    """Loose JD-body scan for work-arrangement signals.
+
+    JSearch's API often returns is_remote=False AND no city/state — both
+    null. Without a JD scan, those roles end up with location_type=None
+    and show up as "Unknown" on the Work Arrangement chart. This helper
+    recovers ~19 of them per typical run by checking the JD for common
+    phrasings.
+
+    Looser than the regex set used in reclassify_hybrid_roles
+    (hard_filters.py) because we're recovering ambiguous roles, not
+    gating filters carefully. Tries hybrid first (most specific signal),
+    then strong-remote, then on-site, returning None if nothing matches.
+    """
+    if not jd:
+        return None
+    j = jd.lower()
+
+    # Hybrid signals (check first — when "hybrid" appears it's almost
+    # always intended as the work arrangement).
+    if any(p in j for p in (
+        "hybrid",
+        "in-office days", "in office days",
+        "flexible work arrangement", "flexible schedule",
+        "2 days in office", "3 days in office",
+        "two days in office", "three days in office",
+        "days per week in the office",
+    )):
+        return "Hybrid"
+
+    # Strong-remote signals (the role explicitly claims remote — not
+    # just a "we offer remote work for some teams" benefits mention).
+    if any(p in j for p in (
+        "fully remote", "100% remote", "100 percent remote",
+        "remote-first", "remote first",
+        "work from anywhere", "work from home permanently",
+        "this is a remote position", "this role is remote",
+        "this position is remote",
+    )):
+        return "Remote"
+
+    # On-site signals — explicit office requirements.
+    if any(p in j for p in (
+        "must be located in", "must reside in",
+        "in our office", "in the office daily",
+        "on-site role", "on-site position", "onsite role", "onsite position",
+        "in office daily", "five days a week in",
+    )):
+        return "On-site"
+
+    return None
+
+
 def _clean_jsearch_employer_name(employer_name: str, item: dict[str, Any]) -> str:
     """Normalize JSearch's employer_name field, which sometimes returns
     a company's internal categorization tag instead of the brand name.
@@ -243,9 +296,21 @@ class JSearchScraper(BaseScraper):
         else:
             location = ""
 
-        location_type = "Remote" if is_remote else (
-            "On-site" if loc_parts else None
-        )
+        # v0.2.0: when JSearch returns is_remote=False AND no city/state,
+        # location_type used to be None — that bucket showed up as 19
+        # "Unknown" roles on the Stats Work Arrangement chart. The
+        # downstream reclassify_hybrid_roles pass tries to fix these but
+        # uses strict regexes that miss most real-world JD phrasing.
+        # Doing a looser JD-body scan here at scrape time catches the
+        # common cases: any mention of "hybrid", "remote", or office-
+        # presence wording. Falls back to "On-site" only as a last
+        # resort (still triggers the reclassifier).
+        if is_remote:
+            location_type = "Remote"
+        elif loc_parts:
+            location_type = "On-site"
+        else:
+            location_type = _classify_from_jd(jd_text) or None
 
         # Salaries — JSearch surfaces them when source listings disclose
         salary_min = item.get("job_min_salary")

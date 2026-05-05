@@ -29,6 +29,7 @@ import { ArrowRight, ArrowLeft, Upload, Loader2, Check, FileText, Sparkles, Cloc
 import { toast } from 'sonner'
 import { ZMark } from '@/components/ZMark'
 import { SparkleBurst } from '@/components/SparkleBurst'
+import { LocationAutocomplete } from '@/components/LocationAutocomplete'
 import { useAppStore } from '@/stores/appStore'
 import { runSearch, getRecentProfiles, ApiError } from '@/services/api'
 import type { RecentProfile } from '@/services/api'
@@ -354,40 +355,28 @@ export default function StartSearch() {
                               </span>
                             ))}
                           </div>
-                          <div className="flex gap-2">
-                            <input
-                              type="text"
-                              value={newLocationDraft}
-                              onChange={(e) => setNewLocationDraft(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                  e.preventDefault()
-                                  handleAddLocation()
-                                }
-                              }}
-                              disabled={submitting}
-                              placeholder="e.g. Richmond VA, Remote, New York NY"
-                              className="flex-1 bg-white/[0.03] border border-white/[0.10]
-                                         rounded px-3 py-1.5 text-sm text-base-100
-                                         placeholder:text-base-600
-                                         focus:outline-none focus:border-accent-500/50"
-                            />
-                            <button
-                              type="button"
-                              onClick={handleAddLocation}
-                              disabled={submitting || !newLocationDraft.trim()}
-                              className="px-3 py-1.5 rounded text-[12px]
-                                         bg-white/[0.06] border border-white/[0.10]
-                                         text-base-200 hover:bg-white/[0.10]
-                                         disabled:opacity-40 disabled:cursor-not-allowed
-                                         transition-colors"
-                            >
-                              Add
-                            </button>
-                          </div>
+                          <LocationAutocomplete
+                            value={newLocationDraft}
+                            onChange={setNewLocationDraft}
+                            onAdd={(v) => {
+                              const trimmed = v.trim()
+                              if (!trimmed) return
+                              if (adjustedLocations.some((l) => l.toLowerCase() === trimmed.toLowerCase())) {
+                                setNewLocationDraft('')
+                                return
+                              }
+                              setAdjustedLocations((prev) => [...prev, trimmed])
+                              setNewLocationDraft('')
+                            }}
+                            existingLocations={adjustedLocations.map((l) => l.toLowerCase())}
+                            placeholder="e.g. Richmond VA, Remote, Hampton VA"
+                            disabled={submitting}
+                          />
                           <p className="text-[10px] text-base-500 mt-1.5 leading-snug">
-                            Type a city + state (or "Remote") and press Enter or Add. Changes save
-                            to your profile when you click Re-Run.
+                            Type a city + state (or "Remote") and press Enter or Add. New cities
+                            use a 50mi default radius.
+                            <br />
+                            Changes save when you click Re-Run.
                           </p>
                         </div>
                       </div>

@@ -71,6 +71,27 @@ numbers (45, 55, 68, 78, 88, 92) — those are stale tier-band midpoints, not
 signals. Tier labels are assigned downstream from your raw score; you do not
 need to think about them.
 
+TITLE-HEADLINE OVERLAP FLOOR (mirrors Stage 2 PRINCIPLE 8):
+When the role's title contains 3 or more meaningful content words that also
+appear in the candidate's headline OR target_functions list, the score FLOORS
+at 55. Domain, seniority, or comp concerns can reduce from there, but you
+must NOT score below 55 for strong title alignment.
+
+Why: Stage 2 already floored these cases at 70 — your job here is deeper
+analysis, NOT to undo that signal. A v0.2.0 audit found cases where Stage 2
+floored a role like "AI Enablement Manager" at 70 (matching candidate
+headline "AI Strategy and Enablement Consultant") only for Stage 3 to demote
+it to 37 based on JD nuance. That's wrong — title alignment is the strongest
+match signal we have. If the title genuinely doesn't match the role's actual
+function (sales role disguised as enablement), score in the 55-65 band so
+the candidate can read your concerns and decide. Don't bury it below 55
+where the dashboard hides it entirely.
+
+Filler words don't count as content overlap: ignore "of", "the", "and",
+"manager", "lead", "senior", "junior", "II", "III" when checking the
+3-word minimum. Look for substantive nouns/adjectives unique to the
+function (e.g., "AI", "Strategy", "Enablement", "Governance", "Federal").
+
 SALARY EXTRACTION:
 If structured salary fields (salary_min/salary_max) are missing or null, scan the
 JD body for compensation language and extract a range. Watch for:

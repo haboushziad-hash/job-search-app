@@ -148,13 +148,14 @@ export default function Running() {
   const status = useActiveSearchStatus()
   const [cancelling, setCancelling] = useState(false)
 
-  // v0.1.9: rotation index for the personality message rotator. Advances
-  // once every 6 seconds. Combined with the modulo logic below, this
-  // gives ~24-second cycles where the REAL backend status appears, with
-  // 3 personality messages between each real-status appearance. Reset
-  // to 0 whenever the active step changes so each new stage starts on
-  // the real status text (matches what the user expects: "what stage
-  // am I in" first, then drift into chaos).
+  // v0.1.9: rotation index for the personality message rotator.
+  // v0.2.0 tuning: 4s cycle (faster than original 6s, calmer than the
+  // 2.5s sprint), real status every 6th tick. Net: ~24s between real
+  // status appearances with 5 personality messages of 4s each filling
+  // the gap. Personality feels dominant; real status is the periodic
+  // anchor saying "yes the search is still progressing."
+  // Reset to 0 whenever the active step changes so each new stage
+  // starts on the real status text first.
   const [rotationIdx, setRotationIdx] = useState(0)
   // Map server progress → UI step index (declared early so the rotation
   // reset effect can depend on it).
@@ -163,7 +164,7 @@ export default function Running() {
     setRotationIdx(0)
   }, [_activeStepEarly])
   useEffect(() => {
-    const id = setInterval(() => setRotationIdx((i) => i + 1), 6000)
+    const id = setInterval(() => setRotationIdx((i) => i + 1), 4000)
     return () => clearInterval(id)
   }, [])
 

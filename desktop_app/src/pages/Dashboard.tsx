@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Filter, Play, Sparkles, Search, Download, FileSpreadsheet, FileText, FileType, ChevronDown, AlertTriangle, Home } from 'lucide-react'
+import { Filter, Play, Sparkles, Search, Download, FileSpreadsheet, FileText, FileType, ChevronDown, AlertTriangle, Home, BarChart3 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { TierCard } from '@/components/TierCard'
@@ -232,14 +232,15 @@ export default function Dashboard() {
     : afterHiddenFilter
 
   // Arrangement filter — narrow to one or more work arrangements.
-  // v0.1.9: now multi-select. Empty Set means "no filter" (= all
-  // arrangements pass). Selected set means "show roles whose
-  // location_type matches ANY of these" — so {remote, hybrid} shows
-  // both remote AND hybrid roles (union, not intersection — a role
-  // only has one location_type, so intersection would always be empty).
-  // Substring match on location_type because scrapers normalize to
-  // "Remote" / "Hybrid" / "On-site" with varied capitalizations.
-  const afterArrangementFilter = selectedArrangements.size === 0
+  // v0.1.9: multi-select. Empty Set means "no filter".
+  // v0.2.0: when all 3 named arrangements are selected, also treat as
+  // "no filter" so roles with unknown/missing location_type are
+  // included. User mental model is "Remote + Hybrid + On-site = All";
+  // excluding the ~5% of roles without a tagged arrangement made the
+  // count silently wrong (e.g. "Showing 190 of 198" when user expected
+  // to see 198). Substring match on location_type because scrapers
+  // normalize to "Remote" / "Hybrid" / "On-site" with varied caps.
+  const afterArrangementFilter = (selectedArrangements.size === 0 || selectedArrangements.size === 3)
     ? afterSalaryFilter
     : afterSalaryFilter.filter((r) => {
         const t = (r.location_type || '').toLowerCase()
@@ -426,6 +427,18 @@ export default function Dashboard() {
           >
             <Home size={14} />
             Home
+          </button>
+
+          {/* Stats — jump to aggregate analytics for this run */}
+          <button
+            onClick={() => navigate('/stats')}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg
+                       glass-subtle hover:bg-white/[0.08]
+                       text-sm text-base-300 transition-colors"
+            title="View stats for this run"
+          >
+            <BarChart3 size={14} />
+            Stats
           </button>
 
           {/* Export dropdown */}

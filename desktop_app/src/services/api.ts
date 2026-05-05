@@ -243,6 +243,15 @@ export async function getRun(runId: string): Promise<{
   return handle(res)
 }
 
+// v0.2.0: Stats page reads the full audit JSON for a run. Returns the
+// raw audit dict — the Stats page computes salary buckets, top
+// companies, etc. client-side. Type kept loose because audit fields
+// vary by version; the Stats page handles missing fields gracefully.
+export async function getRunAudit(runId: string): Promise<Record<string, unknown>> {
+  const res = await fetch(`${API_BASE}/runs/${encodeURIComponent(runId)}/audit`)
+  return handle(res)
+}
+
 export async function deleteRun(runId: string): Promise<{ run_id: string; deleted: boolean }> {
   const res = await fetch(`${API_BASE}/runs/${encodeURIComponent(runId)}`, {
     method: 'DELETE',

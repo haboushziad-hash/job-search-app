@@ -149,6 +149,15 @@ export default function Keywords() {
         postedWithinDays: 30,
         appliedRoles,
         cacheMaxAgeDays,
+        // v0.2.0: every user-initiated search forces fresh — no cached
+        // results from a peer's recent run with the same profile_hash.
+        // Mirrors the policy in Run.tsx and StartSearch.tsx (Re-Run paths)
+        // so testers have one consistent mental model: every search you
+        // start hits live job boards. Cache infrastructure is preserved
+        // for v0.3 smart-cache (e.g. retain scraped roles when only
+        // post-scrape filters like location/radius/salary change), but
+        // for v0.2.0 ship, simplicity > peer-inheritance optimization.
+        forceRefresh: true,
       })
       setActiveRunId(res.run_id)
       const skipMsg = appliedRoles.length > 0

@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { useAppStore } from '@/stores/appStore'
 import { runSearch, ApiError } from '@/services/api'
 import { SparkleBurst } from '@/components/SparkleBurst'
+import { LocationAutocomplete } from '@/components/LocationAutocomplete'
 import { cn } from '@/lib/utils'
 
 export default function Run() {
@@ -73,17 +74,12 @@ export default function Run() {
     )
   }
 
-  const tier1 = profile.keywords.filter((k) => k.tier === 1).length
-  const tier2 = profile.keywords.filter((k) => k.tier === 2).length
-  const tier3 = profile.keywords.filter((k) => k.tier === 3).length
   const totalKw = profile.keywords.length
-  // Tier 1+2 are sent as scraper queries; Tier 3 is reserved for
-  // post-scrape matching (still part of the user's profile, so it
-  // counts toward the displayed total). Hide the T3 cell when it's
-  // zero to avoid clutter on profiles that didn't generate any.
-  const keywordsLabel = tier3 > 0
-    ? `${totalKw} (${tier1} Tier 1 · ${tier2} Tier 2 · ${tier3} Tier 3)`
-    : `${totalKw} (${tier1} Tier 1 · ${tier2} Tier 2)`
+  // v0.2.0: simplified to just the total. Tier breakdown
+  // (T1/T2/T3 split) was internal scoring detail not meaningful for
+  // testers — they just want to know how many keywords/phrases the
+  // search will use.
+  const keywordsLabel = `${totalKw} ${totalKw === 1 ? 'keyword' : 'keywords'}`
   // For the "saved profile" indicator. We don't store a build timestamp
   // on the profile itself, but the most-recent run_date is a close proxy
   // for "when this profile was last used." Falls back to "saved" with no
@@ -232,7 +228,7 @@ export default function Run() {
           />
           <Stat
             icon={Sparkles}
-            label="Keywords"
+            label="Keywords & Phrases Searched"
             value={keywordsLabel}
           />
           <Stat
@@ -348,40 +344,28 @@ export default function Run() {
                         </span>
                       ))}
                     </div>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={newLocationDraft}
-                        onChange={(e) => setNewLocationDraft(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault()
-                            handleAddLocation()
-                          }
-                        }}
-                        disabled={submitting}
-                        placeholder="e.g. Richmond VA, Remote, New York NY"
-                        className="flex-1 bg-white/[0.03] border border-white/[0.10]
-                                   rounded px-3 py-1.5 text-sm text-base-100
-                                   placeholder:text-base-600
-                                   focus:outline-none focus:border-accent-500/50"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleAddLocation}
-                        disabled={submitting || !newLocationDraft.trim()}
-                        className="px-3 py-1.5 rounded text-[12px]
-                                   bg-white/[0.06] border border-white/[0.10]
-                                   text-base-200 hover:bg-white/[0.10]
-                                   disabled:opacity-40 disabled:cursor-not-allowed
-                                   transition-colors"
-                      >
-                        Add
-                      </button>
-                    </div>
+                    <LocationAutocomplete
+                      value={newLocationDraft}
+                      onChange={setNewLocationDraft}
+                      onAdd={(v) => {
+                        const trimmed = v.trim()
+                        if (!trimmed) return
+                        if (adjustedLocations.some((l) => l.toLowerCase() === trimmed.toLowerCase())) {
+                          setNewLocationDraft('')
+                          return
+                        }
+                        setAdjustedLocations((prev) => [...prev, trimmed])
+                        setNewLocationDraft('')
+                      }}
+                      existingLocations={adjustedLocations.map((l) => l.toLowerCase())}
+                      placeholder="e.g. Richmond VA, Remote, Hampton VA"
+                      disabled={submitting}
+                    />
                     <p className="text-[10px] text-base-500 mt-1.5 leading-snug">
-                      Type a city + state (or "Remote") and press Enter or Add. Changes save
-                      to your profile when you click Re-Run.
+                      Type a city + state (or "Remote") and press Enter or Add. New cities
+                      use a 50mi default radius.
+                      <br />
+                      Changes save when you click Re-Run.
                     </p>
                   </div>
                 </div>
