@@ -863,8 +863,11 @@ function withCors(req: Request, env: Env, resp: Response): Response {
 
 // Maps URL slug → R2 object key. CI uploads to these exact keys, so the
 // "current build" is always at this path with no version in the URL.
+// v0.1.8: Windows shipped as NSIS .exe (was .msi). Single installer
+// format aligns with Tauri 2's auto-updater — no more MSI/NSIS dual-
+// track that triggered Windows Installer prompts on auto-update.
 const INSTALLER_KEYS: Record<string, { key: string; filename: string }> = {
-  "windows":   { key: "current/job-search-app.msi",         filename: "JobSearchApp.msi" },
+  "windows":   { key: "current/job-search-app.exe",         filename: "JobSearchApp-Setup.exe" },
   "mac-arm64": { key: "current/job-search-app-aarch64.dmg", filename: "JobSearchApp.dmg" },
   "mac-x64":   { key: "current/job-search-app-x64.dmg",     filename: "JobSearchApp-Intel.dmg" },
 };
