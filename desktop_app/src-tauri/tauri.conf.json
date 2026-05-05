@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "findmesomedamnjobz",
-  "version": "0.2.3",
+  "version": "0.3.0",
   "identifier": "app.jobsearch.desktop",
   "build": {
     "frontendDist": "../dist",
@@ -67,6 +67,10 @@
         "displayLanguageSelector": false,
         "installerHooks": "installer.nsh"
       }
+    },
+    "macOS": {
+      "minimumSystemVersion": "10.15",
+      "entitlements": "entitlements.plist"
     }
   }
 }

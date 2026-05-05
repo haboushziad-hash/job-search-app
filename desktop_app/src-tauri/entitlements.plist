@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Hardened-runtime entitlements for findmesomedamnjobz.
+
+  Required because the app bundles a PyInstaller-packaged Python backend
+  (sidecar) plus a Playwright-managed Chromium, and macOS hardened runtime
+  blocks several things by default that PyInstaller + Python need:
+
+  - allow-jit: Python uses JIT-style memory in a few hot paths (regex,
+    some C extensions). Without this, hardened-runtime kills the process
+    on first JIT alloc.
+  - allow-unsigned-executable-memory: PyInstaller's bootloader maps
+    decompressed executable bytes into pages; hardened runtime blocks
+    `mmap(PROT_EXEC)` on unsigned pages by default.
+  - disable-library-validation: Python imports many .so files from the
+    sidecar bundle that are signed by Apple/Anaconda/etc., not by our
+    Developer ID. Without disabling this, `dlopen()` of those libs fails.
+  - allow-dyld-environment-variables: PyInstaller relies on DYLD_*
+    env vars to relocate the embedded Python runtime.
+  - network.client: FastAPI backend makes outbound HTTP calls (scrapers,
+    Anthropic API, etc.). Default-deny without this.
+-->
+<plist version="1.0">
+<dict>
+  <key>com.apple.security.cs.allow-jit</key>
+  <true/>
+  <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+  <true/>
+  <key>com.apple.security.cs.disable-library-validation</key>
+  <true/>
+  <key>com.apple.security.cs.allow-dyld-environment-variables</key>
+  <true/>
+  <key>com.apple.security.network.client</key>
+  <true/>
+  <key>com.apple.security.network.server</key>
+  <true/>
+</dict>
+</plist>

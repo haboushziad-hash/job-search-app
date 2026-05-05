@@ -10,6 +10,11 @@ name: Build desktop installers
 #      - CLOUDFLARE_API_TOKEN          (for R2 uploads + Worker deploy)
 #      - TAURI_SIGNING_PRIVATE_KEY     (contents of ~/.tauri/<app>.key)
 #      - TAURI_SIGNING_PRIVATE_KEY_PASSWORD  (the password set during keygen)
+#      - APPLE_CERTIFICATE_BASE64      (base64 of Developer ID .p12)
+#      - APPLE_CERTIFICATE_PASSWORD    (password set when exporting the .p12)
+#      - APPLE_ID                      (Apple ID email tied to dev account)
+#      - APPLE_ID_PASSWORD             (app-specific password for notarytool)
+#      - APPLE_TEAM_ID                 (10-char Team ID from developer.apple.com)
 #   3. The workflow runs automatically on push to main
 #   4. To ship an update: bump the `version` field in
 #      desktop_app/src-tauri/tauri.conf.json + desktop_app/src-tauri/Cargo.toml
@@ -203,12 +208,40 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: npm run tauri build
 
+      # v0.3.0: Apple code signing + notarization for Mac builds.
+      # Tauri 2 reads the APPLE_* env vars at build time and:
+      #   1. Imports APPLE_CERTIFICATE (base64 .p12) into a temp keychain
+      #      using APPLE_CERTIFICATE_PASSWORD
+      #   2. Code-signs the .app bundle with APPLE_SIGNING_IDENTITY using
+      #      hardened runtime + entitlements.plist
+      #   3. If APPLE_ID + APPLE_PASSWORD + APPLE_TEAM_ID are set, also
+      #      submits the .dmg to Apple's notary service via `xcrun notarytool`
+      #      and staples the approval ticket to the bundle.
+      # End result: Mac users double-click the DMG and the app opens with
+      # only the standard "downloaded from internet" first-launch prompt —
+      # no "damaged" / "unidentified developer" Gatekeeper block.
+      #
+      # Without these env vars, Tauri builds an unsigned .dmg that macOS
+      # Sequoia 15+ refuses to open. That's the v0.2.x Mac shipping bug.
       - name: Build Tauri (macOS)
         if: runner.os == 'macOS'
         working-directory: desktop_app
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          # macOS code-signing
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: "Developer ID Application: Ziad Haboush (${{ secrets.APPLE_TEAM_ID }})"
+          # Notarization (Apple's malware scan that lets the .dmg open
+          # without Gatekeeper warnings). All three are required — if any
+          # is missing, Tauri signs but skips notarization, and Mac users
+          # get an "Apple could not verify" pop-up instead of the friendly
+          # one. APPLE_PASSWORD is the app-specific password generated at
+          # account.apple.com — NOT the user's real Apple ID password.
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: npm run tauri build
 
       - name: Upload installer artifact
