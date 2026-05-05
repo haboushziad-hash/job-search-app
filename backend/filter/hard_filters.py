@@ -78,6 +78,7 @@ _NON_US_REMOTE_PATTERN = re.compile(
 
 _DEAD_LISTING_PATTERNS = [
     re.compile(p, re.I) for p in (
+        # Original patterns (v0.1.4 era)
         r"no longer accepting applications",
         r"this (?:position|role|job)\s+(?:has been|is)\s+filled",
         r"we are no longer hiring for this (?:role|position)",
@@ -86,6 +87,24 @@ _DEAD_LISTING_PATTERNS = [
         r"this listing has expired",
         r"job posting (?:has been|is) closed",
         r"we have filled this position",
+        # v0.1.9 expansion: dead-listing patterns observed in real tester
+        # data weren't matching just the original 8. Closure banners on
+        # Greenhouse, Workday, Indeed, Lever each phrase it differently;
+        # we were undercounting stale roles by ~5-10 per run. Patterns
+        # below stay specific (require closure-context phrasing) to
+        # avoid false-positives on legitimate JDs that mention deadlines
+        # or use words like "closed" / "expired" in non-closure context.
+        r"this (?:position|role|job|opening|posting) (?:has been|is) closed",
+        r"this (?:job|role|position|opening|posting) is no longer (?:open|available|active)",
+        r"this (?:job|position|role) has expired",
+        r"sorry,?\s+(?:this|that) (?:job|position|role|opening) (?:is\s+)?(?:closed|no longer)",
+        r"we[''’]?ve\s+(?:found|filled) (?:our|the) (?:match|candidate|ideal candidate|right person)",
+        r"thank you for your interest,?\s+but\s+(?:this|the) (?:position|role|job|opening)",
+        r"hiring (?:has\s+)?(?:closed|paused|on hold)",
+        r"closed to (?:new\s+)?applications",
+        r"application (?:deadline|period) has (?:passed|ended|expired|closed)",
+        r"this (?:opening|position|role) (?:has been|is) (?:filled|withdrawn|removed)",
+        r"\bstatus:?\s+(?:closed|filled|expired|inactive)\b",
     )
 ]
 
