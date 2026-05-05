@@ -93,7 +93,7 @@ class RunState(BaseModel):
 app = FastAPI(
     title="Job Search API",
     description="Local bridge between the React desktop app and the Python search backend.",
-    version="0.1.6",
+    version="0.1.7",
 )
 
 app.add_middleware(
@@ -152,7 +152,7 @@ async def _init_archive() -> None:
 async def health() -> dict[str, Any]:
     return {
         "status": "ok",
-        "version": "0.1.6",
+        "version": "0.1.7",
         "env": {
             "google_keys_configured": len(config.google_api_keys()),
             "dev_mode": config.DEV_MODE,
