@@ -26,13 +26,11 @@ import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, Legend, LabelList,
-  Sankey, Layer, Rectangle,
+  Tooltip, ResponsiveContainer, LabelList,
 } from 'recharts'
 import {
   ArrowLeft, Loader2, AlertCircle, TrendingDown, DollarSign,
   MapPin, Building2, Search, BarChart3, Briefcase, Calendar,
-  Cloud, GitBranch, Trophy, Sparkles, Banknote, Clock,
 } from 'lucide-react'
 import { listRuns, getRunAudit, ApiError } from '@/services/api'
 import type { RunHistoryItem } from '@/services/api'
@@ -53,14 +51,12 @@ const COLORS = {
   rose: '#fb7185',        // rose-400
 }
 
-const TIER_COLORS = [COLORS.strong, COLORS.good, COLORS.maybe, COLORS.stretch]
 const ARRANGEMENT_COLORS: Record<string, string> = {
   Remote: COLORS.cyan,
   Hybrid: COLORS.accent,
   'On-site': COLORS.orange,
   Unknown: COLORS.stretch,
 }
-const PIE_PALETTE = [COLORS.accent, COLORS.cyan, COLORS.emerald, COLORS.orange, COLORS.pink, COLORS.indigo]
 
 // ----------------------------------------------------------------------------
 // Audit data shape (loose — fields may be missing in older runs)
@@ -1382,85 +1378,11 @@ function KeywordsCard({ stats }: { stats: ReturnType<typeof computeStats> }) {
 }
 
 // ----------------------------------------------------------------------------
-// v0.2.0 additions: 6 new visualizations
+// v0.2.0 additions: chart cards
 // ----------------------------------------------------------------------------
-
-// HighlightsBanner — 4 celebratory stat boxes at the top of the page.
-// Quick "did I find anything good?" answer for testers/users glancing
-// at their run results.
-function HighlightsBanner({ stats }: { stats: ReturnType<typeof computeStats> }) {
-  const h = stats.highlights
-  const fmtSalary = (min: number, max: number): string => {
-    if (max && min) return `$${Math.round(min / 1000)}K-$${Math.round(max / 1000)}K`
-    if (max) return `$${Math.round(max / 1000)}K`
-    return '—'
-  }
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-8"
-    >
-      <HighlightBox
-        icon={Trophy}
-        label="Top Match"
-        primary={h.topMatch ? `Score ${h.topMatch.score}` : '—'}
-        secondary={h.topMatch ? `${h.topMatch.title} · ${h.topMatch.company}` : 'No data'}
-        color={COLORS.strong}
-      />
-      <HighlightBox
-        icon={Banknote}
-        label="Highest Comp"
-        primary={h.highestComp ? fmtSalary(h.highestComp.min, h.highestComp.max) : '—'}
-        secondary={h.highestComp ? `${h.highestComp.title} · ${h.highestComp.company}` : 'No data'}
-        color={COLORS.emerald}
-      />
-      <HighlightBox
-        icon={Sparkles}
-        label="Freshest"
-        primary={h.freshest ? h.freshest.ageLabel : '—'}
-        secondary={h.freshest ? `${h.freshest.title} · ${h.freshest.company}` : 'No data'}
-        color={COLORS.cyan}
-      />
-      <HighlightBox
-        icon={Building2}
-        label="Most Postings"
-        primary={h.mostPostings ? `${h.mostPostings.count} roles` : '—'}
-        secondary={h.mostPostings ? h.mostPostings.company : 'No data'}
-        color={COLORS.accent}
-      />
-    </motion.div>
-  )
-}
-
-function HighlightBox({ icon: Icon, label, primary, secondary, color }: {
-  icon: any
-  label: string
-  primary: string
-  secondary: string
-  color: string
-}) {
-  return (
-    <div className="glass rounded-xl p-4 flex items-start gap-3">
-      <div
-        className="w-9 h-9 rounded-lg border flex items-center justify-center flex-shrink-0"
-        style={{ backgroundColor: `${color}22`, borderColor: `${color}44` }}
-      >
-        <Icon size={15} style={{ color }} />
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="text-[10px] text-base-500 uppercase tracking-wider">{label}</div>
-        <div className="text-base font-semibold text-base-100 mt-0.5 leading-tight" style={{ color }}>
-          {primary}
-        </div>
-        <div className="text-[11px] text-base-400 mt-1 leading-snug truncate" title={secondary}>
-          {secondary}
-        </div>
-      </div>
-    </div>
-  )
-}
+// (HighlightsBanner / HighlightBox were prototyped in early v0.2.0 then
+// removed before ship — emotional risk for testers when the "Top Match"
+// or "Highest Comp" role gets rejected. See git history for restore.)
 
 // IndustriesCard — bar chart of role counts per industry. Industry data
 // comes from the `industry` field on each role (populated by scrapers /
@@ -1563,129 +1485,10 @@ function PostingAgeCard({ stats }: { stats: ReturnType<typeof computeStats> }) {
   )
 }
 
-// TitleWordCloudCard — most-frequent meaningful words across qualifying
-// titles. CSS-sized words (no library) — font-size scales linearly with
-// frequency. Words colored by the rotating accent palette.
-function TitleWordCloudCard({ stats }: { stats: ReturnType<typeof computeStats> }) {
-  const words = stats.titleWords
-  const max = words.length ? words[0].count : 1
-  const min = words.length ? words[words.length - 1].count : 1
-  const palette = [COLORS.accent, COLORS.cyan, COLORS.emerald, COLORS.pink, COLORS.indigo, COLORS.orange]
-  return (
-    <Card
-      icon={Cloud}
-      title="Title Word Cloud"
-      subtitle="Most common words across qualifying job titles"
-    >
-      {words.length === 0 ? (
-        <div className="text-xs text-base-500 italic">No title data available.</div>
-      ) : (
-        <div className="flex flex-wrap gap-x-3 gap-y-1 items-center justify-center py-6 px-2">
-          {words.map((w, idx) => {
-            // Linear scale 12px → 36px based on count percentile
-            const ratio = max === min ? 1 : (w.count - min) / (max - min)
-            const size = 12 + Math.round(ratio * 24)
-            const color = palette[idx % palette.length]
-            const opacity = 0.55 + ratio * 0.45
-            return (
-              <span
-                key={w.word}
-                style={{
-                  fontSize: size,
-                  color,
-                  opacity,
-                  fontWeight: 600 - Math.round((1 - ratio) * 200),
-                  lineHeight: 1.1,
-                }}
-                title={`${w.word}: ${w.count} title${w.count === 1 ? '' : 's'}`}
-              >
-                {w.word}
-              </span>
-            )
-          })}
-        </div>
-      )}
-    </Card>
-  )
-}
-
-// SankeyCard — flow diagram from Tier → Industry → Company. Visualizes
-// how the qualifying roles distribute through the quality scoring,
-// industry classification, and final company. Recharts has a built-in
-// Sankey component (no extra deps).
-function SankeyCard({ stats }: { stats: ReturnType<typeof computeStats> }) {
-  const { nodes, links } = stats.sankeyData
-  const hasData = nodes.length > 0 && links.length > 0
-  // Custom node renderer to use our color palette per column-position.
-  // We can't easily detect column from inside the renderer, so we use
-  // the index range: tiers come first, then industries, then companies.
-  return (
-    <Card
-      icon={GitBranch}
-      title="Tier → Industry → Company"
-      subtitle="How qualifying roles flow through your pipeline (top picks shown)"
-    >
-      {!hasData ? (
-        <div className="text-xs text-base-500 italic">Not enough data for a flow diagram.</div>
-      ) : (
-        <ResponsiveContainer width="100%" height={420}>
-          <Sankey
-            data={{ nodes, links }}
-            nodePadding={20}
-            nodeWidth={12}
-            link={{ stroke: COLORS.accent, strokeOpacity: 0.25 }}
-            node={(props: any) => <SankeyNode {...props} />}
-            margin={{ top: 12, bottom: 12, left: 0, right: 0 }}
-          >
-            <Tooltip content={<CustomTooltip />} />
-          </Sankey>
-        </ResponsiveContainer>
-      )}
-    </Card>
-  )
-}
-
-// Custom Sankey node renderer — colored rectangle + name label.
-function SankeyNode(props: any) {
-  const { x, y, width, height, index, payload, containerWidth } = props
-  const palette = [COLORS.strong, COLORS.good, COLORS.maybe, COLORS.stretch, COLORS.accent,
-                   COLORS.indigo, COLORS.cyan, COLORS.emerald, COLORS.orange, COLORS.pink, COLORS.rose]
-  const color = palette[index % palette.length]
-  // Anchor labels left of left-side nodes, right of right-side nodes.
-  const isRightSide = x + width + 6 > containerWidth - 100
-  return (
-    <Layer key={`node-${index}`}>
-      <Rectangle
-        x={x}
-        y={y}
-        width={width}
-        height={height}
-        fill={color}
-        fillOpacity={0.85}
-      />
-      <text
-        textAnchor={isRightSide ? 'end' : 'start'}
-        x={isRightSide ? x - 6 : x + width + 6}
-        y={y + height / 2}
-        fontSize={11}
-        fill="#cbd5e1"
-        dy={4}
-      >
-        {payload.name}
-      </text>
-      <text
-        textAnchor={isRightSide ? 'end' : 'start'}
-        x={isRightSide ? x - 6 : x + width + 6}
-        y={y + height / 2}
-        fontSize={9}
-        fill="#64748b"
-        dy={16}
-      >
-        {payload.value}
-      </text>
-    </Layer>
-  )
-}
+// (TitleWordCloudCard, SankeyCard, SankeyNode were prototyped in early
+// v0.2.0 then removed before ship — Word Cloud overlapped with Top
+// Keywords; Sankey labels clipped at chart edges. See git history for
+// restore.)
 
 // SourcesCard removed in v0.2.0 — exposing the scraper source list was
 // competitive-intelligence leak. Keeping this comment as a marker so future

@@ -36,16 +36,9 @@ export default function Run() {
     setAdjustedLocations([...(profile.acceptable_locations || [])])
   }, [profile])
 
-  const handleAddLocation = () => {
-    const trimmed = newLocationDraft.trim()
-    if (!trimmed) return
-    if (adjustedLocations.some((l) => l.toLowerCase() === trimmed.toLowerCase())) {
-      setNewLocationDraft('')
-      return
-    }
-    setAdjustedLocations((prev) => [...prev, trimmed])
-    setNewLocationDraft('')
-  }
+  // Orphaned handleAddLocation removed in v0.2.0 — replaced by inline
+  // onAdd in <LocationAutocomplete>. The shared component handles the
+  // dedup + draft reset internally.
 
   const handleRemoveLocation = (loc: string) => {
     setAdjustedLocations((prev) => prev.filter((l) => l !== loc))
