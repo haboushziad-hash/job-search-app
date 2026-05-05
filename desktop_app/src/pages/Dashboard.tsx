@@ -21,10 +21,16 @@ export default function Dashboard() {
   const [filterTier, setFilterTier] = useState<Tier | null>(null)
   const [showConfetti, setShowConfetti] = useState(false)
   const [exportMenuOpen, setExportMenuOpen] = useState(false)
-  // Title search + work-arrangement filter (v0.1.8). Both narrow the
-  // visible roles list — composable with the existing tier filter.
+  // Title search + work-arrangement filter. Both narrow the visible
+  // roles list — composable with the existing tier filter.
+  //
+  // v0.1.9: arrangement filter is multi-select. Empty Set = no filter
+  // ("All" chip is visually active). Adding any specific arrangement
+  // narrows to roles matching ANY of the selected ones (union, not
+  // intersection — a role only has one location_type, so intersection
+  // would always be empty for >1 selection).
   const [searchQuery, setSearchQuery] = useState<string>('')
-  const [arrangementFilter, setArrangementFilter] = useState<'all' | 'remote' | 'hybrid' | 'onsite'>('all')
+  const [selectedArrangements, setSelectedArrangements] = useState<Set<'remote' | 'hybrid' | 'onsite'>>(new Set())
   // Feedback prompt — appears once after a fresh run, dismissed via button
   const [feedbackOpen, setFeedbackOpen] = useState<boolean>(false)
   const [feedbackText, setFeedbackText] = useState<string>('')
@@ -225,19 +231,22 @@ export default function Dashboard() {
     ? afterHiddenFilter.filter((r) => r.salary_min != null || r.salary_max != null || !!r.salary_text)
     : afterHiddenFilter
 
-  // Arrangement filter — narrow to a specific work arrangement (remote /
-  // hybrid / onsite). Default 'all' is a no-op. Substring match on
-  // location_type because scrapers populate it with various capitalizations
-  // ("Remote", "remote", "On-site"). Roles with no location_type fall
-  // through every filter — they're shown only when 'all' is selected.
-  const afterArrangementFilter = arrangementFilter === 'all'
+  // Arrangement filter — narrow to one or more work arrangements.
+  // v0.1.9: now multi-select. Empty Set means "no filter" (= all
+  // arrangements pass). Selected set means "show roles whose
+  // location_type matches ANY of these" — so {remote, hybrid} shows
+  // both remote AND hybrid roles (union, not intersection — a role
+  // only has one location_type, so intersection would always be empty).
+  // Substring match on location_type because scrapers normalize to
+  // "Remote" / "Hybrid" / "On-site" with varied capitalizations.
+  const afterArrangementFilter = selectedArrangements.size === 0
     ? afterSalaryFilter
     : afterSalaryFilter.filter((r) => {
         const t = (r.location_type || '').toLowerCase()
-        if (arrangementFilter === 'remote') return t.includes('remote')
-        if (arrangementFilter === 'hybrid') return t.includes('hybrid')
-        if (arrangementFilter === 'onsite') return t.includes('on-site') || t.includes('onsite')
-        return true
+        if (selectedArrangements.has('remote') && t.includes('remote')) return true
+        if (selectedArrangements.has('hybrid') && t.includes('hybrid')) return true
+        if (selectedArrangements.has('onsite') && (t.includes('on-site') || t.includes('onsite'))) return true
+        return false
       })
 
   // Title search — case-insensitive substring match on job_title. Empty
@@ -517,25 +526,40 @@ export default function Dashboard() {
         ))}
       </motion.div>
 
-      {/* Search + arrangement filter (v0.1.8) — sits below the tier cards
-          so the user lands on the funnel summary first, then narrows. The
-          arrangement chips are always visible because every dataset has
-          at least one of the three. The search bar matches against
-          job_title only — keep the input narrow so it doesn't compete with
-          the chip row visually. */}
+      {/* Search + arrangement filter — sits below the tier cards so the
+          user lands on the funnel summary first, then narrows. v0.1.9:
+          arrangement chips are multi-select. "All" is the unselected
+          state (clicking it clears the set, semantically "no filter").
+          Individual chips toggle in/out of the set. */}
       <div className="mt-6 flex items-center gap-3 flex-wrap">
-        {/* Arrangement chips */}
+        {/* Arrangement chips — multi-select */}
         <div className="flex items-center gap-1.5">
-          {(['all', 'remote', 'hybrid', 'onsite'] as const).map((opt) => {
-            const isActive = arrangementFilter === opt
-            const label = opt === 'all' ? 'All'
-              : opt === 'remote' ? 'Remote'
-              : opt === 'hybrid' ? 'Hybrid'
-              : 'On-site'
+          {/* "All" chip: shown active when no specific arrangement is
+              selected. Clicking it clears the set (= show everything). */}
+          <button
+            onClick={() => setSelectedArrangements(new Set())}
+            className={`px-3 py-1.5 rounded-full text-xs transition-colors ${
+              selectedArrangements.size === 0
+                ? 'bg-accent-500/20 text-accent-200 border border-accent-500/40'
+                : 'glass-subtle text-base-300 border border-transparent hover:bg-white/[0.06]'
+            }`}
+          >
+            All
+          </button>
+          {/* Individual arrangement chips — clicking toggles inclusion */}
+          {(['remote', 'hybrid', 'onsite'] as const).map((opt) => {
+            const isActive = selectedArrangements.has(opt)
+            const label = opt === 'remote' ? 'Remote' : opt === 'hybrid' ? 'Hybrid' : 'On-site'
+            const toggle = () => {
+              const next = new Set(selectedArrangements)
+              if (next.has(opt)) next.delete(opt)
+              else next.add(opt)
+              setSelectedArrangements(next)
+            }
             return (
               <button
                 key={opt}
-                onClick={() => setArrangementFilter(opt)}
+                onClick={toggle}
                 className={`px-3 py-1.5 rounded-full text-xs transition-colors ${
                   isActive
                     ? 'bg-accent-500/20 text-accent-200 border border-accent-500/40'
@@ -577,7 +601,7 @@ export default function Dashboard() {
         {/* Visible-count indicator — shows how the filters narrowed the list.
             Only render when something is actually filtering, otherwise it's
             redundant with the header's "X qualifying roles" total. */}
-        {(searchQuery.trim() || arrangementFilter !== 'all') && (
+        {(searchQuery.trim() || selectedArrangements.size > 0) && (
           <span className="text-xs text-base-500 ml-auto">
             Showing {visibleRoles.length} of {afterHiddenFilter.length}
           </span>

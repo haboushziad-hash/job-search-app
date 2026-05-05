@@ -19,6 +19,85 @@ const STEPS = [
   { id: 6, label: 'Building dashboard' },
 ]
 
+// v0.1.9: rotating "personality" messages shown between the real
+// backend status updates. Each long-running stage has its own pool —
+// the index advances every 6 seconds via the useEffect in Running().
+// Mix of three vibes:
+//   - Smart-ass commentary on job listings
+//   - Brainrot / non-sequiturs to break the tension
+//   - Original deep cuts from Ziad's brain
+// Goal: make the long silent stretches (scraping, scoring) feel
+// alive and a little chaotic, so the app feels like a friend who is
+// also bored waiting with you.
+//
+// The rotation interleaves with the REAL backend status text every
+// 4th tick — so legit "what's actually happening" comes through
+// regularly amid the chaos. See displayMessage in Running().
+const PERSONALITY_MESSAGES: Record<number, string[]> = {
+  // Step 1: Scraping job boards (~3-5 min)
+  1: [
+    'Persuading LinkedIn I\'m a real boy…',
+    'Counting jobs LinkedIn pretends are different from yesterday…',
+    'Discovering "AI Engineer" has 47 different definitions…',
+    'Asking ChatGPT how to download a PDF',
+    'Inhaling job listings like free pizza…',
+    'Wait did I leave the stove on?',
+    'Bothering 16 job boards on your behalf…',
+    'Ignoring cringe LinkedIn posts',
+    'Sooooo….tequila shots after this?',
+  ],
+  // Step 2: Filtering + verifying liveness (~1-2 min)
+  2: [
+    'Detecting "we\'re a tight-knit family" red flags…',
+    'Trump looks kinda weird ngl',
+    'Validating "remote" doesn\'t secretly mean Brazil…',
+    'Removing roles that pay in "unlimited PTO and vibes"…',
+    'Sanity-checking "entry-level requires 7 years experience"…',
+    'Why are Bosnians so mean (jk)',
+    'RIP-ing dead links from companies that died in 2024…',
+    'Stamping out 47 reposts of the same role…',
+  ],
+  // Step 3: Embedding pre-filter / semantic similarity (~30 sec)
+  3: [
+    'Never trust a girl whose name ends with "a"',
+    'Translating buzzword salad to actual requirements…',
+    'Decoding "innovative thought leader synergistic disruption"…',
+    'Doing math on word soup…',
+    'Should I get bangs',
+  ],
+  // Step 4: Scoring with AI cascade (the LONG one — Sonnet + Opus, 5-8 min)
+  4: [
+    'Sonnet is reading carefully — actually reading, not skimming…',
+    'I have a Friend who is 6\'8"',
+    'brb asking ChatGPT what to do next',
+    'Asking "is this you?" over and over…',
+    'Counting how many times JDs say "wear many hats"…',
+    'Zaddy said WAIT',
+    'Comparing your skills to a wishlist that wants Jesus…',
+    'Why is everyone in software named Brian',
+    'Translating "startup energy" to "80-hour weeks"…',
+    'Drake fell off after his "Take Care" album',
+    'Just remembered I have laundry to fold',
+    'Identifying which roles pay in Pizza rolls',
+    'My Spotify Wrapped is going to be embarrassing',
+    'Calling out "we\'re like a startup but at a Fortune 500"…',
+    'Pretending I read the email',
+    'Discovering 12 of these are the same job in disguise…',
+    'Detecting the dreaded "wears many hats" tag…',
+    'Never trust a girl whose name ends with "a"',
+    'Ignoring jobs posted by Sleep Token fans',
+    'Sooooo….tequila shots after this?',
+  ],
+  // Step 5: Building dashboard (<1 min)
+  5: [
+    'Sorting by score (and a little by vibes)…',
+    'Almost there — just judging YOU for fun…',
+    'Putting finishing touches on your verdict of LinkedIn…',
+    'Polishing the final list…',
+    'Wrapping things up with a bow…and a kiss :)',
+  ],
+}
+
 // Build a plain-language description of what's happening RIGHT NOW based on
 // which step is active and the live counts the backend sends. Replaces the
 // generic "current_step" string with something that tells the user the tool
@@ -68,6 +147,25 @@ export default function Running() {
   // completion all happen there too. This page is now just a viewer.
   const status = useActiveSearchStatus()
   const [cancelling, setCancelling] = useState(false)
+
+  // v0.1.9: rotation index for the personality message rotator. Advances
+  // once every 6 seconds. Combined with the modulo logic below, this
+  // gives ~24-second cycles where the REAL backend status appears, with
+  // 3 personality messages between each real-status appearance. Reset
+  // to 0 whenever the active step changes so each new stage starts on
+  // the real status text (matches what the user expects: "what stage
+  // am I in" first, then drift into chaos).
+  const [rotationIdx, setRotationIdx] = useState(0)
+  // Map server progress → UI step index (declared early so the rotation
+  // reset effect can depend on it).
+  const _activeStepEarly = status ? Math.max(0, status.current_step_index - 1) : 0
+  useEffect(() => {
+    setRotationIdx(0)
+  }, [_activeStepEarly])
+  useEffect(() => {
+    const id = setInterval(() => setRotationIdx((i) => i + 1), 6000)
+    return () => clearInterval(id)
+  }, [])
 
   // Track whether THIS Running.tsx instance ever saw an active run.
   // Lets us distinguish "we just completed a run, navigate to dashboard"
@@ -191,7 +289,23 @@ export default function Running() {
               {STEPS.map((step, idx) => {
                 const isComplete = idx < activeStep
                 const isActive = idx === activeStep && progress < 100
-                const liveDetail = isActive ? describeProgress(idx, status) : null
+                // v0.1.9: rotate between the real backend status and a
+                // pool of personality messages. Tick 0 and every 4th
+                // tick → show real status. Other ticks → pull from
+                // PERSONALITY_MESSAGES for this step. Result: real
+                // status anchors the rotation every ~24s while the
+                // chaos messages fill the long silent stretches.
+                const liveDetail = (() => {
+                  if (!isActive) return null
+                  const realMsg = describeProgress(idx, status)
+                  const pool = PERSONALITY_MESSAGES[idx] || []
+                  // Real status appears on tick 0 and every 4th tick after.
+                  if (realMsg && rotationIdx % 4 === 0) return realMsg
+                  // Otherwise rotate through the personality pool. Fall
+                  // back to real status if pool is empty (e.g., step 0).
+                  if (pool.length === 0) return realMsg
+                  return pool[rotationIdx % pool.length]
+                })()
                 return (
                   <motion.div
                     key={step.id}
@@ -235,14 +349,17 @@ export default function Running() {
                         {step.label}
                       </span>
                     </div>
-                    {/* Live "what's actually happening" line — only on the active stage */}
-                    <AnimatePresence>
+                    {/* Live "what's actually happening" line — only on the active stage.
+                        v0.1.9: keying off the message text itself so each rotation
+                        triggers a real fade transition (instead of in-place text-swap). */}
+                    <AnimatePresence mode="wait">
                       {isActive && liveDetail && (
                         <motion.span
-                          key="detail"
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          exit={{ opacity: 0, height: 0 }}
+                          key={liveDetail}
+                          initial={{ opacity: 0, y: -3 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: 3 }}
+                          transition={{ duration: 0.35, ease: 'easeOut' }}
                           className="text-[11px] text-accent-200/80 pl-8 leading-snug"
                         >
                           {liveDetail}

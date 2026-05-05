@@ -95,17 +95,33 @@ export async function checkForUpdates(): Promise<void> {
           // closes, and reopens on the new version with state preserved
           // (Zustand's localStorage persist handles state continuity).
           const progressToast = toast.loading('Downloading update...')
+          // Track download progress so the toast can show a percentage
+          // instead of just a spinner. Tauri 2 emits Progress events on
+          // every chunk; we accumulate chunkLength and recompute pct.
+          // To avoid spamming sonner with toast updates on every chunk
+          // (could be 100+/sec), only re-render when the percentage
+          // actually advances (max 100 updates over the full download).
+          let downloaded = 0
+          let total = 0
+          let lastPct = -1
           try {
             await update.downloadAndInstall((event) => {
               switch (event.event) {
                 case 'Started':
-                  toast.loading(`Downloading update — ${formatBytes(event.data.contentLength)}`, {
+                  total = event.data.contentLength ?? 0
+                  toast.loading(`Downloading update — 0% of ${formatBytes(total)}`, {
                     id: progressToast,
                   })
                   break
                 case 'Progress':
-                  // Tauri 2 emits incremental progress; we don't need to
-                  // re-render every chunk — the loading spinner is enough.
+                  downloaded += event.data.chunkLength ?? 0
+                  const pct = total > 0 ? Math.min(100, Math.round((downloaded / total) * 100)) : 0
+                  if (pct !== lastPct) {
+                    lastPct = pct
+                    toast.loading(`Downloading update — ${pct}% of ${formatBytes(total)}`, {
+                      id: progressToast,
+                    })
+                  }
                   break
                 case 'Finished':
                   toast.success('Update installed — restarting...', { id: progressToast })
