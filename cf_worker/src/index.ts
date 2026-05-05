@@ -50,6 +50,12 @@ export interface Env {
   FINDWORK_API_KEY?: string;
   JSEARCH_RAPIDAPI_KEY?: string;
 
+  // v0.2.2: secret for the /v1/stats download-counter endpoint. Set via
+  // `wrangler secret put STATS_SECRET`. Until set, /v1/stats returns 503
+  // with setup instructions — the endpoint never exposes data without
+  // the secret matching.
+  STATS_SECRET?: string;
+
   // Bindings (set via wrangler.toml)
   AUDIT_R2: R2Bucket;          // R2 bucket for audit JSON storage
   INSTALLERS_R2: R2Bucket;     // R2 bucket for .msi/.dmg installer files
@@ -108,6 +114,14 @@ export default {
     // Three platform slugs map to fixed object keys in INSTALLERS_R2.
     if (path.startsWith("/v1/dl/")) {
       return handleInstallerDownload(req, env, path);
+    }
+
+    // Operator-only: download click stats (gated by STATS_SECRET).
+    // v0.2.2: visit https://api.findmesomedamnjobz.com/v1/stats?key=YOURPASSWORD
+    // to see lifetime + last-30d download counts. Setup: from cf_worker/
+    // run `wrangler secret put STATS_SECRET` once.
+    if (path === "/v1/stats") {
+      return serveStats(req, env);
     }
 
     // Admin
@@ -903,6 +917,14 @@ async function handleInstallerDownload(req: Request, env: Env, path: string): Pr
     return json({ error: "installer_not_found", key: target.key }, 404);
   }
 
+  // v0.2.2: increment download counter (non-blocking, failure-safe).
+  // KV write is awaited because we don't have ctx.waitUntil here, but
+  // the put is fast (~30ms) and wrapped in try/catch so a KV failure
+  // never blocks or breaks the download. If KV is rate-limited (free
+  // tier: 1K writes/day across the whole namespace), we silently drop
+  // the increment and serve the file anyway.
+  await incrementDownloadCounter(env, slug);
+
   return new Response(obj.body, {
     headers: {
       "Content-Type": "application/octet-stream",
@@ -910,6 +932,160 @@ async function handleInstallerDownload(req: Request, env: Env, path: string): Pr
       "Content-Length": String(obj.size),
       "Cache-Control": "no-store",
     },
+  });
+}
+
+// ============================================================================
+// Download counter + stats endpoint (v0.2.2 — landing page click tracking)
+// ============================================================================
+//
+// Two KV keys per platform per day:
+//   dl:total:{platform}    → lifetime cumulative count (no TTL)
+//   dl:{YYYY-MM-DD}:{platform}  → daily count (TTL 90d)
+//
+// One pseudo-aggregate key:
+//   dl:total:_all          → lifetime total across all platforms
+//
+// Stats are read at /v1/stats?key={STATS_SECRET}, gated by a secret
+// the operator sets via:  wrangler secret put STATS_SECRET
+// (Until set, the endpoint returns 503 with setup instructions.)
+
+async function incrementDownloadCounter(env: Env, platform: string): Promise<void> {
+  try {
+    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    const totalKey = `dl:total:${platform}`;
+    const dailyKey = `dl:${today}:${platform}`;
+    const allKey = `dl:total:_all`;
+    const [curTotal, curDaily, curAll] = await Promise.all([
+      env.TESTER_KV.get(totalKey),
+      env.TESTER_KV.get(dailyKey),
+      env.TESTER_KV.get(allKey),
+    ]);
+    const newTotal = String(parseInt(curTotal || "0", 10) + 1);
+    const newDaily = String(parseInt(curDaily || "0", 10) + 1);
+    const newAll = String(parseInt(curAll || "0", 10) + 1);
+    // Daily counter has 90-day TTL — auto-cleanup so we don't accumulate
+    // thousands of stale daily keys over years.
+    await Promise.all([
+      env.TESTER_KV.put(totalKey, newTotal),
+      env.TESTER_KV.put(dailyKey, newDaily, { expirationTtl: 90 * 86400 }),
+      env.TESTER_KV.put(allKey, newAll),
+    ]);
+  } catch (err) {
+    // Non-fatal: stats are nice-to-have, never block downloads.
+    console.warn("download counter increment failed:", err);
+  }
+}
+
+async function serveStats(req: Request, env: Env): Promise<Response> {
+  // Secret-token gate. The operator sets STATS_SECRET as a Cloudflare
+  // Worker secret (`wrangler secret put STATS_SECRET`). Until then,
+  // return 503 with setup instructions instead of a generic 401 — this
+  // endpoint is for the operator's eyes only, the friendly error helps
+  // them remember the setup step.
+  if (!env.STATS_SECRET) {
+    return new Response(
+      "STATS_SECRET not configured. Run from cf_worker/ directory:\n  wrangler secret put STATS_SECRET\n(then enter any password you'll remember; visit /v1/stats?key=YOURPASSWORD)",
+      { status: 503, headers: { "Content-Type": "text/plain" } },
+    );
+  }
+  const url = new URL(req.url);
+  const provided = url.searchParams.get("key") || "";
+  if (provided !== env.STATS_SECRET) {
+    return new Response("Unauthorized — append ?key=YOUR_STATS_SECRET", {
+      status: 401,
+      headers: { "Content-Type": "text/plain" },
+    });
+  }
+
+  // Aggregate the counts. Three platforms + the "_all" rollup.
+  const platforms = ["windows", "mac-arm64", "mac-x64"];
+  const totals: Record<string, number> = {};
+  for (const p of [...platforms, "_all"]) {
+    const v = await env.TESTER_KV.get(`dl:total:${p}`);
+    totals[p] = parseInt(v || "0", 10);
+  }
+  // Last 30 days, daily breakdown
+  const days: Array<{ date: string; counts: Record<string, number>; total: number }> = [];
+  for (let i = 0; i < 30; i++) {
+    const d = new Date(Date.now() - i * 86400_000).toISOString().slice(0, 10);
+    const counts: Record<string, number> = {};
+    let total = 0;
+    for (const p of platforms) {
+      const v = await env.TESTER_KV.get(`dl:${d}:${p}`);
+      const n = parseInt(v || "0", 10);
+      counts[p] = n;
+      total += n;
+    }
+    days.push({ date: d, counts, total });
+  }
+
+  // Render HTML by default (browser-friendly), JSON if explicitly requested
+  // via ?format=json or via Accept header.
+  const fmt = (url.searchParams.get("format") || "").toLowerCase();
+  const acceptsJson = (req.headers.get("Accept") || "").includes("application/json");
+  if (fmt === "json" || acceptsJson) {
+    return new Response(JSON.stringify({ totals, days }, null, 2), {
+      headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+    });
+  }
+
+  // Tiny inline HTML — no external CSS/JS, no fancy charts. Just numbers.
+  const totalDownloads = totals._all || 0;
+  const last7 = days.slice(0, 7).reduce((s, d) => s + d.total, 0);
+  const last30 = days.reduce((s, d) => s + d.total, 0);
+  const dayRows = days.map(d =>
+    `<tr><td>${d.date}</td><td>${d.counts.windows || 0}</td>` +
+    `<td>${d.counts["mac-arm64"] || 0}</td><td>${d.counts["mac-x64"] || 0}</td>` +
+    `<td><b>${d.total}</b></td></tr>`
+  ).join("\n");
+
+  const html = `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>findmesomedamnjobz — download stats</title>
+  <style>
+    body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;background:#0b0d12;color:#cbd5e1;margin:0;padding:32px;max-width:900px;margin:0 auto}
+    h1{font-size:18px;color:#fff;margin:0 0 24px;font-weight:600}
+    .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:32px}
+    .card{background:#11151c;border:1px solid #1f2937;border-radius:8px;padding:16px}
+    .card .label{font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em}
+    .card .num{font-size:32px;font-weight:600;color:#a78bfa;margin-top:4px}
+    .card .sub{font-size:11px;color:#64748b;margin-top:4px}
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    th,td{text-align:left;padding:8px 12px;border-bottom:1px solid #1f2937}
+    th{color:#64748b;font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:0.05em}
+    td:first-child{color:#94a3b8;font-family:monospace}
+    .footer{margin-top:32px;font-size:11px;color:#475569}
+  </style>
+</head>
+<body>
+  <h1>findmesomedamnjobz — download stats</h1>
+  <div class="grid">
+    <div class="card"><div class="label">All-time</div><div class="num">${totalDownloads}</div><div class="sub">total clicks</div></div>
+    <div class="card"><div class="label">Last 7 days</div><div class="num">${last7}</div><div class="sub">${(last7 / 7).toFixed(1)}/day avg</div></div>
+    <div class="card"><div class="label">Last 30 days</div><div class="num">${last30}</div><div class="sub">${(last30 / 30).toFixed(1)}/day avg</div></div>
+  </div>
+  <h1 style="font-size:14px">By platform (lifetime)</h1>
+  <div class="grid">
+    <div class="card"><div class="label">Windows</div><div class="num">${totals.windows || 0}</div></div>
+    <div class="card"><div class="label">Mac (Apple Silicon)</div><div class="num">${totals["mac-arm64"] || 0}</div></div>
+    <div class="card"><div class="label">Mac (Intel)</div><div class="num">${totals["mac-x64"] || 0}</div></div>
+  </div>
+  <h1 style="font-size:14px">Last 30 days (daily)</h1>
+  <table>
+    <thead><tr><th>Date</th><th>Win</th><th>Mac ARM</th><th>Mac x64</th><th>Total</th></tr></thead>
+    <tbody>${dayRows}</tbody>
+  </table>
+  <div class="footer">
+    Counter starts from when this Worker was deployed. Add <code>?format=json</code> for raw JSON.
+    Daily entries auto-expire after 90 days; lifetime totals never expire.
+  </div>
+</body>
+</html>`;
+  return new Response(html, {
+    headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
   });
 }
 
