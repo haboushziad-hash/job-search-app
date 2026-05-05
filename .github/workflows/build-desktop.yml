@@ -178,7 +178,16 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             desktop_app/src-tauri/target
-          key: ${{ matrix.os }}-cargo-${{ hashFiles('desktop_app/src-tauri/Cargo.lock') }}
+          # v0.2.2 fix: cache key now includes Cargo.toml AND tauri.conf.json
+          # AND package.json. Previously keyed only on Cargo.lock — but bumping
+          # the version field in Cargo.toml without running `cargo update`
+          # locally leaves Cargo.lock unchanged. Result: cache hit, stale
+          # target/ directory served, NSIS bundles a binary with the OLD
+          # version stamped into its filename + metadata. v0.2.1 was published
+          # with v0.2.0 binaries because of this bug — caused an infinite
+          # auto-update loop. Including all three version sources guarantees
+          # any version bump invalidates the cache and forces a fresh build.
+          key: ${{ matrix.os }}-cargo-${{ hashFiles('desktop_app/src-tauri/Cargo.lock', 'desktop_app/src-tauri/Cargo.toml', 'desktop_app/src-tauri/tauri.conf.json', 'desktop_app/package.json') }}
 
       # Tauri reads TAURI_SIGNING_PRIVATE_KEY at build time and signs the
       # update bundle (NSIS .zip on Windows, .app.tar.gz on macOS). The
