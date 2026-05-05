@@ -41,10 +41,8 @@ LEVER_COMPANIES: list[tuple[str, str]] = [
     ("Highspot",    "highspot"),    #   6 jobs - sales enablement
     ("Clari",       "clari"),       #   6 jobs - revenue ops
     ("Skillshare",  "skillshare"),  #   2 jobs - education/learning
-    # Endpoints live but currently 0 jobs (kept in case they post)
-    ("Netflix",     "netflix"),     # 0 current jobs but endpoint live
-    ("KPMG",        "kpmg"),        # 0 current jobs but endpoint live
-    ("Plaid",       "plaid"),       # 0 current jobs but endpoint live
+    # v0.2.1: Pruned Netflix, KPMG, Plaid — endpoints live but 0 current
+    # jobs across 6+ consecutive runs. Re-add if they resume hiring.
 ]
 
 

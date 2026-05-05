@@ -53,7 +53,7 @@ class SmartRecruitersScraper(BaseScraper):
                         self._fetch_company(display, slug),
                         timeout=15.0,
                     )
-                except (asyncio.TimeoutError, Exception):
+                except Exception:
                     return []
 
         tasks = [fetch_company(d, s) for d, s in SMARTRECRUITERS_COMPANIES]
@@ -91,6 +91,14 @@ class SmartRecruitersScraper(BaseScraper):
         except Exception:
             return []
         if resp.status_code != 200:
+            # v0.2.1: surface non-200 in scraper_health so operators can
+            # tell whether SmartRecruiters is genuinely empty (200 + empty
+            # array) vs API-down/rate-limited. SmartRecruiters has only
+            # 3 tenants (Visa/ASOS/LVMH); if all 3 return non-200 the
+            # scraper looks "broken" rather than "narrow".
+            if resp.status_code in (429, 403, 500, 502, 503):
+                self.quota_exhausted = True
+                self.quota_exhausted_reason = f"SmartRecruiters HTTP {resp.status_code} on tenant '{slug}'"
             return []
         try:
             data = resp.json()

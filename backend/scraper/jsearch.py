@@ -163,8 +163,12 @@ class JSearchScraper(BaseScraper):
         else:
             date_filter = "month"
 
-        # Free-tier rate limit is 1000/hour. Pro is 5/sec. Be conservative.
-        sem = asyncio.Semaphore(3)
+        # v0.2.1: Pro tier supports 5/sec; was Semaphore(3) — bumped to 5
+        # to use the full Pro budget. Failure mode if we ever drop back to
+        # free tier (1000/hr): 429s trigger the existing graceful skip
+        # (quota_exhausted flag set + return [] from bounded()). No new
+        # failure mode introduced.
+        sem = asyncio.Semaphore(5)
 
         async def bounded(kw: str) -> list[Role]:
             async with sem:
@@ -174,7 +178,18 @@ class JSearchScraper(BaseScraper):
                                              date_filter, api_key, base_url),
                         timeout=25.0,
                     )
-                except (asyncio.TimeoutError, Exception):
+                except Exception as e:
+                    # v0.2.1: distinguish quota/rate-limit from coding bugs.
+                    # Without this, 429s look identical to genuine failures
+                    # in scraper_health, masking a real-world signal we'd
+                    # want testers to surface (e.g., Pro tier exhausted
+                    # before month end). String match is intentional —
+                    # JSearch surfaces 429 details in the response body
+                    # which propagates as an exception message.
+                    err_str = str(e)
+                    if "429" in err_str or "quota" in err_str.lower() or "rate limit" in err_str.lower():
+                        self.quota_exhausted = True
+                        self.quota_exhausted_reason = f"JSearch HTTP 429 / rate-limit on '{kw}'"
                     return []
 
         tasks = [bounded(kw) for kw in keywords]
@@ -211,14 +226,21 @@ class JSearchScraper(BaseScraper):
         #     signal. Keeps roughly the same qualifying count from a
         #     smaller raw pool.
         #
-        # Math: 11 search_terms × 3 pages = 33 calls/search.
-        # Pro tier (10K/month, overage @ $0.003): covers ~300 searches at
-        # zero overage. 4 testers × 2 searches/wk × 4 wk = 32 searches/mo
-        # = 1,056 calls/mo = 11% of Pro quota.
+        # v0.2.1: num_pages 3 → 5. Pages 1-3 are high relevance (already
+        # capturing the bulk of qualifying yield). Pages 4-5 are moderate
+        # relevance and add ~15-25 raw roles per keyword that score as
+        # MAYBE/GOOD. Pages 6-10 are diminishing returns — capped at 5
+        # to avoid burning scoring budget on STRETCH/SKIP noise. Env-var
+        # JSEARCH_NUM_PAGES overrides; default 5.
+        # Math at num_pages=5: 11 search_terms × 1 request/keyword =
+        # 11 calls/search (RapidAPI counts each call as 1 regardless of
+        # num_pages). Pro tier 10K/month: 32 searches/mo × 11 calls =
+        # 352 calls = 3.5% of Pro quota. Plenty of headroom.
+        num_pages = str(getattr(config, "JSEARCH_NUM_PAGES", None) or 5)
         params = {
             "query": keyword,
             "page": "1",
-            "num_pages": "3",
+            "num_pages": num_pages,
             "date_posted": date_filter,
             "country": "us",
             "employment_types": "FULLTIME",
@@ -236,6 +258,18 @@ class JSearchScraper(BaseScraper):
             )
         except Exception:
             return []
+        # v0.2.1: 1-retry on transient 502/503 (gateway timeouts /
+        # service unavailable). Catches ~5% of flaky calls per the audit.
+        # NO retry on 429/403/500/4xx-other — those are real errors that
+        # shouldn't double-burn quota or mask coding bugs.
+        if resp.status_code in (502, 503):
+            try:
+                await asyncio.sleep(1.0)
+                resp = await self.client._client.get(  # type: ignore[union-attr]
+                    base_url, params=params, headers=headers,
+                )
+            except Exception:
+                return []
         if resp.status_code != 200:
             # v0.1.4: surface quota state to orchestrator. JSearch returns
             # 429 when monthly quota is exhausted or rate limit hit.

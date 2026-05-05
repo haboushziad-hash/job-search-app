@@ -313,9 +313,10 @@ class WorkdayScraper(BaseScraper):
             field_str = str(field)
             if "$" in field_str:
                 salary_text = field_str
-                # Parse $ amounts so the dashboard shows a range, not just text
-                import re as _re
-                nums = _re.findall(
+                # Parse $ amounts so the dashboard shows a range, not just text.
+                # v0.2.1: use module-level `re` (line 32) — was `import re as _re`
+                # inside this method, which runs 4-5K times per Workday scrape.
+                nums = re.findall(
                     r"\$?(\d{2,3}(?:,\d{3})+|\d{2,3}[Kk])", field_str,
                 )
                 parsed: list[int] = []

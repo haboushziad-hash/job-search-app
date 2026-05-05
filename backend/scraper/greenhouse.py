@@ -76,7 +76,6 @@ GREENHOUSE_COMPANIES: list[tuple[str, str]] = [
     ("Toast", "toast"),
     ("Squarespace", "squarespace"),
     ("Hubspot", "hubspot"),
-    ("Asana", "asana"),
     ("Cloudflare", "cloudflare"),
     ("Twilio", "twilio"),
     ("Block", "block"),
@@ -109,7 +108,6 @@ GREENHOUSE_COMPANIES: list[tuple[str, str]] = [
     ("Iterable", "iterable"),
     ("Customer.io", "customerio"),
     ("Braze", "braze"),
-    ("Pendo", "pendo"),
 
     # ========== Phase 1 expansion (2026-05-03) — industry-targeted adds ==========
 
@@ -123,13 +121,9 @@ GREENHOUSE_COMPANIES: list[tuple[str, str]] = [
     ("Veracyte", "veracyte"),
 
     # Fintech (broader fintech gap beyond what we already had)
-    ("Affirm", "affirm"),
     ("SoFi", "sofi"),
-    ("Chime", "chime"),
     ("Marqeta", "marqeta"),
     ("Bill.com", "billcom"),
-    ("Toast", "toast"),  # already have but ensure
-    ("Carta", "carta"),
     ("Pulley", "pulley"),
 
     # Real estate tech (CRE / housing gap — relevant to Ziad's CoStar background)
@@ -141,14 +135,9 @@ GREENHOUSE_COMPANIES: list[tuple[str, str]] = [
     ("Stitch Fix", "stitchfix"),
     ("Glossier", "glossier"),
     ("Allbirds", "allbirds"),
-    ("Instacart", "instacart"),
 
     # Mid-market SaaS (broader operations/consulting candidate appeal)
-    ("HubSpot", "hubspot"),
     ("Salesloft", "salesloft"),
-    ("Lattice", "lattice"),
-    ("Gusto", "gusto"),
-    ("Justworks", "justworks"),
 
     # Auto / EV / mobility (gap entirely)
     ("Lucid Motors", "lucidmotors"),
@@ -162,19 +151,11 @@ GREENHOUSE_COMPANIES: list[tuple[str, str]] = [
     ("Project44", "project44"),
 
     # Education / edtech expansion
-    ("Coursera", "coursera"),
-    ("Duolingo", "duolingo"),
-    ("Khan Academy", "khanacademy"),
     ("Outschool", "outschool"),
 
     # Misc consumer / media (filling out variety)
-    ("Squarespace", "squarespace"),
-    ("Pinterest", "pinterest"),
-    ("Reddit", "reddit"),
-    ("Discord", "discord"),
 
     # Cybersecurity (was thin — relevant for many tech profiles)
-    ("Cloudflare", "cloudflare"),
 
     # Phase C1 — non-tech / consumer / retail / finance / wellness / media
     # (verified live 2026-05-03 via scripts/probe_non_tech_atses.py)
@@ -193,21 +174,12 @@ GREENHOUSE_COMPANIES: list[tuple[str, str]] = [
 
     # Phase C1 v2 — environmental / climate / health / hospitality / consumer
     # (verified live 2026-05-03 via probe_non_tech_v2.py)
-    ("Toast",           "toast"),                       # 332 jobs — restaurant tech / hospitality
-    ("Airbnb",          "airbnb"),                      # 235 jobs — hospitality / travel
-    ("Lucid Motors",    "lucidmotors"),                 # 229 jobs — auto / clean energy
-    ("Flexport",        "flexport"),                    # 113 jobs — logistics / supply chain
     ("Tripadvisor",     "tripadvisor"),                 #  82 jobs — travel / hospitality
     ("Wayve",           "wayve"),                       #  74 jobs — autonomous / AI
-    ("Bill.com",        "billcom"),                     #  46 jobs — fintech / SMB
-    ("Komodo Health",   "komodohealth"),                #  42 jobs — health data
-    ("project44",       "project44"),                   #  38 jobs — supply chain
     ("2U",              "2u"),                          #  35 jobs — education
     ("Mindbody",        "mindbody"),                    #  33 jobs — wellness / hospitality
-    ("Marqeta",         "marqeta"),                     #  33 jobs — fintech
     ("Recursion",       "recursionpharmaceuticals"),    #  28 jobs — biotech
     ("Maven Clinic",    "mavenclinic"),                 #  24 jobs — health / clinical
-    ("Flatiron Health", "flatironhealth"),              #  17 jobs — oncology / health
     ("Ritual",          "ritual"),                      #  15 jobs — CPG / vitamins
     ("Ginkgo Bioworks", "ginkgobioworks"),              #  11 jobs — biotech / synthbio
     ("Harry's",         "harrys"),                      #   9 jobs — CPG / personal care
@@ -305,9 +277,19 @@ class GreenhouseScraper(BaseScraper):
         )
         keywords_lower = [k.lower() for k in keywords]
 
-        # Fetch from all companies in parallel
+        # Fetch from all companies in parallel.
+        # v0.2.1: cap concurrent in-flight requests at 20 to prevent
+        # connection-pool exhaustion on machines with limited sockets and
+        # to be a better citizen of Greenhouse's API. ScraperClient already
+        # paces inter-request delay per-domain, but doesn't bound concurrent
+        # count — so all 138 tenants used to fan out at once. Pure
+        # backpressure: same roles fetched, just less burst-y.
+        sem = asyncio.Semaphore(20)
+        async def _bounded(slug: str, display_name: str) -> list[Role]:
+            async with sem:
+                return await self._fetch_company_jobs(slug, display_name)
         tasks = [
-            self._fetch_company_jobs(slug, display_name)
+            _bounded(slug, display_name)
             for display_name, slug in GREENHOUSE_COMPANIES
         ]
         all_company_results = await asyncio.gather(*tasks, return_exceptions=True)

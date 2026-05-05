@@ -56,7 +56,7 @@ class BuiltInScraper(BaseScraper):
                         self._search_keyword(kw, limit_per_keyword),
                         timeout=25.0,
                     )
-                except (asyncio.TimeoutError, Exception):
+                except Exception:
                     return []
 
         tasks = [bounded(kw) for kw in keywords]
@@ -108,6 +108,11 @@ class BuiltInScraper(BaseScraper):
                         print(f"[builtin] 403 on '{keyword}' page {page} — skipping")
                     except Exception:
                         pass
+                    # v0.2.1: surface 403 as quota_exhausted in the audit so
+                    # operators can spot rate-limiting in scraper_health.jsonl
+                    # instead of guessing. No flow change — we still skip.
+                    self.quota_exhausted = True
+                    self.quota_exhausted_reason = f"BuiltIn HTTP 403 on '{keyword}' (anti-bot or rate-limit)"
                 break
             body = resp.text or ""
 

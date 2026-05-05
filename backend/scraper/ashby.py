@@ -28,7 +28,6 @@ ASHBY_COMPANIES: list[tuple[str, str]] = [
     ("Modal", "modal"),
     ("Replit", "replit"),
     ("Vercel", "vercel"),
-    ("Linear", "linear"),
     ("Pinecone", "Pinecone"),
     ("Sierra", "sierra"),
     ("Decagon", "decagon"),
@@ -52,23 +51,15 @@ ASHBY_COMPANIES: list[tuple[str, str]] = [
     # ========== Phase 1 expansion (2026-05-03) — AI-native + dev-tools ==========
     ("Character AI", "character"),
     ("Mistral AI", "mistral"),
-    ("Pinecone", "pinecone"),
     ("Cohere", "cohere"),
     ("Supabase", "supabase"),
     ("Substack", "substack"),
     ("PostHog", "posthog"),
     ("LaunchDarkly", "launchdarkly"),
     ("Speak", "speak"),
-    ("Decagon", "decagon"),
-    ("Sierra", "sierra"),
-    ("Notion", "notion"),
-    ("Linear", "linear"),
-    ("Mercury", "mercury"),
     # Phase C1 (verified live 2026-05-03)
     ("Browserbase",       "browserbase"),       #  11 jobs — browser-automation infra
     # Phase C1 v2 — broader employer pool
-    ("Mistral",           "mistral"),           # 174 jobs — AI / European
-    ("Modal Labs",        "modal"),             #  28 jobs — ML infra
     ("Atomic Industries", "atomic"),            #  10 jobs — manufacturing / industrial
 
     # Phase C2 — companies that MIGRATED FROM GREENHOUSE TO ASHBY
@@ -78,21 +69,10 @@ ASHBY_COMPANIES: list[tuple[str, str]] = [
     ("OpenAI",            "openai"),            # 671 jobs — AI lab
     ("Snowflake",         "snowflake"),         # 421 jobs — data cloud
     ("Harvey",            "harvey"),            # 261 jobs — AI for law
-    ("Vanta",             "vanta"),             # 146 jobs — compliance automation
-    ("Notion",            "notion"),            # 140 jobs (replaces stub above)
-    ("Cohere",            "cohere"),            # 124 jobs — AI lab
-    ("Ramp",              "ramp"),              # 116 jobs — fintech / spend mgmt
-    ("Plaid",             "plaid"),             #  96 jobs — fintech infra
-    ("Perplexity",        "perplexity"),        #  68 jobs — AI search
     ("Writer",            "writer"),            #  48 jobs — enterprise AI writing
     ("SentiLink",         "sentilink"),         #  44 jobs — fraud detection
     ("Dust",              "dust"),              #  25 jobs — AI agents platform
     ("Zapier",            "zapier"),            #  25 jobs — automation
-    ("Drata",             "drata"),             #  24 jobs — compliance automation
-    ("Linear",            "linear"),            #  23 jobs (replaces stub above)
-    ("Character.ai",      "character"),         #  17 jobs — AI chat platform
-    ("Pinecone",          "pinecone"),          #   8 jobs — vector DB
-    ("Modern Treasury",   "moderntreasury"),    #   5 jobs — payments infra
 ]
 
 
@@ -113,8 +93,16 @@ class AshbyScraper(BaseScraper):
         )
         keywords_lower = [k.lower() for k in keywords]
 
+        # v0.2.1: cap concurrent in-flight requests at 20 (same rationale
+        # as Greenhouse). ScraperClient paces per-domain delay but doesn't
+        # bound concurrent count. With 44 deduped Ashby tenants, fan-out
+        # is small but bounded burst is still better hygiene.
+        sem = asyncio.Semaphore(20)
+        async def _bounded(slug: str, display_name: str) -> list[Role]:
+            async with sem:
+                return await self._fetch_company_jobs(slug, display_name)
         tasks = [
-            self._fetch_company_jobs(slug, display_name)
+            _bounded(slug, display_name)
             for display_name, slug in ASHBY_COMPANIES
         ]
         results = await asyncio.gather(*tasks, return_exceptions=True)

@@ -80,6 +80,19 @@ def export_contributions(
         except Exception:
             pass
 
+    # v0.2.1: allowlist of fields we'll persist to the shared JSONL.
+    # Keeping an explicit allowlist (rather than `dict(c)`) ensures we
+    # never accidentally leak a field that gets added to internal Role
+    # objects later (e.g., user-edited notes, scoring debug data). New
+    # fields here = explicit, reviewed addition. Anything not on this
+    # list is dropped at the boundary.
+    EXPORT_FIELDS = (
+        "company", "job_title", "score", "profile_tags", "contributed_date",
+        # v0.2.1 enrichment — public job-posting metadata only
+        "matched_keyword", "tier", "source", "industry",
+        "location_type", "salary_min", "salary_max", "posted_date",
+    )
+
     new_count = 0
     for c in contributions:
         company = (c.get("company") or "").strip()
@@ -92,13 +105,22 @@ def export_contributions(
         # Skip rewrite if existing entry has same score (within 5 points)
         if prev and abs(int(prev.get("score", 0)) - score) <= 5:
             continue
-        existing[key] = {
+        entry: dict = {
             "company": company,
             "job_title": title,
             "score": score,
             "profile_tags": list(c.get("profile_tags") or []),
             "contributed_date": c.get("contributed_date") or datetime.now(timezone.utc).isoformat(),
         }
+        # Add allowlisted enrichment fields if present + non-empty.
+        for k in EXPORT_FIELDS:
+            if k in entry:
+                continue
+            v = c.get(k)
+            if v is None or v == "":
+                continue
+            entry[k] = v
+        existing[key] = entry
         new_count += 1
 
     # Atomic-ish rewrite (sort for stable diffs in cloud-synced files)

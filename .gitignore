@@ -106,3 +106,7 @@ backend/dist/
 # Test outputs
 test_results/
 *.log
+
+# Working artifact for cross-Claude-chat handoff (not source)
+Copy and Paste/
+_geocoding_additions.txt

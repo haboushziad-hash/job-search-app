@@ -81,7 +81,18 @@ class AdzunaScraper(BaseScraper):
         sem = asyncio.Semaphore(3)  # respect their rate limit
 
         async def bounded(kw: str) -> list[Role]:
+            # v0.2.1: short-circuit remaining keywords once any keyword has
+            # tripped the quota_exhausted flag. Adzuna's free tier hits 429
+            # in 4/6 recent runs; without this guard, every subsequent
+            # keyword still fires its first call (which 429s and breaks the
+            # page loop), wasting ~10-15 quota slots per quota-exhausted
+            # run. With the guard, all keywords after the first 429 return
+            # [] without an HTTP call.
+            if self.quota_exhausted:
+                return []
             async with sem:
+                if self.quota_exhausted:  # double-check after sem wait
+                    return []
                 try:
                     return await asyncio.wait_for(
                         self._search_keyword(kw, limit_per_keyword,
@@ -89,7 +100,7 @@ class AdzunaScraper(BaseScraper):
                                              posted_within_days, base_url),
                         timeout=25.0,
                     )
-                except (asyncio.TimeoutError, Exception):
+                except Exception:
                     return []
 
         tasks = [bounded(kw) for kw in keywords]

@@ -54,14 +54,22 @@ class FindworkScraper(BaseScraper):
         sem = asyncio.Semaphore(3)
 
         async def bounded(kw: str) -> list[Role]:
+            # v0.2.1: short-circuit remaining keywords once any keyword has
+            # tripped quota_exhausted. Findwork hit 429 in 5/6 recent runs;
+            # without this guard each subsequent keyword wastes its first
+            # call. Mirrors the Adzuna fix added in the same patch.
+            if self.quota_exhausted:
+                return []
             async with sem:
+                if self.quota_exhausted:
+                    return []
                 try:
                     return await asyncio.wait_for(
                         self._search_keyword(kw, limit_per_keyword,
                                              api_key or "", base_url),
                         timeout=20.0,
                     )
-                except (asyncio.TimeoutError, Exception):
+                except Exception:
                     return []
 
         tasks = [bounded(kw) for kw in keywords]

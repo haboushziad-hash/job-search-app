@@ -54,7 +54,7 @@ class RemotiveScraper(BaseScraper):
                         self._search_keyword(kw, limit_per_keyword),
                         timeout=20.0,
                     )
-                except (asyncio.TimeoutError, Exception):
+                except Exception:
                     return []
 
         tasks = [bounded(kw) for kw in keywords]

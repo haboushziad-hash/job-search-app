@@ -81,7 +81,7 @@ class ICIMSPlaywrightScraper(BaseScraper):
                                 ),
                                 timeout=45.0,
                             )
-                        except (asyncio.TimeoutError, Exception):
+                        except Exception:
                             return []
 
                 tasks = [

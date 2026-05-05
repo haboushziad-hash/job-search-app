@@ -574,25 +574,128 @@ def _archive_run(
     # Export own contributions to market_contributions.jsonl in the audit
     # folder so other testers' apps (whose folders sync to the same shared
     # cloud-drive parent) automatically see them on their next run.
+    #
+    # v0.2.1: enriched contribution schema. Joins SQLite-stored basics
+    # (company, title, score, profile_tags) with extra fields read from
+    # the in-memory `scored` list — matched_keyword, tier, source,
+    # industry, location_type, salary_min/max, posted_date. Existing
+    # readers ignore unknown keys (forward-compatible). New readers in
+    # v0.3 will use the richer signal for keyword-gen prompt + cohort
+    # learning. No PII added: all fields come from public job postings.
     try:
         from backend.storage.market import export_contributions
         own = archive.get_self_contributions()
-        own_dicts = [
-            {
+        # Build a (company.lower, title.lower) -> Role lookup from the
+        # in-memory scored list so we can enrich each SQLite contribution
+        # with extra fields. Missing matches degrade to the basic fields
+        # (no error).
+        role_lookup = {}
+        for r in scored or []:
+            ck = (r.company or "").strip().lower()
+            tk = (r.job_title or "").strip().lower()
+            if ck and tk:
+                role_lookup[(ck, tk)] = r
+        own_dicts = []
+        for row in own:
+            base = {
                 "company": row["company"],
                 "job_title": row["job_title"],
                 "score": row["score"],
                 "profile_tags": list(_safe_json_loads(row["profile_tags_json"]) or []),
                 "contributed_date": row["contributed_date"],
             }
-            for row in own
-        ]
+            r = role_lookup.get(((row["company"] or "").strip().lower(), (row["job_title"] or "").strip().lower()))
+            if r is not None:
+                base.update({
+                    "matched_keyword": getattr(r, "matched_keyword", None) or None,
+                    "tier": (getattr(getattr(r, "final_tier", None), "value", None)
+                             or str(getattr(r, "final_tier", "") or "") or None),
+                    "source": getattr(r, "source", None) or None,
+                    "industry": getattr(r, "industry", None) or None,
+                    "location_type": getattr(r, "location_type", None) or None,
+                    "salary_min": getattr(r, "salary_min", None),
+                    "salary_max": getattr(r, "salary_max", None),
+                    "posted_date": getattr(r, "posted_date", None),
+                })
+                # Drop None values so existing readers don't choke + file stays compact
+                base = {k: v for k, v in base.items() if v is not None and v != ""}
+            own_dicts.append(base)
         n_exported = export_contributions(archive.folder, contributions=own_dicts)
         if log and n_exported > 0:
             print(f"[market] exported {n_exported} new contributions to {archive.folder}/market_contributions.jsonl")
     except Exception as e:
         if log:
             print(f"[market] export failed (non-fatal): {e}")
+
+    # v0.2.1: write three new sidecar telemetry files alongside
+    # market_contributions.jsonl. All three are anonymous, no PII, no
+    # role-level data (run_telemetry/scraper_health) or sanitized
+    # error-class-only data (bug_reports). Cloud-syncs with the rest of
+    # the audit folder; consumed by v0.3+ cohort dashboards. Wrapped in
+    # try/except so a write failure never kills a successful run.
+    try:
+        from backend.storage.telemetry import (
+            write_run_telemetry, write_scraper_health, write_bug_reports,
+        )
+        from backend import __version__ as APP_VERSION
+        # Run telemetry — one entry per completed run
+        tier_breakdown = {
+            "STRONG": getattr(summary, "tier_strong", 0),
+            "GOOD": getattr(summary, "tier_good", 0),
+            "MAYBE": getattr(summary, "tier_maybe", 0),
+            "STRETCH": getattr(summary, "tier_stretch", 0),
+        }
+        write_run_telemetry(
+            archive.folder,
+            run_id=run_id,
+            app_version=APP_VERSION,
+            duration_seconds=getattr(summary, "duration_seconds", 0) or 0,
+            total_scraped=getattr(summary, "roles_scraped", 0) or 0,
+            after_hard_filters=getattr(summary, "roles_after_filter", 0) or 0,
+            qualifying_final=getattr(summary, "roles_qualifying", 0) or 0,
+            tier_breakdown=tier_breakdown,
+            keyword_count=getattr(summary, "keywords_used", 0) or 0,
+            target_title_count=len(getattr(profile, "target_titles", []) or []),
+            cache_hit=False,  # v0.2.1: always-fresh policy
+        )
+        # Per-scraper health — one entry per scraper for this run
+        per_source = getattr(summary, "per_source_funnel", None) or getattr(summary, "per_source_counts", None) or {}
+        if per_source:
+            write_scraper_health(
+                archive.folder,
+                run_id=run_id,
+                app_version=APP_VERSION,
+                per_source=per_source,
+            )
+        # Bug reports — derive from any scrapers that errored. v0.2.1
+        # bootstraps the file with scraper-level errors only; v0.3 will
+        # add deeper instrumentation across the pipeline. Each unique
+        # error_class becomes one entry; sanitization happens inside
+        # write_bug_reports (allowlist of class names + module prefixes).
+        bugs: list[dict] = []
+        for source, data in (per_source or {}).items():
+            if not data:
+                continue
+            if data.get("errored") and data.get("error"):
+                bugs.append({
+                    "error_class": data.get("error"),
+                    "module": f"backend.scraper.{source.lower()}",
+                    "count": 1,
+                })
+        if bugs:
+            write_bug_reports(
+                archive.folder,
+                run_id=run_id,
+                app_version=APP_VERSION,
+                bugs=bugs,
+            )
+        if log:
+            print(f"[telemetry] wrote run_telemetry.jsonl + scraper_health.jsonl"
+                  + (f" + bug_reports.jsonl ({len(bugs)} entries)" if bugs else "")
+                  + f" to {archive.folder}")
+    except Exception as e:
+        if log:
+            print(f"[telemetry] write failed (non-fatal): {e}")
 
     if log:
         print(f"[archive] persisted {archived} roles, {contribs} market contributions, run {run_id}")

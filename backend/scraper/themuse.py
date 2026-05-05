@@ -56,7 +56,7 @@ class TheMuseScraper(BaseScraper):
                         self._search_keyword(kw, limit_per_keyword, api_key),
                         timeout=30.0,
                     )
-                except (asyncio.TimeoutError, Exception):
+                except Exception:
                     return []
 
         tasks = [bounded(kw) for kw in keywords]
