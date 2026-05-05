@@ -21,6 +21,10 @@ export default function Dashboard() {
   const [filterTier, setFilterTier] = useState<Tier | null>(null)
   const [showConfetti, setShowConfetti] = useState(false)
   const [exportMenuOpen, setExportMenuOpen] = useState(false)
+  // Title search + work-arrangement filter (v0.1.8). Both narrow the
+  // visible roles list — composable with the existing tier filter.
+  const [searchQuery, setSearchQuery] = useState<string>('')
+  const [arrangementFilter, setArrangementFilter] = useState<'all' | 'remote' | 'hybrid' | 'onsite'>('all')
   // Feedback prompt — appears once after a fresh run, dismissed via button
   const [feedbackOpen, setFeedbackOpen] = useState<boolean>(false)
   const [feedbackText, setFeedbackText] = useState<string>('')
@@ -217,9 +221,32 @@ export default function Dashboard() {
     ? lastRoles.filter((r) => r.final_tier === filterTier)
     : lastRoles
   const afterHiddenFilter = tierFiltered.filter((r) => !isRoleHidden(r))
-  const visibleRoles = hideSalarylessRoles
+  const afterSalaryFilter = hideSalarylessRoles
     ? afterHiddenFilter.filter((r) => r.salary_min != null || r.salary_max != null || !!r.salary_text)
     : afterHiddenFilter
+
+  // Arrangement filter — narrow to a specific work arrangement (remote /
+  // hybrid / onsite). Default 'all' is a no-op. Substring match on
+  // location_type because scrapers populate it with various capitalizations
+  // ("Remote", "remote", "On-site"). Roles with no location_type fall
+  // through every filter — they're shown only when 'all' is selected.
+  const afterArrangementFilter = arrangementFilter === 'all'
+    ? afterSalaryFilter
+    : afterSalaryFilter.filter((r) => {
+        const t = (r.location_type || '').toLowerCase()
+        if (arrangementFilter === 'remote') return t.includes('remote')
+        if (arrangementFilter === 'hybrid') return t.includes('hybrid')
+        if (arrangementFilter === 'onsite') return t.includes('on-site') || t.includes('onsite')
+        return true
+      })
+
+  // Title search — case-insensitive substring match on job_title. Empty
+  // query is a no-op (full list passes through).
+  const visibleRoles = searchQuery.trim()
+    ? afterArrangementFilter.filter((r) =>
+        (r.job_title || '').toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : afterArrangementFilter
 
   // Sort visible roles by score descending. Tiebreaker: when scores are
   // within 3 points, prefer the role with salary disclosed — equivalent
@@ -489,6 +516,73 @@ export default function Dashboard() {
           </motion.div>
         ))}
       </motion.div>
+
+      {/* Search + arrangement filter (v0.1.8) — sits below the tier cards
+          so the user lands on the funnel summary first, then narrows. The
+          arrangement chips are always visible because every dataset has
+          at least one of the three. The search bar matches against
+          job_title only — keep the input narrow so it doesn't compete with
+          the chip row visually. */}
+      <div className="mt-6 flex items-center gap-3 flex-wrap">
+        {/* Arrangement chips */}
+        <div className="flex items-center gap-1.5">
+          {(['all', 'remote', 'hybrid', 'onsite'] as const).map((opt) => {
+            const isActive = arrangementFilter === opt
+            const label = opt === 'all' ? 'All'
+              : opt === 'remote' ? 'Remote'
+              : opt === 'hybrid' ? 'Hybrid'
+              : 'On-site'
+            return (
+              <button
+                key={opt}
+                onClick={() => setArrangementFilter(opt)}
+                className={`px-3 py-1.5 rounded-full text-xs transition-colors ${
+                  isActive
+                    ? 'bg-accent-500/20 text-accent-200 border border-accent-500/40'
+                    : 'glass-subtle text-base-300 border border-transparent hover:bg-white/[0.06]'
+                }`}
+              >
+                {label}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Title search */}
+        <div className="relative flex-1 min-w-[240px] max-w-md">
+          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-base-500 pointer-events-none" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search by title…"
+            className="w-full pl-8 pr-8 py-1.5 rounded-full text-xs
+                       bg-white/[0.04] border border-white/[0.08]
+                       text-base-100 placeholder:text-base-600
+                       focus:outline-none focus:border-accent-500/40 focus:bg-white/[0.06]
+                       transition-colors"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-2 top-1/2 -translate-y-1/2
+                         text-base-500 hover:text-base-200 text-xs"
+              title="Clear search"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+
+        {/* Visible-count indicator — shows how the filters narrowed the list.
+            Only render when something is actually filtering, otherwise it's
+            redundant with the header's "X qualifying roles" total. */}
+        {(searchQuery.trim() || arrangementFilter !== 'all') && (
+          <span className="text-xs text-base-500 ml-auto">
+            Showing {visibleRoles.length} of {afterHiddenFilter.length}
+          </span>
+        )}
+      </div>
 
       {/* Filter chips — tier filter + hidden-roles toggle. The hidden
           toggle only appears when the user has actually hidden something,

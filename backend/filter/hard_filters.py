@@ -242,7 +242,19 @@ def passes_location(
         return False
 
     if not haystack.strip():
-        # Generous: no usable location data → include and let LLM decide
+        # Missing location data — be stricter for arrangements that require
+        # physical presence. Hybrid and on-site roles need a verifiable
+        # metro match; without one we'd be passing through roles the user
+        # can't actually take. Remote/unknown still passes through to let
+        # the LLM judge based on JD content.
+        #
+        # v0.1.8 fix: previously this returned True unconditionally. Caused
+        # hybrid SF roles with empty city/state fields to slip through the
+        # filter for users targeting Richmond/DC, since the LLM scored
+        # them on JD content alone (which looks like a great match for AI
+        # strategy work) but the user couldn't actually take the role.
+        if "hybrid" in loc_type or "on-site" in loc_type or "onsite" in loc_type:
+            return False
         return True
 
     # Excluded locations — only this can hard-reject

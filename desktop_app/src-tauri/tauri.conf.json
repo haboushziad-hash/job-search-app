@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "findmesomedamnjobz",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "identifier": "app.jobsearch.desktop",
   "build": {
     "frontendDist": "../dist",
@@ -44,7 +44,7 @@
   "bundle": {
     "active": true,
     "createUpdaterArtifacts": true,
-    "targets": ["msi", "nsis", "dmg", "app"],
+    "targets": ["nsis", "dmg", "app"],
     "publisher": "Ziad Haboush",
     "category": "Productivity",
     "shortDescription": "Find roles that actually match.",

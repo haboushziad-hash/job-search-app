@@ -515,7 +515,12 @@ _RESPONSE_SCHEMA = {
         "keywords_tier_1": {"type": "array", "items": {"type": "string"}, "minItems": 6},
         "keywords_tier_2": {"type": "array", "items": {"type": "string"}, "minItems": 6},
         "keywords_tier_3": {"type": "array", "items": {"type": "string"}, "minItems": 4},
-        "search_terms": {"type": "array", "items": {"type": "string"}, "minItems": 10},
+        # v0.1.8: bumped floor 10 → 11 to compensate for the v0.1.8 hybrid
+        # location filter tightening (more roles get rejected upfront, so
+        # we compensate at the top of the funnel by casting a slightly
+        # wider keyword net). Opus deep-eval at the bottom filters out
+        # any noise from the wider search.
+        "search_terms": {"type": "array", "items": {"type": "string"}, "minItems": 11},
         "resume_emphases": {
             "type": "array",
             "items": {

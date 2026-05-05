@@ -55,9 +55,17 @@ jobs:
         include:
           - os: windows-latest
             target: windows
-            artifact_pattern: "**/*.msi"
+            # v0.1.8: switched from MSI to NSIS-only. NSIS is what
+            # Tauri 2's auto-updater natively supports — having MSI as
+            # the public download caused MSI→NSIS transitions during
+            # auto-update that triggered Windows Installer prompts.
+            # Going NSIS-only means the public download and the auto-
+            # update bundle are the same installer format, so updates
+            # are silent forever (the installer.nsh hook fires on every
+            # upgrade, killing backend.exe before file copy).
+            artifact_pattern: "**/*-setup.exe"
             artifact_name: windows-installer
-            r2_key: "current/job-search-app.msi"
+            r2_key: "current/job-search-app.exe"
             target_triple: "x86_64-pc-windows-msvc"
             # Tauri 2 with createUpdaterArtifacts: true emits the silent-
             # install NSIS .exe directly (no .zip wrapper, unlike Tauri 1.x)
@@ -235,19 +243,21 @@ jobs:
         shell: bash
         run: |
           # Tauri 2 outputs to different paths per platform:
-          #   - Windows:  target/release/bundle/msi/*.msi
+          #   - Windows:  target/release/bundle/nsis/*-setup.exe
           #   - Mac arm:  target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
           #   - Mac x64:  target/x86_64-apple-darwin/release/bundle/dmg/*.dmg
-          # The wildcard matches all three.
+          # NSIS .exe is the same file used for auto-update — having one
+          # installer format simplifies the upgrade path (no MSI/NSIS
+          # mixing that would trigger Windows Installer dialogs).
           BASE="desktop_app/src-tauri/target"
           if [ "${{ runner.os }}" = "Windows" ]; then
-            FILE=$(find "$BASE" -path "*/bundle/msi/*.msi" -type f | head -1)
+            FILE=$(find "$BASE" -path "*/bundle/nsis/*-setup.exe" -type f | head -1)
           else
             FILE=$(find "$BASE" -path "*/bundle/dmg/*.dmg" -type f | head -1)
           fi
           if [ -z "$FILE" ]; then
             echo "no installer found — searched under $BASE"
-            find "$BASE" -name "*.dmg" -o -name "*.msi" || true
+            find "$BASE" -name "*.dmg" -o -name "*-setup.exe" || true
             exit 1
           fi
           echo "Found installer: $FILE"

@@ -366,7 +366,7 @@ def write_audit_files(
             "sources_searched": sources_searched or summary_dump.get("boards_searched", []),
             "keywords_used": keywords,
             "cache_was_hit": cache_was_hit,
-            "app_version": "0.1.7",
+            "app_version": "0.1.8",
         },
         "profile_snapshot": profile_dump,
         "pipeline_funnel": {
