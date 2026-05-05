@@ -83,34 +83,41 @@ const APP_SIZE = "107 MB";
         AI-powered job search that actually fits. Pulls <strong class="text-base-100">thousands of roles</strong> from major job boards, scores each one against <strong class="text-base-100">your resume</strong>, and surfaces the matches worth <strong class="text-base-100">your time</strong>. Built for any industry. AI, Tech, Tax, Engineering, Healthcare, Real Estate, Science, you name it.
       </p>
 
-      <!-- CTAs — primary button label/href is swapped client-side by the
-           platform-detect script at the bottom of this file. SSR default
-           is Windows so search-engine crawlers + JS-disabled visitors still
-           see a working button. -->
+      <!-- v0.2.3: switched from 1 auto-detected button → 3 explicit
+           buttons. Old design SSR'd a Windows-default href and swapped
+           it client-side via JS — but a Mac user clicking before the JS
+           ran got the .exe (which macOS can't open). Now every user
+           sees their actual platform's download as a labeled button,
+           no JS dependency, no race condition.
+
+           The auto-detect JS at the bottom of this file is still here
+           but it now just *highlights* the most-likely button (subtle
+           ring) — never swaps an href. -->
       <div class="reveal flex items-center justify-center gap-3 flex-wrap">
-        <a id="hero-download" href={MSI_URL}
-           data-url-windows={MSI_URL}
-           data-url-mac-arm64={DMG_ARM64_URL}
-           data-url-mac-x64={DMG_X64_URL}
+        <a id="dl-windows" href={MSI_URL}
            class="btn-primary">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
-          <span data-download-label>Download for Windows</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
+          <span>Download for Windows</span>
           <span class="text-[11px] opacity-70 font-normal">{APP_SIZE}</span>
         </a>
-        <a href="#how-it-works" class="btn-secondary">See how it works</a>
+        <a id="dl-mac-arm64" href={DMG_ARM64_URL}
+           class="btn-primary">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/></svg>
+          <span>Download for Mac (Apple Silicon)</span>
+        </a>
+        <a id="dl-mac-x64" href={DMG_X64_URL}
+           class="btn-primary">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/></svg>
+          <span>Download for Mac (Intel)</span>
+        </a>
+      </div>
+      <div class="reveal mt-3 text-center">
+        <a href="#how-it-works" class="text-[12px] text-base-500 hover:text-base-300 underline-offset-4 hover:underline">See how it works ↓</a>
       </div>
 
-      <!-- Contextual "wrong machine?" hint. The auto-detect script
-           rewrites this to show only the OTHER platform's options
-           (e.g., "On a Mac? Apple Silicon · Intel" when Windows is
-           the auto-pick). Default HTML shows all 3 for SSR + JS-disabled. -->
-      <div id="other-downloads" class="reveal mt-5 text-[12px] text-base-500 flex items-center justify-center gap-3 flex-wrap">
-        <span class="text-base-600" data-other-prefix>Other downloads:</span>
-        <a href={MSI_URL} data-platform="windows" class="hover:text-base-300 transition-colors underline-offset-4 hover:underline">Windows</a>
-        <span class="text-base-700" data-sep="0">·</span>
-        <a href={DMG_ARM64_URL} data-platform="mac-arm64" class="hover:text-base-300 transition-colors underline-offset-4 hover:underline">Mac (Apple Silicon)</a>
-        <span class="text-base-700" data-sep="1">·</span>
-        <a href={DMG_X64_URL} data-platform="mac-x64" class="hover:text-base-300 transition-colors underline-offset-4 hover:underline">Mac (Intel)</a>
+      <!-- Tiny helper for users unsure which Mac they have. -->
+      <div class="reveal mt-4 text-[11px] text-base-600 text-center max-w-md mx-auto">
+        Not sure which Mac? Apple menu → About This Mac → "Chip" line. <span class="text-base-500">M1/M2/M3/M4</span> = Apple Silicon. <span class="text-base-500">Intel</span> = Intel.
       </div>
 
       <!-- Stats strip — stack on mobile (the big numbers like "Thousands"
@@ -658,125 +665,47 @@ A few examples of the level of detail that helps:
 </style>
 
 <script>
-  // Platform auto-detect for download CTAs.
+  // v0.2.3: switched from JS-rewrites-href model to 3-explicit-buttons.
+  // The 3 download buttons (#dl-windows / #dl-mac-arm64 / #dl-mac-x64)
+  // each have hardcoded SSR'd hrefs to their correct platform URL.
+  // No href swapping, no race condition possible — even if this script
+  // never runs, all 3 buttons work correctly.
   //
-  // Detection precedence:
-  //   1. Windows  — userAgent contains "Win"
-  //   2. Mac arm64 — userAgentData.architecture === "arm" (Chromium only)
-  //   3. Mac      — userAgent contains "Mac" but architecture unknown.
-  //                 Default to arm64 (covers ~95% of 2020+ Macs); Intel
-  //                 users click the visible "Mac (Intel)" escape hatch.
-  //   4. Other    — leave SSR Windows default in place (linux/mobile users
-  //                 typically know what they want; the "Other" row is visible).
-  //
-  // Why we don't hide the alternatives:
-  //   Browsers lie about Mac arch — Safari always says "Intel Mac". The
-  //   only reliable arm-vs-x64 signal is userAgentData.getHighEntropyValues
-  //   which is Chrome/Edge only. So Safari users on Apple Silicon get a
-  //   guess + a visible escape hatch. Hiding it = breaking Intel Macs.
+  // What this block STILL does (cosmetic only): subtly highlights the
+  // button matching the user's detected platform with a ring + slight
+  // scale, so first-time visitors don't have to read all 3 labels to
+  // find theirs. If detection fails, no harm done — all buttons work.
   type Platform = "windows" | "mac-arm64" | "mac-x64";
 
-  async function detectPlatform(): Promise<Platform> {
+  async function detectPlatform(): Promise<Platform | null> {
     const ua = navigator.userAgent || "";
     if (/Win/i.test(ua)) return "windows";
     if (/Mac/i.test(ua)) {
-      // Best-effort arch sniff via Chromium client hints. Returns null
-      // on Safari/Firefox — we fall back to arm64 since 2020+ Macs are.
       const uaData = (navigator as any).userAgentData;
       if (uaData?.getHighEntropyValues) {
         try {
           const hints = await uaData.getHighEntropyValues(["architecture"]);
           if (hints?.architecture === "x86") return "mac-x64";
           if (hints?.architecture === "arm") return "mac-arm64";
-        } catch {
-          /* ignore — fall through to default */
-        }
+        } catch { /* fall through */ }
       }
-      return "mac-arm64";
+      return "mac-arm64"; // best guess for Safari/Firefox on modern Macs
     }
-    return "windows"; // unknown — keep SSR default
+    return null; // unknown OS — leave all 3 buttons un-highlighted
   }
 
-  function applyPlatform(platform: Platform) {
-    const labelByPlatform: Record<Platform, string> = {
-      "windows": "Download for Windows",
-      "mac-arm64": "Download for Mac",
-      "mac-x64": "Download for Mac (Intel)",
+  detectPlatform().then((platform) => {
+    if (!platform) return;
+    const idByPlatform: Record<Platform, string> = {
+      "windows": "dl-windows",
+      "mac-arm64": "dl-mac-arm64",
+      "mac-x64": "dl-mac-x64",
     };
-    const headlineByPlatform: Record<Platform, string> = {
-      "windows": "Download for Windows",
-      "mac-arm64": "Download for Mac",
-      "mac-x64": "Download for Mac (Intel)",
-    };
-    const subheadByPlatform: Record<Platform, string> = {
-      "windows": "Version 0.2.3 · Windows 10 or 11.",
-      "mac-arm64": "Version 0.2.3 · macOS 12+ (Apple Silicon).",
-      "mac-x64": "Version 0.2.3 · macOS 12+ (Intel).",
-    };
-
-    // Primary buttons — swap href + label
-    document.querySelectorAll<HTMLAnchorElement>("#hero-download, #cta-download").forEach((btn) => {
-      const url = btn.dataset[`url${platform.replace(/-/g, "_")}` as any]
-        || btn.dataset.urlWindows
-        || btn.dataset[
-          platform === "mac-arm64" ? "urlMacArm64" :
-          platform === "mac-x64" ? "urlMacX64" :
-          "urlWindows"
-        ];
-      if (url) btn.href = url;
-    });
-
-    // Hero label
-    document.querySelectorAll<HTMLSpanElement>("[data-download-label]").forEach((el) => {
-      el.textContent = labelByPlatform[platform];
-    });
-
-    // Bottom CTA section copy
-    document.querySelectorAll<HTMLElement>("[data-cta-headline]").forEach((el) => {
-      el.textContent = headlineByPlatform[platform];
-    });
-    document.querySelectorAll<HTMLElement>("[data-cta-subhead]").forEach((el) => {
-      el.textContent = subheadByPlatform[platform];
-    });
-
-    // Rewrite the "Other downloads" row to be contextual:
-    //   - Detected Windows → show "On a Mac? Apple Silicon · Intel"
-    //   - Detected Mac arm64 → show "On Windows or Intel Mac? Windows · Mac (Intel)"
-    //   - Detected Mac x64  → show "On Windows or Apple Silicon? Windows · Mac (Apple Silicon)"
-    // Hides the platform that matches the big button, so it isn't a duplicate.
-    const prefixByPlatform: Record<Platform, string> = {
-      "windows": "On a Mac?",
-      "mac-arm64": "On Windows or Intel Mac?",
-      "mac-x64": "On Windows or Apple Silicon?",
-    };
-    const prefixEl = document.querySelector<HTMLElement>("[data-other-prefix]");
-    if (prefixEl) prefixEl.textContent = prefixByPlatform[platform];
-
-    // Hide the auto-picked platform's link (it's already the big button).
-    // Also hide whichever separator becomes adjacent to nothing.
-    const links = Array.from(document.querySelectorAll<HTMLAnchorElement>("[data-platform]"));
-    const seps = Array.from(document.querySelectorAll<HTMLElement>("[data-sep]"));
-    links.forEach((link) => {
-      if (link.dataset.platform === platform) link.style.display = "none";
-    });
-    // After hiding, recompute which separators sit between two visible links
-    const visibleLinks = links.filter((l) => l.style.display !== "none");
-    seps.forEach((sep) => {
-      // sep at index i sits between links[i] and links[i+1]
-      const idx = parseInt(sep.dataset.sep || "-1", 10);
-      const before = links[idx];
-      const after = links[idx + 1];
-      const beforeVisible = before && before.style.display !== "none";
-      const afterVisible = after && after.style.display !== "none";
-      sep.style.display = beforeVisible && afterVisible ? "" : "none";
-    });
-    // Final: if only one visible link remains, the prefix becomes "On a Mac?
-    // Apple Silicon" (singular) — drop the now-trailing separator already
-    // handled above. No extra work needed.
-    void visibleLinks;
-  }
-
-  detectPlatform().then(applyPlatform);
+    const btn = document.getElementById(idByPlatform[platform]) as HTMLAnchorElement | null;
+    if (btn) {
+      btn.classList.add("ring-2", "ring-accent-400/60", "shadow-lg");
+    }
+  });
 
   // ==========================================================
   // Feedback form — POSTs to api.findmesomedamnjobz.com/v1/feedback

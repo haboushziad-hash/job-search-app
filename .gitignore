@@ -110,3 +110,4 @@ test_results/
 # Working artifact for cross-Claude-chat handoff (not source)
 Copy and Paste/
 _geocoding_additions.txt
+cf_worker/tester_audit.json
