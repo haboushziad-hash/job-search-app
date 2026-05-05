@@ -39,6 +39,10 @@ on:
       # (e.g. wranglerVersion changes) trigger redundant 10-min desktop
       # rebuilds that produce identical artifacts.
       - '.github/workflows/deploy-worker.yml'
+      # Diagnostic workflow that only queries Apple's notary service.
+      # Doesn't affect installer artifacts; ignoring keeps it from
+      # triggering pointless desktop rebuilds.
+      - '.github/workflows/notary-status.yml'
     # Trigger on version tags too — `publish-manifest` and the R2 upload
     # steps inside each build job both require `refs/tags/v*` context to
     # actually upload artifacts. Without this, `git push --tags` would

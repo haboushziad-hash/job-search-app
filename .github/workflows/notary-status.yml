@@ -1,0 +1,73 @@
+name: Apple Notary status check
+
+# One-off diagnostic workflow. Spins up a tiny macOS runner and queries
+# Apple's notary service for the status + log of a specific submission ID.
+#
+# Use this when a build-desktop.yml notarization step fails ambiguously
+# (e.g. the runner lost network mid-poll, leaving an orphan submission
+# whose final state is unknown). Apple keeps submission metadata for
+# 90 days, so we can always come back and check what actually happened.
+#
+# Trigger: manual only (workflow_dispatch). Pass the submission UUID from
+# the failed run's URL — example UUID format:
+#   859ea902-fe50-4d4e-9d0a-480f2e7486d8
+#
+# What it prints:
+#   - notarytool history (last 10 submissions for our team)
+#   - notarytool info <id>  → status (Accepted / In Progress / Invalid)
+#   - notarytool log <id>   → full JSON, including any rejection reasons
+#
+# All read-only — does NOT change Apple state, does NOT touch our R2
+# artifacts, does NOT modify desktop_app/ source. Safe to run mid-build.
+
+on:
+  workflow_dispatch:
+    inputs:
+      submission_id:
+        description: "Apple notary submission UUID (leave blank to just list recent submissions)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: macos-latest
+    steps:
+      - name: Show recent submission history
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          echo "==== Last 10 notary submissions for team ${APPLE_TEAM_ID} ===="
+          xcrun notarytool history \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" \
+            || echo "(history call failed — check secrets)"
+
+      - name: Show specific submission info + log
+        if: inputs.submission_id != ''
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          SUB_ID: ${{ inputs.submission_id }}
+        run: |
+          echo "==== Status for submission ${SUB_ID} ===="
+          xcrun notarytool info "$SUB_ID" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID"
+          echo ""
+          echo "==== Full notary log for submission ${SUB_ID} ===="
+          # `notarytool log` prints JSON. If status is Accepted, this
+          # is just metadata. If Invalid, it lists every signing /
+          # entitlements / hardened-runtime issue Apple found.
+          xcrun notarytool log "$SUB_ID" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" \
+            || echo "(log not yet available — submission may still be processing)"
