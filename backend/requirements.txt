@@ -12,7 +12,15 @@ httpx>=0.28.1                   # Async HTTP for Cloudflare AI + others (>=0.28.
 tenacity==9.0.0                 # Retry with exponential backoff
 
 # Data
-numpy==2.1.2                    # Embedding similarity math
+# v0.3.2: pinned to <2 because NumPy 2.x macOS wheels link against
+# Apple's Accelerate framework using the new $NEWLAPACK$ILP64 ABI,
+# which is broken/missing across multiple macOS releases (verified on
+# both old and new Macs in the field — testers hit dlopen symbol-not-
+# found errors that crashed the bundled backend on launch).
+# 1.26.4 is the last 1.x release; uses the old, universally-stable
+# LAPACK API and works across every macOS we care about.
+# Tied to python<3.13 in CI because 1.26 has no official 3.13 wheels.
+numpy==1.26.4                   # Embedding similarity math
 
 # Scraping
 beautifulsoup4==4.12.3

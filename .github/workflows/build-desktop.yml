@@ -128,7 +128,13 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.13"
+          # v0.3.2: dropped from 3.13 to 3.12 because we pinned numpy
+          # to 1.26.4 (last 1.x release) to dodge the Apple Accelerate
+          # NEWLAPACK+ILP64 ABI breakage in NumPy 2.x macOS wheels.
+          # numpy 1.26 has no official Python 3.13 wheels, so the
+          # backend's bundled Python needs to be 3.12 to install it
+          # cleanly. 3.12 is fully supported through 2028.
+          python-version: "3.12"
           cache: "pip"
           cache-dependency-path: backend/requirements.txt
 

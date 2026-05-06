@@ -223,7 +223,45 @@ export default function Setup() {
           : e instanceof Error
             ? e.message
             : 'Unknown error'
-      toast.error(`Profile build failed: ${msg}`)
+      // Sticky toast with a Copy log action button — most causes of
+      // "Profile build failed" are local backend issues (sidecar dead,
+      // dlopen failure, hardened-runtime block). The Copy log button
+      // reads the Tauri-side log file and writes it to the clipboard
+      // so the user can paste it to support in one click instead of
+      // hunting through ~/Library/Logs/. Mirror of the BackendGate
+      // copy button for the case where the backend dies AFTER initial
+      // health-check passed.
+      toast.error(`Profile build failed: ${msg}`, {
+        duration: Infinity,
+        action: {
+          label: 'Copy log',
+          onClick: async () => {
+            try {
+              const { appLogDir } = await import('@tauri-apps/api/path')
+              const { readTextFile } = await import('@tauri-apps/plugin-fs')
+              const logDir = await appLogDir()
+              const contents = await readTextFile(`${logDir}/findmesomedamnjobz.log`)
+              try {
+                await navigator.clipboard.writeText(contents)
+              } catch {
+                // Legacy clipboard fallback for older WebKit
+                const ta = document.createElement('textarea')
+                ta.value = contents
+                ta.style.position = 'fixed'
+                ta.style.opacity = '0'
+                document.body.appendChild(ta)
+                ta.select()
+                document.execCommand('copy')
+                document.body.removeChild(ta)
+              }
+              toast.success(`Copied log (${(contents.length / 1024).toFixed(1)}KB) — paste it to support`)
+            } catch (err) {
+              const errMsg = err instanceof Error ? err.message : String(err)
+              toast.error(`Could not read log: ${errMsg}`)
+            }
+          },
+        },
+      })
       setSubmitting(false)
     }
   }
