@@ -782,11 +782,36 @@ function todayUtc(): string {
 // ============================================================================
 
 async function handleAdmin(req: Request, env: Env, path: string): Promise<Response> {
+  // Auth accepts either:
+  //   1. Authorization: Bearer <ADMIN_TOKEN>  (for API/CLI use)
+  //   2. ?token=<ADMIN_TOKEN>                 (for pasting URL into browser)
+  // Browser convenience matters because this endpoint is meant to be
+  // poked at interactively from a desktop browser by Ziad — no need
+  // to drop into curl just to view a run's funnel summary.
+  // Note: separate param name ("token") from R2-object key params ("k",
+  // "key") so a URL like /v1/admin/feedback/get?token=...&key=...
+  // doesn't collide.
+  const url = new URL(req.url);
+  const queryToken = url.searchParams.get("token") || "";
   const auth = req.headers.get("Authorization") || "";
-  const expected = `Bearer ${env.ADMIN_TOKEN}`;
-  if (auth !== expected) {
+  const bearerOk = auth === `Bearer ${env.ADMIN_TOKEN}`;
+  const queryTokenOk = !!env.ADMIN_TOKEN && queryToken === env.ADMIN_TOKEN;
+  if (!bearerOk && !queryTokenOk) {
     return json({ error: "admin_auth_required" }, 403);
   }
+
+  // Browser-friendly HTML dashboard for /v1/admin/runs. Lists recent
+  // runs across all testers with pipeline-funnel summary inline:
+  // total_scraped → after_hard_filters → qualifying_final → tier
+  // breakdown. Each row links to the raw audit JSON. Lets Ziad spot
+  // funnel collapses (e.g. "100+ scraped, 4 strong") at a glance and
+  // jump into the specific audit to diagnose. Triggered by Accept:
+  // text/html (browsers) or ?format=html. Falls through to raw JSON
+  // for API clients.
+  if (path === "/v1/admin/runs" && shouldRenderHtml(req, url)) {
+    return await renderRunsHtml(env);
+  }
+
   if (path === "/v1/admin/runs") {
     // List recent objects in R2 — limited cursor pagination
     const list = await env.AUDIT_R2.list({ prefix: "runs/", limit: 100 });
@@ -799,9 +824,8 @@ async function handleAdmin(req: Request, env: Env, path: string): Promise<Respon
     return json({ runs: out, truncated: list.truncated });
   }
   if (path === "/v1/admin/run" && req.method === "GET") {
-    const url = new URL(req.url);
-    const k = url.searchParams.get("key");
-    if (!k) return json({ error: "missing_key_param" }, 400);
+    const k = url.searchParams.get("k") || url.searchParams.get("run_key");
+    if (!k) return json({ error: "missing_run_key_param" }, 400);
     const obj = await env.AUDIT_R2.get(k);
     if (!obj) return json({ error: "not_found" }, 404);
     return new Response(obj.body, {
@@ -832,6 +856,232 @@ async function handleAdmin(req: Request, env: Env, path: string): Promise<Respon
     });
   }
   return json({ error: "admin_endpoint_not_found" }, 404);
+}
+
+// ============================================================================
+// Admin runs HTML dashboard — Ziad-only, browser-friendly
+// ============================================================================
+
+/** Detect when we should render HTML rather than JSON. Browsers
+ *  always send Accept: text/html; ?format=html lets you force it
+ *  from a JSON-defaulting client. ?format=json forces JSON even from
+ *  a browser, useful for debugging. */
+function shouldRenderHtml(req: Request, url: URL): boolean {
+  const fmt = url.searchParams.get("format");
+  if (fmt === "html") return true;
+  if (fmt === "json") return false;
+  const accept = req.headers.get("Accept") || "";
+  return accept.includes("text/html");
+}
+
+/** Per-run summary extracted from a fetched audit JSON. Picks just the
+ *  fields we want to surface in the table — keeps the page payload small
+ *  even when there are many runs. */
+interface RunSummary {
+  key: string;
+  uuid_prefix: string;
+  uploaded: string;            // ISO timestamp
+  date_human: string;          // short readable
+  duration_s: number | null;
+  cost_usd: number | null;
+  app_version: string | null;
+  total_scraped: number | null;
+  after_filters: number | null;
+  qualifying: number | null;
+  strong: number | null;
+  good: number | null;
+  maybe: number | null;
+  stretch: number | null;
+  funnel_collapse_pct: number | null;  // 1 - qualifying/scraped, 0..100
+  top_role_titles: string[];
+}
+
+/** Render the runs HTML dashboard. Lists last ~50 runs newest-first
+ *  with funnel summary. Spotting a "100+ scraped, 4 strong" pattern
+ *  is meant to be obvious at a glance — the funnel_collapse_pct
+ *  column makes it sortable. */
+async function renderRunsHtml(env: Env): Promise<Response> {
+  // R2 list is alphabetic, but our keys are runs/<uuid>/<ISO-ts>_...
+  // so listing alphabetically does NOT give newest-first across testers.
+  // Pull a generous limit then sort by `uploaded` timestamp client-side.
+  const list = await env.AUDIT_R2.list({ prefix: "runs/", limit: 200 });
+  const objects = [...list.objects].sort((a, b) => {
+    const ta = a.uploaded?.getTime() ?? 0;
+    const tb = b.uploaded?.getTime() ?? 0;
+    return tb - ta;
+  }).slice(0, 50);
+
+  // Fetch each audit JSON in parallel, extract summary fields. Errors
+  // (corrupt JSON, missing fields, etc.) get null fields rather than
+  // killing the whole page render.
+  const summaries: RunSummary[] = await Promise.all(
+    objects.map(async (o): Promise<RunSummary> => {
+      const uuid = o.customMetadata?.uuid || extractUuidFromKey(o.key);
+      const summaryBase: RunSummary = {
+        key: o.key,
+        uuid_prefix: (uuid || "unknown").slice(0, 8),
+        uploaded: o.uploaded?.toISOString() || "",
+        date_human: o.uploaded ? formatDateShort(o.uploaded) : "",
+        duration_s: null, cost_usd: null, app_version: null,
+        total_scraped: null, after_filters: null, qualifying: null,
+        strong: null, good: null, maybe: null, stretch: null,
+        funnel_collapse_pct: null, top_role_titles: [],
+      };
+      try {
+        const obj = await env.AUDIT_R2.get(o.key);
+        if (!obj) return summaryBase;
+        const audit = await obj.json() as any;
+        const meta = audit?.run_metadata || {};
+        const funnel = audit?.pipeline_funnel || {};
+        const tier = funnel?.tier_breakdown || {};
+        const scraped = numberOrNull(funnel?.total_scraped);
+        const qual = numberOrNull(funnel?.qualifying_final);
+        const collapse = (scraped && qual !== null && scraped > 0)
+          ? Math.round((1 - qual / scraped) * 100) : null;
+        const roles = Array.isArray(audit?.all_qualifying_roles) ? audit.all_qualifying_roles : [];
+        const titles = roles.slice(0, 5).map((r: any) =>
+          `${r?.title || "?"} @ ${r?.company || "?"}`
+        );
+        return {
+          ...summaryBase,
+          duration_s: numberOrNull(meta?.duration_seconds),
+          cost_usd: numberOrNull(meta?.cost_breakdown?.total_usd),
+          app_version: typeof meta?.app_version === "string" ? meta.app_version : null,
+          total_scraped: scraped,
+          after_filters: numberOrNull(funnel?.after_hard_filters),
+          qualifying: qual,
+          strong: numberOrNull(tier?.STRONG),
+          good: numberOrNull(tier?.GOOD),
+          maybe: numberOrNull(tier?.MAYBE),
+          stretch: numberOrNull(tier?.STRETCH),
+          funnel_collapse_pct: collapse,
+          top_role_titles: titles,
+        };
+      } catch {
+        return summaryBase;
+      }
+    })
+  );
+
+  const tokenParam = `token=${encodeURIComponent(env.ADMIN_TOKEN || "")}`;
+  const rows = summaries.map(s => {
+    const collapseClass =
+      s.funnel_collapse_pct !== null && s.funnel_collapse_pct >= 95 ? "collapse-bad"
+      : s.funnel_collapse_pct !== null && s.funnel_collapse_pct >= 90 ? "collapse-warn"
+      : "";
+    const titles = s.top_role_titles.length
+      ? s.top_role_titles.map(t => `<li>${escapeHtml(t)}</li>`).join("")
+      : "<li><em>none</em></li>";
+    const rawHref = `/v1/admin/run?k=${encodeURIComponent(s.key)}&${tokenParam}`;
+    return `
+      <tr class="${collapseClass}">
+        <td class="mono small">${escapeHtml(s.uuid_prefix)}</td>
+        <td>${escapeHtml(s.date_human)}</td>
+        <td>${s.app_version ? escapeHtml(s.app_version) : "—"}</td>
+        <td class="num">${s.total_scraped ?? "—"}</td>
+        <td class="num">${s.after_filters ?? "—"}</td>
+        <td class="num">${s.qualifying ?? "—"}</td>
+        <td class="num"><strong>${s.strong ?? "—"}</strong></td>
+        <td class="num">${s.good ?? "—"}</td>
+        <td class="num">${s.maybe ?? "—"}</td>
+        <td class="num">${s.stretch ?? "—"}</td>
+        <td class="num">${s.funnel_collapse_pct !== null ? s.funnel_collapse_pct + "%" : "—"}</td>
+        <td class="num">${s.cost_usd !== null ? "$" + s.cost_usd.toFixed(2) : "—"}</td>
+        <td class="num">${s.duration_s !== null ? Math.round(s.duration_s) + "s" : "—"}</td>
+        <td><ul class="titles">${titles}</ul></td>
+        <td><a href="${rawHref}" target="_blank">JSON</a></td>
+      </tr>`;
+  }).join("");
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Admin · Runs · findmesomedamnjobz</title>
+  <style>
+    body { background: #0c0d10; color: #e8e8ec; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; margin: 24px; }
+    h1 { font-size: 18px; margin: 0 0 4px; font-weight: 600; }
+    .sub { color: #999; font-size: 13px; margin-bottom: 20px; }
+    table { border-collapse: collapse; width: 100%; font-size: 13px; }
+    th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid #1f2024; vertical-align: top; }
+    th { background: #16171a; color: #c0c0c8; font-weight: 600; position: sticky; top: 0; }
+    td.num { text-align: right; font-variant-numeric: tabular-nums; }
+    td.mono, .small { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px; }
+    tr.collapse-warn td { background: rgba(220, 180, 60, 0.06); }
+    tr.collapse-bad  td { background: rgba(220, 80, 80, 0.10); }
+    ul.titles { margin: 0; padding-left: 18px; color: #b8b8c0; font-size: 12px; }
+    ul.titles li { padding: 1px 0; }
+    a { color: #88aaff; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .legend { font-size: 12px; color: #999; margin-top: 16px; }
+    .legend span.warn { color: #d8b840; }
+    .legend span.bad { color: #d85050; }
+  </style>
+</head>
+<body>
+  <h1>Recent Runs</h1>
+  <div class="sub">Showing newest ${summaries.length} run${summaries.length === 1 ? "" : "s"} across all testers. Click JSON for raw audit.</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Tester</th>
+        <th>When</th>
+        <th>App</th>
+        <th>Scraped</th>
+        <th>After filters</th>
+        <th>Qualifying</th>
+        <th>Strong</th>
+        <th>Good</th>
+        <th>Maybe</th>
+        <th>Stretch</th>
+        <th>Collapse</th>
+        <th>Cost</th>
+        <th>Duration</th>
+        <th>Top 5 roles</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <div class="legend">
+    Collapse = 1 − qualifying / scraped. Highlighted rows: <span class="warn">90–94% (yellow)</span>,
+    <span class="bad">≥95% (red)</span> — these are the runs where the funnel is most aggressively
+    rejecting candidates and worth opening the JSON to see WHICH roles got dropped at triage.
+  </div>
+</body>
+</html>`;
+  return new Response(html, {
+    status: 200,
+    headers: { "Content-Type": "text/html; charset=utf-8" },
+  });
+}
+
+function numberOrNull(x: unknown): number | null {
+  return typeof x === "number" && Number.isFinite(x) ? x : null;
+}
+
+function extractUuidFromKey(key: string): string {
+  // R2 keys are runs/<uuid>/<ts>_<runid>.json — pull the uuid segment
+  const m = key.match(/^runs\/([^/]+)\//);
+  return m ? m[1] : "";
+}
+
+function formatDateShort(d: Date): string {
+  const y = d.getFullYear();
+  const mo = String(d.getMonth() + 1).padStart(2, "0");
+  const da = String(d.getDate()).padStart(2, "0");
+  const h = String(d.getHours()).padStart(2, "0");
+  const mi = String(d.getMinutes()).padStart(2, "0");
+  return `${y}-${mo}-${da} ${h}:${mi}`;
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 // ============================================================================
