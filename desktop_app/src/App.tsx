@@ -1,11 +1,14 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
+import { AlertCircle, Loader2, Copy, Check } from 'lucide-react'
+import { toast } from 'sonner'
 
 import { Sidebar } from '@/components/Sidebar'
+import { ZMark } from '@/components/ZMark'
 import { checkForUpdates } from '@/lib/updater'
 import { useActiveSearchPoll } from '@/hooks/useActiveSearchPoll'
-import { listRuns, getRun } from '@/services/api'
+import { listRuns, getRun, healthCheck } from '@/services/api'
 import { useAppStore } from '@/stores/appStore'
 import type { Role, RunSummary } from '@/types'
 
@@ -140,22 +143,192 @@ export default function App() {
   }, [])
 
   return (
-    <Routes>
-      {/* Root redirect: returning users with prior runs land on the
-          dashboard; first-timers see the Welcome onboarding flow. */}
-      <Route path="/" element={<RootRedirect />} />
-      {/* Standalone screens — no sidebar */}
-      <Route path="/welcome" element={<Welcome />} />
-      <Route path="/how-it-works" element={<HowItWorks />} />
-      <Route path="/start-search" element={<StartSearch />} />
-      <Route path="/setup" element={<Setup />} />
-      <Route path="/building" element={<Building />} />
-      <Route path="/keywords" element={<Keywords />} />
-      <Route path="/running" element={<Running />} />
+    <BackendGate>
+      <Routes>
+        {/* Root redirect: returning users with prior runs land on the
+            dashboard; first-timers see the Welcome onboarding flow. */}
+        <Route path="/" element={<RootRedirect />} />
+        {/* Standalone screens — no sidebar */}
+        <Route path="/welcome" element={<Welcome />} />
+        <Route path="/how-it-works" element={<HowItWorks />} />
+        <Route path="/start-search" element={<StartSearch />} />
+        <Route path="/setup" element={<Setup />} />
+        <Route path="/building" element={<Building />} />
+        <Route path="/keywords" element={<Keywords />} />
+        <Route path="/running" element={<Running />} />
 
-      {/* In-app screens — with sidebar */}
-      <Route path="*" element={<AppShell />} />
-    </Routes>
+        {/* In-app screens — with sidebar */}
+        <Route path="*" element={<AppShell />} />
+      </Routes>
+    </BackendGate>
+  )
+}
+
+/**
+ * Backend availability gate.
+ *
+ * Polls the local FastAPI sidecar's /health endpoint on app startup. If
+ * the backend is reachable within ~30s, renders children (normal app).
+ * If not, renders a fatal error screen with diagnostic info instead of
+ * letting users hit "Load failed" toasts at every interaction.
+ *
+ * Why we need this: the Tauri shell plugin spawns the Python sidecar
+ * out-of-process. On Mac, hardened-runtime + library validation issues
+ * can cause the sidecar to crash on launch (PyInstaller's dlopen of
+ * extracted .dylibs in /var/folders/.../_MEIxxxxx fails despite
+ * disable-library-validation entitlement). Without this gate, the user
+ * navigates around the app for a while and only discovers the backend
+ * is dead when they hit Setup → Build Profile and see "Load failed".
+ *
+ * With this gate, the failure surfaces on first launch with the log
+ * path users can grab and send to us.
+ */
+function BackendGate({ children }: { children: React.ReactNode }) {
+  // 'checking' = polling, 'up' = render app, 'down' = render error
+  const [status, setStatus] = useState<'checking' | 'up' | 'down'>('checking')
+  const [lastError, setLastError] = useState<string>('')
+  const [retryCount, setRetryCount] = useState(0)
+  const [logCopied, setLogCopied] = useState(false)
+
+  /** Read the log file via Tauri's fs plugin, then copy contents to clipboard.
+   *  Saves the tester from having to find the log file manually — they hit
+   *  the button, paste into a chat with us, and we have everything we need. */
+  async function copyLogToClipboard() {
+    try {
+      const { appLogDir } = await import('@tauri-apps/api/path')
+      const { readTextFile } = await import('@tauri-apps/plugin-fs')
+
+      const logDir = await appLogDir()
+      // Tauri's TargetKind::LogDir with file_name=None defaults to the
+      // productName from tauri.conf.json. The .log extension is added
+      // automatically. So our file is `<logDir>/findmesomedamnjobz.log`.
+      const logPath = `${logDir}/findmesomedamnjobz.log`
+      const contents = await readTextFile(logPath)
+
+      // Try modern clipboard API first; fall back to legacy textarea trick
+      // for older WebKit if needed (rare but worth covering since this
+      // path matters most on Mac WebKit).
+      try {
+        await navigator.clipboard.writeText(contents)
+      } catch {
+        const ta = document.createElement('textarea')
+        ta.value = contents
+        ta.style.position = 'fixed'
+        ta.style.opacity = '0'
+        document.body.appendChild(ta)
+        ta.select()
+        document.execCommand('copy')
+        document.body.removeChild(ta)
+      }
+
+      setLogCopied(true)
+      toast.success(`Copied log file (${(contents.length / 1024).toFixed(1)}KB) to clipboard`)
+      // Reset the button state after 3s so the user can copy again if they
+      // accidentally lose the clipboard contents.
+      setTimeout(() => setLogCopied(false), 3000)
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      toast.error(`Could not read log file: ${msg}`)
+    }
+  }
+
+  useEffect(() => {
+    let cancelled = false
+    let attempts = 0
+    // Up to 60 attempts × 500ms = 30s wait. PyInstaller cold-starts can
+    // take 5-15s on Mac (binary unpack + Python interpreter init), so
+    // we give it a generous window before declaring the backend dead.
+    const MAX_ATTEMPTS = 60
+    const POLL_MS = 500
+
+    const tick = async () => {
+      if (cancelled) return
+      attempts += 1
+      try {
+        await healthCheck()
+        if (!cancelled) setStatus('up')
+        return
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e)
+        if (!cancelled) setLastError(msg)
+        if (attempts >= MAX_ATTEMPTS) {
+          if (!cancelled) setStatus('down')
+          return
+        }
+        setTimeout(tick, POLL_MS)
+      }
+    }
+    tick()
+    return () => { cancelled = true }
+  }, [retryCount])
+
+  if (status === 'up') return <>{children}</>
+
+  if (status === 'checking') {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4 text-center">
+          <ZMark size={64} />
+          <Loader2 size={20} className="text-base-400 animate-spin" />
+          <p className="text-sm text-base-400">Starting backend…</p>
+        </div>
+      </div>
+    )
+  }
+
+  // status === 'down' — show diagnostic error screen
+  return (
+    <div className="fixed inset-0 flex items-center justify-center p-6">
+      <div className="glass-strong w-full max-w-xl rounded-2xl p-9">
+        <div className="flex items-center gap-3 mb-4">
+          <ZMark size={40} />
+          <h1 className="text-2xl font-semibold tracking-tight">Backend not responding</h1>
+        </div>
+        <div className="flex items-start gap-3 p-4 rounded-lg bg-red-500/10 border border-red-500/30 mb-4">
+          <AlertCircle size={16} className="text-red-400 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm text-base-100 font-medium">
+              The local search backend didn't start within 30 seconds.
+            </p>
+            <p className="text-xs text-base-400 mt-1 leading-relaxed font-mono break-all">
+              {lastError || 'Unknown error'}
+            </p>
+          </div>
+        </div>
+
+        <div className="text-sm text-base-300 space-y-3 leading-relaxed">
+          <p className="font-medium text-base-100">What to do:</p>
+          <ol className="list-decimal list-inside space-y-1 text-base-300">
+            <li>Click <span className="font-medium">Try again</span> below.</li>
+            <li>If it still fails, fully quit the app (Cmd+Q on Mac, close window on Windows) and re-launch.</li>
+            <li>
+              If still failing, click <span className="font-medium">Copy log</span> below
+              and paste it to support — we'll diagnose from the log contents directly.
+            </li>
+          </ol>
+        </div>
+
+        <div className="flex gap-3 mt-6">
+          <button
+            onClick={() => {
+              setStatus('checking')
+              setLastError('')
+              setRetryCount((c) => c + 1)
+            }}
+            className="flex-1 px-4 py-2.5 rounded-lg bg-white text-base-950 font-medium text-sm hover:bg-base-200 transition-colors"
+          >
+            Try again
+          </button>
+          <button
+            onClick={copyLogToClipboard}
+            className="flex-1 px-4 py-2.5 rounded-lg bg-white/10 hover:bg-white/15 border border-white/15 text-base-100 font-medium text-sm transition-colors flex items-center justify-center gap-2"
+          >
+            {logCopied ? <Check size={14} /> : <Copy size={14} />}
+            {logCopied ? 'Copied!' : 'Copy log'}
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }
 

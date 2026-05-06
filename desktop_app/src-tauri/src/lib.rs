@@ -88,13 +88,30 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .manage(BackendProcess(std::sync::Mutex::new(None)))
         .setup(|app| {
-            if cfg!(debug_assertions) {
-                app.handle().plugin(
-                    tauri_plugin_log::Builder::default()
-                        .level(log::LevelFilter::Info)
-                        .build(),
-                )?;
-            }
+            // v0.3.1: enable the log plugin in BOTH debug and release builds.
+            // Previously only debug had logging, which meant production
+            // installs (what testers run) had zero observability — every
+            // log::info!("[backend] ...") silently dropped, so when the
+            // sidecar misbehaved on Mac, no log file existed anywhere on
+            // disk to diagnose from. Now logs land at:
+            //   macOS:   ~/Library/Logs/<bundle-id>/<app>.log
+            //   Windows: %LOCALAPPDATA%\<bundle-id>\logs\<app>.log
+            //   Linux:   ~/.local/share/<bundle-id>/logs/<app>.log
+            // Stdout target stays on too so `./app` from Terminal still
+            // streams live output for active debugging sessions.
+            app.handle().plugin(
+                tauri_plugin_log::Builder::default()
+                    .level(log::LevelFilter::Info)
+                    .targets([
+                        tauri_plugin_log::Target::new(
+                            tauri_plugin_log::TargetKind::LogDir { file_name: None },
+                        ),
+                        tauri_plugin_log::Target::new(
+                            tauri_plugin_log::TargetKind::Stdout,
+                        ),
+                    ])
+                    .build(),
+            )?;
 
             // Spawn the bundled FastAPI backend sidecar. The "backend" name
             // is mapped via tauri.conf.json's bundle.externalBin to the

@@ -109,6 +109,26 @@
     border: 2px solid var(--color-base-975);
   }
   ::-webkit-scrollbar-thumb:hover { background: var(--color-base-600); }
+
+  /* v0.3.1 — Safari/WebKit gradient text fix.
+     Tailwind 4 emits `bg-clip-text` with `-webkit-background-clip: text`
+     but `text-transparent` only emits `color: transparent`. On
+     Chromium that's enough — the gradient bleeds through `color:
+     transparent` because background-clip:text masks to glyph shape.
+     On WebKit (Mac Tauri's WKWebView, AppleWebKit/...), the renderer
+     paints the *text fill* using `-webkit-text-fill-color`, which
+     defaults to `currentColor` regardless of `color: transparent`.
+     Result: glyphs paint as the inherited foreground (often white on
+     white parent ⇒ invisible) and the gradient never shows.
+     Fix: any element using both `bg-clip-text` AND `text-transparent`
+     gets `-webkit-text-fill-color: transparent` so WebKit paints
+     glyph fills as transparent and the masked background gradient
+     bleeds through, matching Chromium. Single rule, zero impact on
+     non-gradient text. Covers Welcome.tsx headline + every other
+     bg-clip-text usage in the app. */
+  .bg-clip-text.text-transparent {
+    -webkit-text-fill-color: transparent;
+  }
 }
 
 /* =============================================================
