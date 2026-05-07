@@ -1,0 +1,580 @@
+{
+  "summary": {
+    "started_at": "2026-05-07T22:55:58.801992+00:00",
+    "finished_at": "2026-05-07T22:59:39.097509+00:00",
+    "duration_seconds": 220.3,
+    "serper_queries_run": 1,
+    "dataforseo_queries_run": 17,
+    "candidates_found": 51,
+    "candidates_validated": 12,
+    "candidates_failed": 39,
+    "duplicates_skipped": 22,
+    "queries_per_industry": {
+      "richmond": 18
+    },
+    "candidates_per_industry": {
+      "richmond": 51
+    },
+    "cost_estimate_usd": 0.0204,
+    "by_industry": {
+      "Unclassified (richmond)": 6,
+      "Retail/CPG": 3,
+      "Healthcare/Pharma": 2,
+      "Industrial/Manufacturing": 1
+    },
+    "validated_workday": 12,
+    "validated_icims": 0,
+    "total_validated": 12
+  },
+  "workday_new": [
+    {
+      "ats": "workday",
+      "tenant_id": "foxrehab",
+      "display_name": "Foxrehab",
+      "careers_url": "https://foxrehab.wd1.myworkdayjobs.com/External",
+      "cxs_url": "https://foxrehab.wd1.myworkdayjobs.com/wday/cxs/foxrehab/External/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 1402,
+      "industry": "Unclassified (richmond)",
+      "industry_hint": "richmond",
+      "sample_titles": [
+        "Occupational Therapist - Essex, MD",
+        "Occupational Therapist - Cockeysville, MD",
+        "Occupational Therapist - Rocky Hill, CT"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T22:56:33.282943+00:00",
+      "elapsed_seconds": 0.8,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "calibercollision",
+      "display_name": "Calibercollision",
+      "careers_url": "https://calibercollision.wd1.myworkdayjobs.com/Caliber",
+      "cxs_url": "https://calibercollision.wd1.myworkdayjobs.com/wday/cxs/calibercollision/Caliber/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 1135,
+      "industry": "Unclassified (richmond)",
+      "industry_hint": "richmond",
+      "sample_titles": [
+        "Auto Body Technician",
+        "Office Administrator",
+        "Office Manager"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T22:56:53.121069+00:00",
+      "elapsed_seconds": 1.01,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "vfc",
+      "display_name": "Vfc",
+      "careers_url": "https://vfc.wd5.myworkdayjobs.com/vfc_careers",
+      "cxs_url": "https://vfc.wd5.myworkdayjobs.com/wday/cxs/vfc/vfc_careers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 834,
+      "industry": "Retail/CPG",
+      "industry_hint": "richmond",
+      "sample_titles": [
+        "Vans: Manager, Digital Content & Experience",
+        "Store Supervisor (fixed-term, full-time)",
+        "Vans: Senior Strategic Account Manager, Amazon & Digital Commerce"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T22:57:08.539932+00:00",
+      "elapsed_seconds": 1.02,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "academy",
+      "display_name": "Academy",
+      "careers_url": "https://academy.wd1.myworkdayjobs.com/Careers",
+      "cxs_url": "https://academy.wd1.myworkdayjobs.com/wday/cxs/academy/Careers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 791,
+      "industry": "Retail/CPG",
+      "industry_hint": "richmond",
+      "sample_titles": [
+        "Sr. Director Product",
+        "Sr Engineer Industrial",
+        "Store Operations Manager #117 - Springfield, MO"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T22:56:49.936763+00:00",
+      "elapsed_seconds": 1.04,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "shakeshack",
+      "display_name": "Shakeshack",
+      "careers_url": "https://shakeshack.wd5.myworkdayjobs.com/External",
+      "cxs_url": "https://shakeshack.wd5.myworkdayjobs.com/wday/cxs/shakeshack/External/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 537,
+      "industry": "Unclassified (richmond)",
+      "industry_hint": "richmond",
+      "sample_titles": [
+        "Restaurant Team Member",
+        "Restaurant Team Member",
+        "Restaurant Manager"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T22:57:09.897569+00:00",
+      "elapsed_seconds": 1.36,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "gategroup",
+      "display_name": "Gategroup",
+      "careers_url": "https://gategroup.wd3.myworkdayjobs.com/GateGroup_External_Careers",
+      "cxs_url": "https://gategroup.wd3.myworkdayjobs.com/wday/cxs/gategroup/GateGroup_External_Careers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 274,
+      "industry": "Retail/CPG",
+      "industry_hint": "richmond",
+      "sample_titles": [
+        "Executive Chef, Halal",
+        "Senior Compliance Manager, Food & Safety",
+        "Part Time Commissary/Galley Builder - $20.69"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T22:58:41.931130+00:00",
+      "elapsed_seconds": 1.1,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "bsu",
+      "display_name": "Bsu",
+      "careers_url": "https://bsu.wd12.myworkdayjobs.com/External",
+      "cxs_url": "https://bsu.wd12.myworkdayjobs.com/wday/cxs/bsu/External/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 57,
+      "industry": "Healthcare/Pharma",
+      "industry_hint": "richmond",
+      "sample_titles": [
+        "Executive Director for Teaching Innovation",
+        "Clinical Placement and Compliance Coordinator",
+        "Building Mechanic"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T22:58:44.980644+00:00",
+      "elapsed_seconds": 0.66,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "akamerica",
+      "display_name": "Akamerica",
+      "careers_url": "https://akamerica.wd501.myworkdayjobs.com/aka",
+      "cxs_url": "https://akamerica.wd501.myworkdayjobs.com/wday/cxs/akamerica/aka/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 49,
+      "industry": "Industrial/Manufacturing",
+      "industry_hint": "richmond",
+      "sample_titles": [
+        "Senior Optical Inspection Technician",
+        "Quality Control Lab Technician",
+        "FP&A and Accounting Specialist"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T22:59:22.180740+00:00",
+      "elapsed_seconds": 0.62,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "restauranttechnologies",
+      "display_name": "Restauranttechnologies",
+      "careers_url": "https://restauranttechnologies.wd5.myworkdayjobs.com/RT",
+      "cxs_url": "https://restauranttechnologies.wd5.myworkdayjobs.com/wday/cxs/restauranttechnologies/RT/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 36,
+      "industry": "Unclassified (richmond)",
+      "industry_hint": "richmond",
+      "sample_titles": [
+        "CDL B Truck Driver - Local Routes",
+        "CDL B Truck Driver - Local Routes",
+        "CDL B Truck Driver - Local Routes"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T22:56:20.979396+00:00",
+      "elapsed_seconds": 1.06,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "vacu",
+      "display_name": "Vacu",
+      "careers_url": "https://vacu.wd1.myworkdayjobs.com/vacu_careers",
+      "cxs_url": "https://vacu.wd1.myworkdayjobs.com/wday/cxs/vacu/vacu_careers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 32,
+      "industry": "Unclassified (richmond)",
+      "industry_hint": "richmond",
+      "sample_titles": [
+        "Lending Processor - Direct II",
+        "Contact Center Lending Advisor - $2,500 Commitment Bonus",
+        "Universal Branch Representative I - Scott's Addition Branch"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T22:56:00.515755+00:00",
+      "elapsed_seconds": 0.74,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "hamiltoncountyindiana",
+      "display_name": "Hamiltoncountyindiana",
+      "careers_url": "https://hamiltoncountyindiana.wd1.myworkdayjobs.com/Careers",
+      "cxs_url": "https://hamiltoncountyindiana.wd1.myworkdayjobs.com/wday/cxs/hamiltoncountyindiana/Careers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 19,
+      "industry": "Healthcare/Pharma",
+      "industry_hint": "richmond",
+      "sample_titles": [
+        "PT- HHW Technician",
+        "Public Health Nurse",
+        "PT Deputy Clerk-Civil"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T22:59:20.218593+00:00",
+      "elapsed_seconds": 1.0,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "mhgi",
+      "display_name": "Mhgi",
+      "careers_url": "https://mhgi.wd1.myworkdayjobs.com/wendyscareers",
+      "cxs_url": "https://mhgi.wd1.myworkdayjobs.com/wday/cxs/mhgi/wendyscareers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 6,
+      "industry": "Unclassified (richmond)",
+      "industry_hint": "richmond",
+      "sample_titles": [
+        "Wendy's General Manager - Atlanta, GA",
+        "Wendy's Facilities Technician - Toledo, OH & Detroit, MI",
+        "Wendy's General Manager - Midlothian, VA"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T22:56:46.253787+00:00",
+      "elapsed_seconds": 0.84,
+      "notes": ""
+    }
+  ],
+  "icims_new": [],
+  "failed": [
+    {
+      "ats": "workday",
+      "tenant": "uhaul",
+      "url": "https://uhaul.wd1.myworkdayjobs.com/en-US/UhaulJobs/job/Mobile-Repair-Specialist_R241318",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "davita",
+      "url": "https://davita.wd1.myworkdayjobs.com/es/DKC_External/job/03417---Henrico-County-Dialysis/Registered-Nurse_R0454068-1",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "easyservice",
+      "url": "https://easyservice.wd5.myworkdayjobs.com/en-US/BonSecoursCareers/job/Off-Duty-Police-Officer---St-Francis-Medical-Center---PRN_R268917",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "allstate",
+      "url": "https://allstate.wd5.myworkdayjobs.com/fr-CA/allstate_careers/job/Trial-Attorney--Remote---Richmond--VA-_R25571-1",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "tjx",
+      "url": "https://tjx.wd1.myworkdayjobs.com/en-US/TJX_EXTERNAL/job/Store-Cleaning-Associate_REQ111522",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "oreillyauto",
+      "url": "https://oreillyauto.wd1.myworkdayjobs.com/en-US/oreilly/job/Store-03934-Henrico-VA/Store-Manager-in-Training_R142751",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "scottsmiraclegro",
+      "url": "https://scottsmiraclegro.wd5.myworkdayjobs.com/en-US/SMGExternal/job/Merchandiser---Glen-Allen--VA_R25546",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "terex",
+      "url": "https://terex.wd1.myworkdayjobs.com/en-US/terexcareers/job/Service-Coordinator---Glen-Allen--VA_REQ-11910/apply",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "marathonhealth",
+      "url": "https://marathonhealth.wd501.myworkdayjobs.com/en-US/Marathon-Health-Careers/job/PRN-Medical-Assistant---Glen-Allen--VA_JR105609",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "maa",
+      "url": "https://maa.wd1.myworkdayjobs.com/en-US/MAA/job/Leasing-Consultant---MAA-Glen-Allen_R0019138/apply",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "fmr",
+      "url": "https://fmr.wd1.myworkdayjobs.com/en-US/FidelityCareers/job/Branch-Leader---Glen-Allen--VA_2127213",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "wholefoods",
+      "url": "https://wholefoods.wd5.myworkdayjobs.com/wholefoods/job/VA-Glen-Allen---Short-Pump/Full-Time-Prepared-Foods-Production-Team-Member--Deli---Culinary-Prep-_Req-202503096162",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "veralto",
+      "url": "https://veralto.wd1.myworkdayjobs.com/es/ChemTreatJobs/job/Glen-Allen-Virginia-United-States/Account-Coordination-Manager_R10263403/apply/useMyLastApplication",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "jdgroupnam",
+      "url": "https://jdgroupnam.wd1.myworkdayjobs.com/en-US/HSPRETAIL/job/Assistant-Store-Manager--Full-time----Midlothian--VA_JR131323/apply",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "bne",
+      "url": "https://bne.wd1.myworkdayjobs.com/en-US/hardees/job/hardees-of-midlothian-va/hardees-of-midlothian-va---cashier---cook---biscuit-maker--crew_jr-40045/apply/autofillWithResume",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "advanceauto",
+      "url": "https://advanceauto.wd5.myworkdayjobs.com/en-US/advanceexternalcareers/job/10710-hull-st-midlothian-va--23112/general-manager-ii---store-2360---midlothian--va_r-0580298/apply/useMyLastApplication",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "wf",
+      "url": "https://wf.wd1.myworkdayjobs.com/en-US/WellsFargoJobs/job/Relationship-Banker---Richmond-Area_R-538222",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "fnbcorp",
+      "url": "https://fnbcorp.wd501.myworkdayjobs.com/en-US/FNBCORP/job/Branch-Manager_2026-00917",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "swarovski",
+      "url": "https://swarovski.wd3.myworkdayjobs.com/en-US/swarovski/job/Retail-Sales-Consultant---Part-Time---Short-Pump-Town-Mall---Richmond--VA_R-111301-1",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "gapinc",
+      "url": "https://gapinc.wd1.myworkdayjobs.com/en-US/GAPINC/job/Retail-Sales-Associate--Full-Time---Short-Pump-TC_R211568",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "justfab",
+      "url": "https://justfab.wd1.myworkdayjobs.com/en-US/fabletics/job/Retail-Sales-Lead--Fabletics--Short-Pump---Richmond--VA-_R5091E-1",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "liverangewater",
+      "url": "https://liverangewater.wd1.myworkdayjobs.com/en-US/rangewaterrealestate/job/short-pump-va/leasing-consultant---short-pump--va_r-108589/apply/applyManually",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "tidalwaveautospa",
+      "url": "https://tidalwaveautospa.wd1.myworkdayjobs.com/en-US/TWAS/job/Mechanicsville-VA/Team-Lead---Mechanicsville--VA_R9388/apply/useMyLastApplication?q=Mechanicsville",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "harmonyseniorservices",
+      "url": "https://harmonyseniorservices.wd108.myworkdayjobs.com/en-US/Harmony_Careers/job/Med-Tech---AL_JR-002766",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "mtb",
+      "url": "https://mtb.wd5.myworkdayjobs.com/en-us/mtb/job/full-time-teller--atlee-branch--mechanicsville-va_r83675/apply",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "owensminor",
+      "url": "https://owensminor.wd1.myworkdayjobs.com/en-US/OMCareers/job/Mechanicsville-VA/Consultant--Sales-Effectiveness_REQ_26_31503",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "napaanesthesia",
+      "url": "https://napaanesthesia.wd1.myworkdayjobs.com/en-US/NAPA_Careers/job/Anesthesiologist---Bon-Secours-St-Francis_JR5556-1",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "jll",
+      "url": "https://jll.wd1.myworkdayjobs.com/en-US/jllcareers/job/Strategic-Sourcing-Manager_REQ500088",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "nc",
+      "url": "https://nc.wd108.myworkdayjobs.com/en-US/NC_Careers/job/Anadromous-Fisheries-Research-Coordinator--Conservation-Biologist-II-_JR-114702",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "georgetown",
+      "url": "https://georgetown.wd1.myworkdayjobs.com/en-US/Georgetown_Admin_Careers/job/Director-of-Sports-Nutrition_JR25486",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "selectmilk",
+      "url": "https://selectmilk.wd12.myworkdayjobs.com/en-US/SelectMilkProducers/job/Senior-Director-of-Food-Safety-and-Quality_JR101906",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "vizient",
+      "url": "https://vizient.wd1.myworkdayjobs.com/en-US/Vizient_Careers/job/Category-Manager---Food-Service_33133R",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "alphia",
+      "url": "https://alphia.wd12.myworkdayjobs.com/en-US/AlphiaCareers/job/Operations-Manager_JR-730",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "exos",
+      "url": "https://exos.wd501.myworkdayjobs.com/en-US/EXOSCAREERS/job/Performance-Nutrition-Internship---Summer-2026_26-389",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "airliquidehr",
+      "url": "https://airliquidehr.wd3.myworkdayjobs.com/en-US/airliquideexternalcareer/job/Brazil-So-Paulo/Analista-de-Laboratrio-I_R10076128",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "borgwarner",
+      "url": "https://borgwarner.wd5.myworkdayjobs.com/pt-BR/BorgWarner_Careers/job/San-Luis-Potos-Mxico/IT-Client-Support_R2026-0500",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "raymondjames",
+      "url": "https://raymondjames.wd1.myworkdayjobs.com/en-US/RaymondJamesCareers/job/Client-Service-Associate_R-0010956",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "chesterfield",
+      "url": "https://chesterfield.wd5.myworkdayjobs.com/en-US/CCPS1/job/Head-Coach---High-School---Football_R-0000001861",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "topbuild",
+      "url": "https://topbuild.wd501.myworkdayjobs.com/es/TruTeam_External/job/Sales-Consultant--Hamilton-OH-_R-122357",
+      "reason": "no_cxs_match_or_no_jobs"
+    }
+  ]
+}
