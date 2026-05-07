@@ -879,12 +879,16 @@ function shouldRenderHtml(req: Request, url: URL): boolean {
  *  even when there are many runs. */
 interface RunSummary {
   key: string;
-  uuid_prefix: string;
-  uploaded: string;            // ISO timestamp
-  date_human: string;          // short readable
+  uuid_full: string;           // full uuid (used as filter key)
+  uuid_prefix: string;         // first 8 chars for display
+  uploaded: string;            // ISO timestamp (UTC, converted to local in JS)
   duration_s: number | null;
   cost_usd: number | null;
   app_version: string | null;
+  // v0.3.3: profile snapshot fields so the dashboard distinguishes runs
+  // by who they're for, not just which UUID. Same UUID can have different
+  // profiles per run if the user re-uploads a different resume.
+  profile_headline: string | null;
   total_scraped: number | null;
   after_filters: number | null;
   qualifying: number | null;
@@ -894,12 +898,16 @@ interface RunSummary {
   stretch: number | null;
   funnel_collapse_pct: number | null;  // 1 - qualifying/scraped, 0..100
   top_role_titles: string[];
+  // v0.3.3: calibration anomalies surfaced via the new audit field.
+  // Will be null for runs from versions before v0.3.3 (no field present);
+  // will be 0+ for v0.3.3+ runs.
+  anomaly_count: number | null;
 }
 
 /** Render the runs HTML dashboard. Lists last ~50 runs newest-first
- *  with funnel summary. Spotting a "100+ scraped, 4 strong" pattern
- *  is meant to be obvious at a glance — the funnel_collapse_pct
- *  column makes it sortable. */
+ *  with funnel summary, per-tester filtering, bulk download, anomaly
+ *  detection, top-stats summary, and click-to-sort columns. v0.3.3
+ *  expanded from a flat table to a real operator dashboard. */
 async function renderRunsHtml(env: Env): Promise<Response> {
   // R2 list is alphabetic, but our keys are runs/<uuid>/<ISO-ts>_...
   // so listing alphabetically does NOT give newest-first across testers.
@@ -919,13 +927,15 @@ async function renderRunsHtml(env: Env): Promise<Response> {
       const uuid = o.customMetadata?.uuid || extractUuidFromKey(o.key);
       const summaryBase: RunSummary = {
         key: o.key,
+        uuid_full: uuid || "unknown",
         uuid_prefix: (uuid || "unknown").slice(0, 8),
         uploaded: o.uploaded?.toISOString() || "",
-        date_human: o.uploaded ? formatDateShort(o.uploaded) : "",
         duration_s: null, cost_usd: null, app_version: null,
+        profile_headline: null,
         total_scraped: null, after_filters: null, qualifying: null,
         strong: null, good: null, maybe: null, stretch: null,
         funnel_collapse_pct: null, top_role_titles: [],
+        anomaly_count: null,
       };
       try {
         const obj = await env.AUDIT_R2.get(o.key);
@@ -942,11 +952,19 @@ async function renderRunsHtml(env: Env): Promise<Response> {
         const titles = roles.slice(0, 5).map((r: any) =>
           `${r?.title || "?"} @ ${r?.company || "?"}`
         );
+        // v0.3.3: profile headline + calibration anomaly count
+        const profileSnap = audit?.profile_snapshot || {};
+        const headline = typeof profileSnap?.headline === "string"
+          ? profileSnap.headline : null;
+        const calibBlock = audit?.calibration_anomalies;
+        const anomalyCount = (calibBlock && typeof calibBlock?.total_anomalies === "number")
+          ? calibBlock.total_anomalies : null;
         return {
           ...summaryBase,
           duration_s: numberOrNull(meta?.duration_seconds),
           cost_usd: numberOrNull(meta?.cost_breakdown?.total_usd),
           app_version: typeof meta?.app_version === "string" ? meta.app_version : null,
+          profile_headline: headline,
           total_scraped: scraped,
           after_filters: numberOrNull(funnel?.after_hard_filters),
           qualifying: qual,
@@ -956,6 +974,7 @@ async function renderRunsHtml(env: Env): Promise<Response> {
           stretch: numberOrNull(tier?.STRETCH),
           funnel_collapse_pct: collapse,
           top_role_titles: titles,
+          anomaly_count: anomalyCount,
         };
       } catch {
         return summaryBase;
@@ -963,35 +982,71 @@ async function renderRunsHtml(env: Env): Promise<Response> {
     })
   );
 
+  // Compute aggregate stats for the top stats bar.
+  // Time windows: last 7 days, last 30 days (all loaded summaries).
+  const now = Date.now();
+  const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+  const recent = summaries.filter(s => {
+    if (!s.uploaded) return false;
+    const t = Date.parse(s.uploaded);
+    return !isNaN(t) && (now - t) <= SEVEN_DAYS_MS;
+  });
+  const distinctTesters = new Set(summaries.map(s => s.uuid_full)).size;
+  const distinctTestersRecent = new Set(recent.map(s => s.uuid_full)).size;
+  const totalSpend7d = recent.reduce((acc, s) => acc + (s.cost_usd || 0), 0);
+  const totalSpendAll = summaries.reduce((acc, s) => acc + (s.cost_usd || 0), 0);
+  const strongCounts = summaries.map(s => s.strong).filter((v): v is number => v !== null);
+  const medianStrong = strongCounts.length
+    ? [...strongCounts].sort((a, b) => a - b)[Math.floor(strongCounts.length / 2)]
+    : null;
+  const totalAnomalies7d = recent.reduce(
+    (acc, s) => acc + (s.anomaly_count || 0), 0
+  );
+  const anomaliesTrackedCount = recent.filter(s => s.anomaly_count !== null).length;
+
+  // Build per-tester summary map (used when a tester filter is active).
+  // Keyed by full UUID; values include count, latest profile, total spend,
+  // and a small history of STRONG counts (newest→oldest) for the sparkline.
+  const perTester = new Map<string, {
+    runs: number;
+    latestProfile: string | null;
+    latestVersion: string | null;
+    avgStrong: number | null;
+    totalSpend: number;
+    strongHistory: (number | null)[];  // newest first
+  }>();
+  for (const s of summaries) {
+    const cur = perTester.get(s.uuid_full) || {
+      runs: 0,
+      latestProfile: null,
+      latestVersion: null,
+      avgStrong: null,
+      totalSpend: 0,
+      strongHistory: [],
+    };
+    cur.runs++;
+    cur.totalSpend += s.cost_usd || 0;
+    cur.strongHistory.push(s.strong);
+    if (cur.latestProfile === null && s.profile_headline) cur.latestProfile = s.profile_headline;
+    if (cur.latestVersion === null && s.app_version) cur.latestVersion = s.app_version;
+    perTester.set(s.uuid_full, cur);
+  }
+  for (const [uuid, t] of perTester.entries()) {
+    const strongs = t.strongHistory.filter((v): v is number => v !== null);
+    t.avgStrong = strongs.length ? Math.round(strongs.reduce((a, b) => a + b, 0) / strongs.length) : null;
+    perTester.set(uuid, t);
+  }
+
   const tokenParam = `token=${encodeURIComponent(env.ADMIN_TOKEN || "")}`;
-  const rows = summaries.map(s => {
-    const collapseClass =
-      s.funnel_collapse_pct !== null && s.funnel_collapse_pct >= 95 ? "collapse-bad"
-      : s.funnel_collapse_pct !== null && s.funnel_collapse_pct >= 90 ? "collapse-warn"
-      : "";
-    const titles = s.top_role_titles.length
-      ? s.top_role_titles.map(t => `<li>${escapeHtml(t)}</li>`).join("")
-      : "<li><em>none</em></li>";
-    const rawHref = `/v1/admin/run?k=${encodeURIComponent(s.key)}&${tokenParam}`;
-    return `
-      <tr class="${collapseClass}">
-        <td class="mono small">${escapeHtml(s.uuid_prefix)}</td>
-        <td>${escapeHtml(s.date_human)}</td>
-        <td>${s.app_version ? escapeHtml(s.app_version) : "—"}</td>
-        <td class="num">${s.total_scraped ?? "—"}</td>
-        <td class="num">${s.after_filters ?? "—"}</td>
-        <td class="num">${s.qualifying ?? "—"}</td>
-        <td class="num"><strong>${s.strong ?? "—"}</strong></td>
-        <td class="num">${s.good ?? "—"}</td>
-        <td class="num">${s.maybe ?? "—"}</td>
-        <td class="num">${s.stretch ?? "—"}</td>
-        <td class="num">${s.funnel_collapse_pct !== null ? s.funnel_collapse_pct + "%" : "—"}</td>
-        <td class="num">${s.cost_usd !== null ? "$" + s.cost_usd.toFixed(2) : "—"}</td>
-        <td class="num">${s.duration_s !== null ? Math.round(s.duration_s) + "s" : "—"}</td>
-        <td><ul class="titles">${titles}</ul></td>
-        <td><a href="${rawHref}" target="_blank">JSON</a></td>
-      </tr>`;
-  }).join("");
+
+  // Embed full summary data + per-tester metadata as JSON the client-side
+  // JS can read for filtering, sorting, and bulk operations. Keeps the
+  // Worker stateless — all interactivity is client-side.
+  const dataJson = JSON.stringify({
+    summaries,
+    perTester: Object.fromEntries(perTester),
+    token: env.ADMIN_TOKEN || "",
+  });
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -999,55 +1054,695 @@ async function renderRunsHtml(env: Env): Promise<Response> {
   <meta charset="utf-8">
   <title>Admin · Runs · findmesomedamnjobz</title>
   <style>
-    body { background: #0c0d10; color: #e8e8ec; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; margin: 24px; }
-    h1 { font-size: 18px; margin: 0 0 4px; font-weight: 600; }
-    .sub { color: #999; font-size: 13px; margin-bottom: 20px; }
-    table { border-collapse: collapse; width: 100%; font-size: 13px; }
-    th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid #1f2024; vertical-align: top; }
-    th { background: #16171a; color: #c0c0c8; font-weight: 600; position: sticky; top: 0; }
-    td.num { text-align: right; font-variant-numeric: tabular-nums; }
-    td.mono, .small { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px; }
-    tr.collapse-warn td { background: rgba(220, 180, 60, 0.06); }
-    tr.collapse-bad  td { background: rgba(220, 80, 80, 0.10); }
-    ul.titles { margin: 0; padding-left: 18px; color: #b8b8c0; font-size: 12px; }
-    ul.titles li { padding: 1px 0; }
-    a { color: #88aaff; text-decoration: none; }
+    :root {
+      --bg: #0a0b0e;
+      --surface: #14161a;
+      --surface-2: #1c1f25;
+      --border: #24272e;
+      --border-strong: #34384020;
+      --text: #e8e8ec;
+      --text-dim: #95979e;
+      --text-faint: #5d6068;
+      --accent: #88aaff;
+      --accent-dim: #5577cc;
+      --good: #4ec792;
+      --warn: #d8b840;
+      --bad: #e8665a;
+      --strong-bg: rgba(78, 199, 146, 0.08);
+      --strong-fg: #6dd6a4;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      font-size: 13px;
+      line-height: 1.4;
+      padding: 24px;
+    }
+    a { color: var(--accent); text-decoration: none; }
     a:hover { text-decoration: underline; }
-    .legend { font-size: 12px; color: #999; margin-top: 16px; }
-    .legend span.warn { color: #d8b840; }
-    .legend span.bad { color: #d85050; }
+    h1 {
+      font-size: 22px;
+      margin: 0 0 4px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+    .subtitle { color: var(--text-dim); font-size: 13px; margin-bottom: 20px; }
+
+    /* ---- Top stats bar ---- */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+    }
+    .stat-card .label {
+      font-size: 11px;
+      color: var(--text-faint);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    .stat-card .value {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .stat-card .sub {
+      font-size: 11px;
+      color: var(--text-dim);
+      margin-top: 4px;
+    }
+
+    /* ---- Toolbar ---- */
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+      background: var(--surface);
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+    }
+    .toolbar select, .toolbar input {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-family: inherit;
+    }
+    .toolbar input { min-width: 240px; }
+    .toolbar select { min-width: 200px; }
+    .toolbar input:focus, .toolbar select:focus {
+      outline: none;
+      border-color: var(--accent-dim);
+    }
+    .btn {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .btn:hover { background: #2a2e36; }
+    .btn-primary { background: var(--accent-dim); border-color: var(--accent); color: white; }
+    .btn-primary:hover { background: var(--accent); }
+    .btn-primary:disabled { background: #2a2e36; border-color: var(--border); color: var(--text-faint); cursor: not-allowed; }
+    .toolbar .spacer { flex: 1; }
+    .toolbar .label-text { color: var(--text-dim); font-size: 12px; }
+
+    /* ---- Per-tester summary card (when filter active) ---- */
+    #per-tester-summary {
+      display: none;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin-bottom: 12px;
+    }
+    #per-tester-summary.active { display: block; }
+    #per-tester-summary .row { display: flex; gap: 28px; flex-wrap: wrap; align-items: baseline; }
+    #per-tester-summary .row > div { min-width: 100px; }
+    #per-tester-summary .item-label {
+      font-size: 11px;
+      color: var(--text-faint);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-weight: 600;
+    }
+    #per-tester-summary .item-value {
+      font-size: 16px;
+      font-weight: 600;
+      margin-top: 2px;
+    }
+    #per-tester-summary .profile-line {
+      font-size: 12px;
+      color: var(--text-dim);
+      margin-top: 8px;
+      font-style: italic;
+    }
+
+    /* ---- Table ---- */
+    .table-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    table { border-collapse: collapse; width: 100%; }
+    th, td {
+      padding: 9px 12px;
+      text-align: left;
+      vertical-align: top;
+      font-size: 12.5px;
+      border-bottom: 1px solid var(--border-strong);
+    }
+    tbody tr:last-child td { border-bottom: none; }
+    th {
+      background: var(--surface-2);
+      color: var(--text-dim);
+      font-weight: 600;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+    }
+    th:hover { color: var(--text); }
+    th.sorted-asc::after { content: " ▲"; color: var(--accent); }
+    th.sorted-desc::after { content: " ▼"; color: var(--accent); }
+    th.no-sort { cursor: default; }
+    th.no-sort:hover { color: var(--text-dim); }
+    tbody tr { transition: background-color 0.1s; }
+    tbody tr:hover { background: var(--surface-2); }
+    td.num { text-align: right; font-variant-numeric: tabular-nums; }
+    .mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 11.5px; }
+
+    .uuid-badge {
+      display: inline-block;
+      padding: 2px 7px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-family: ui-monospace, "SF Mono", Menlo, monospace;
+      font-size: 11px;
+      cursor: pointer;
+      color: var(--text);
+    }
+    .uuid-badge:hover { background: #2a2e36; border-color: var(--accent-dim); }
+
+    .strong-cell {
+      background: var(--strong-bg);
+      color: var(--strong-fg);
+      font-weight: 700;
+    }
+    tr.collapse-warn td { background: rgba(216, 184, 64, 0.05); }
+    tr.collapse-bad  td { background: rgba(232, 102, 90, 0.07); }
+    tr.calibration-anomaly td { box-shadow: inset 3px 0 0 var(--warn); }
+
+    .anomaly-good { color: var(--good); }
+    .anomaly-warn { color: var(--warn); }
+    .anomaly-bad  { color: var(--bad); font-weight: 600; }
+
+    .version-pill {
+      display: inline-block;
+      padding: 1px 6px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      font-size: 11px;
+      font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    }
+
+    .delta-chip {
+      display: inline-block;
+      margin-left: 4px;
+      padding: 0 5px;
+      font-size: 10px;
+      font-weight: 600;
+      border-radius: 3px;
+      vertical-align: middle;
+    }
+    .delta-up   { background: rgba(78, 199, 146, 0.15); color: var(--good); }
+    .delta-down { background: rgba(232, 102, 90, 0.15); color: var(--bad); }
+    .delta-flat { background: var(--surface-2); color: var(--text-faint); }
+
+    .titles { margin: 0; padding-left: 14px; color: var(--text-dim); font-size: 11.5px; }
+    .titles li { padding: 1px 0; }
+
+    .profile-cell {
+      max-width: 220px;
+      color: var(--text-dim);
+      font-size: 11.5px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .when-cell { white-space: nowrap; font-size: 11.5px; color: var(--text-dim); }
+    .when-cell .date-main { color: var(--text); }
+    .when-cell .relative-time { color: var(--text-faint); font-size: 10.5px; display: block; }
+
+    .checkbox-cell { width: 28px; padding-left: 14px; padding-right: 0; }
+    .checkbox-cell input { cursor: pointer; }
+
+    .legend {
+      font-size: 11.5px;
+      color: var(--text-dim);
+      margin-top: 14px;
+      padding: 0 4px;
+    }
+    .legend-bar { display: flex; gap: 16px; flex-wrap: wrap; }
+    .legend-bar > span { display: flex; align-items: center; gap: 6px; }
+    .legend-swatch {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+    }
+    .swatch-warn { background: rgba(216, 184, 64, 0.4); }
+    .swatch-bad  { background: rgba(232, 102, 90, 0.4); }
+    .swatch-anomaly { background: var(--warn); width: 3px; height: 12px; }
+
+    .empty-state {
+      padding: 60px 20px;
+      text-align: center;
+      color: var(--text-faint);
+      font-size: 14px;
+    }
+
+    .selection-bar {
+      display: none;
+      background: var(--surface-2);
+      border: 1px solid var(--accent-dim);
+      border-radius: 10px;
+      padding: 10px 14px;
+      margin-bottom: 12px;
+      align-items: center;
+      gap: 12px;
+    }
+    .selection-bar.active { display: flex; }
+    .selection-bar .count { font-weight: 600; }
   </style>
 </head>
 <body>
-  <h1>Recent Runs</h1>
-  <div class="sub">Showing newest ${summaries.length} run${summaries.length === 1 ? "" : "s"} across all testers. Click JSON for raw audit.</div>
-  <table>
-    <thead>
-      <tr>
-        <th>Tester</th>
-        <th>When</th>
-        <th>App</th>
-        <th>Scraped</th>
-        <th>After filters</th>
-        <th>Qualifying</th>
-        <th>Strong</th>
-        <th>Good</th>
-        <th>Maybe</th>
-        <th>Stretch</th>
-        <th>Collapse</th>
-        <th>Cost</th>
-        <th>Duration</th>
-        <th>Top 5 roles</th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody>${rows}</tbody>
-  </table>
-  <div class="legend">
-    Collapse = 1 − qualifying / scraped. Highlighted rows: <span class="warn">90–94% (yellow)</span>,
-    <span class="bad">≥95% (red)</span> — these are the runs where the funnel is most aggressively
-    rejecting candidates and worth opening the JSON to see WHICH roles got dropped at triage.
+  <h1>findmesomedamnjobz · operator dashboard</h1>
+  <div class="subtitle">
+    Last ${summaries.length} runs across ${distinctTesters} testers · times shown in your local timezone
   </div>
+
+  <!-- Top stats bar -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="label">Last 7 days</div>
+      <div class="value">${recent.length}</div>
+      <div class="sub">runs</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Active testers</div>
+      <div class="value">${distinctTestersRecent}</div>
+      <div class="sub">distinct UUIDs in last 7d</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Spend (last 7d)</div>
+      <div class="value">$${totalSpend7d.toFixed(2)}</div>
+      <div class="sub">$${totalSpendAll.toFixed(2)} all time visible</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Median STRONG</div>
+      <div class="value">${medianStrong !== null ? medianStrong : "—"}</div>
+      <div class="sub">across ${strongCounts.length} runs</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Calibration anomalies</div>
+      <div class="value ${totalAnomalies7d === 0 ? "anomaly-good" : (totalAnomalies7d <= 5 ? "anomaly-warn" : "anomaly-bad")}">${totalAnomalies7d}</div>
+      <div class="sub">last 7d · ${anomaliesTrackedCount} runs tracked</div>
+    </div>
+  </div>
+
+  <!-- Toolbar: filter + search -->
+  <div class="toolbar">
+    <span class="label-text">Filter:</span>
+    <select id="tester-filter">
+      <option value="">All testers (${distinctTesters})</option>
+      ${[...perTester.entries()].map(([uuid, t]) => {
+        const label = t.latestProfile
+          ? `${uuid.slice(0, 8)} · ${escapeHtml(t.latestProfile.slice(0, 50))}${t.latestProfile.length > 50 ? "…" : ""} (${t.runs})`
+          : `${uuid.slice(0, 8)} (${t.runs})`;
+        return `<option value="${escapeHtml(uuid)}">${label}</option>`;
+      }).join("")}
+    </select>
+    <input id="search-box" type="search" placeholder="Search title / company / version / UUID...">
+    <span class="spacer"></span>
+    <span class="label-text" id="visible-count">Showing ${summaries.length} runs</span>
+  </div>
+
+  <!-- Per-tester summary card (revealed when filter active) -->
+  <div id="per-tester-summary"></div>
+
+  <!-- Bulk-action bar (revealed when ≥1 row selected) -->
+  <div class="selection-bar" id="selection-bar">
+    <span class="count" id="selection-count">0 selected</span>
+    <button class="btn btn-primary" id="download-selected">Download combined JSON</button>
+    <button class="btn" id="clear-selection">Clear selection</button>
+    <span class="spacer"></span>
+    <span class="label-text">Combines selected audit JSONs into one downloadable file</span>
+  </div>
+
+  <!-- Main runs table -->
+  <div class="table-wrap">
+    <table id="runs-table">
+      <thead>
+        <tr>
+          <th class="no-sort checkbox-cell"><input type="checkbox" id="select-all" title="Select all visible"></th>
+          <th data-sort="uuid_prefix">Tester</th>
+          <th data-sort="profile_headline">Profile</th>
+          <th data-sort="uploaded">When</th>
+          <th data-sort="app_version">App</th>
+          <th data-sort="total_scraped" class="num-col">Scraped</th>
+          <th data-sort="qualifying" class="num-col">Qual.</th>
+          <th data-sort="strong" class="num-col">STRONG</th>
+          <th data-sort="good" class="num-col">Good</th>
+          <th data-sort="maybe" class="num-col">Maybe</th>
+          <th data-sort="stretch" class="num-col">Stretch</th>
+          <th data-sort="anomaly_count" class="num-col">Anom.</th>
+          <th data-sort="cost_usd" class="num-col">Cost</th>
+          <th data-sort="duration_s" class="num-col">Time</th>
+          <th class="no-sort">Top 5 roles</th>
+          <th class="no-sort">JSON</th>
+        </tr>
+      </thead>
+      <tbody id="runs-tbody"></tbody>
+    </table>
+  </div>
+
+  <div class="legend">
+    <div class="legend-bar">
+      <span><span class="legend-swatch swatch-warn"></span>Funnel collapse 90–94%</span>
+      <span><span class="legend-swatch swatch-bad"></span>Funnel collapse ≥95%</span>
+      <span><span class="legend-swatch swatch-anomaly"></span>Calibration anomalies present</span>
+      <span style="color: var(--text-faint);">|  Click any column header to sort. Click any UUID to filter to that tester.</span>
+    </div>
+  </div>
+
+  <script>
+    // ============================================================
+    // Embedded data + state
+    // ============================================================
+    const DATA = ${dataJson};
+    const ALL = DATA.summaries;
+    const PER_TESTER = DATA.perTester;
+    const TOKEN = DATA.token;
+
+    let state = {
+      filterUuid: "",
+      search: "",
+      sortField: "uploaded",
+      sortDir: "desc",
+      selected: new Set(),  // r2 keys
+    };
+
+    // ============================================================
+    // Helpers
+    // ============================================================
+    function escapeHtml(s) {
+      return String(s == null ? "" : s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function formatLocalDate(iso) {
+      if (!iso) return { date: "—", relative: "" };
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) return { date: "—", relative: "" };
+      const y = d.getFullYear();
+      const mo = String(d.getMonth() + 1).padStart(2, "0");
+      const da = String(d.getDate()).padStart(2, "0");
+      const h = String(d.getHours()).padStart(2, "0");
+      const mi = String(d.getMinutes()).padStart(2, "0");
+      const date = y + "-" + mo + "-" + da + " " + h + ":" + mi;
+
+      // Relative time
+      const diffMs = Date.now() - d.getTime();
+      const diffMin = Math.round(diffMs / 60000);
+      let relative = "";
+      if (diffMin < 1) relative = "just now";
+      else if (diffMin < 60) relative = diffMin + "m ago";
+      else if (diffMin < 24 * 60) relative = Math.round(diffMin / 60) + "h ago";
+      else if (diffMin < 7 * 24 * 60) relative = Math.round(diffMin / (24 * 60)) + "d ago";
+      else relative = Math.round(diffMin / (7 * 24 * 60)) + "w ago";
+
+      return { date, relative };
+    }
+
+    function compareValues(a, b, field, dir) {
+      const av = a[field];
+      const bv = b[field];
+      // Nulls always sort last regardless of direction
+      if (av == null && bv == null) return 0;
+      if (av == null) return 1;
+      if (bv == null) return -1;
+      let cmp;
+      if (typeof av === "number" && typeof bv === "number") cmp = av - bv;
+      else cmp = String(av).localeCompare(String(bv));
+      return dir === "asc" ? cmp : -cmp;
+    }
+
+    function getFilteredSorted() {
+      let rows = ALL.slice();
+      if (state.filterUuid) {
+        rows = rows.filter(r => r.uuid_full === state.filterUuid);
+      }
+      if (state.search) {
+        const q = state.search.toLowerCase();
+        rows = rows.filter(r => {
+          const haystack = [
+            r.uuid_prefix, r.uuid_full,
+            r.profile_headline,
+            r.app_version,
+            ...(r.top_role_titles || []),
+          ].filter(Boolean).join(" ").toLowerCase();
+          return haystack.includes(q);
+        });
+      }
+      rows.sort((a, b) => compareValues(a, b, state.sortField, state.sortDir));
+      return rows;
+    }
+
+    function deltaChipForStrong(currentRow) {
+      // Find the same tester's previous run by date (older than current)
+      const sameTester = ALL
+        .filter(r => r.uuid_full === currentRow.uuid_full && r.uploaded < currentRow.uploaded)
+        .sort((a, b) => b.uploaded.localeCompare(a.uploaded));
+      const prev = sameTester[0];
+      if (!prev || prev.strong == null || currentRow.strong == null) return "";
+      const delta = currentRow.strong - prev.strong;
+      if (delta === 0) return '<span class="delta-chip delta-flat">±0</span>';
+      const cls = delta > 0 ? "delta-up" : "delta-down";
+      const sign = delta > 0 ? "+" : "";
+      return '<span class="delta-chip ' + cls + '" title="vs prior run on ' + prev.app_version + '">' + sign + delta + '</span>';
+    }
+
+    function rowHtml(s) {
+      const time = formatLocalDate(s.uploaded);
+      const collapse = s.funnel_collapse_pct;
+      const collapseClass =
+        collapse !== null && collapse >= 95 ? "collapse-bad"
+        : collapse !== null && collapse >= 90 ? "collapse-warn"
+        : "";
+      const anomalyClass = (s.anomaly_count != null && s.anomaly_count > 0) ? " calibration-anomaly" : "";
+      const anomalyDisplay = s.anomaly_count == null
+        ? '<span style="color: var(--text-faint);">—</span>'
+        : (s.anomaly_count === 0
+            ? '<span class="anomaly-good">0</span>'
+            : (s.anomaly_count <= 5
+                ? '<span class="anomaly-warn">' + s.anomaly_count + '</span>'
+                : '<span class="anomaly-bad">' + s.anomaly_count + '</span>'));
+      const titles = (s.top_role_titles || []).length
+        ? '<ul class="titles">' + s.top_role_titles.map(t => '<li>' + escapeHtml(t) + '</li>').join("") + '</ul>'
+        : '<span style="color: var(--text-faint);">—</span>';
+      const rawHref = '/v1/admin/run?k=' + encodeURIComponent(s.key) + '&token=' + encodeURIComponent(TOKEN);
+      const checked = state.selected.has(s.key) ? "checked" : "";
+      return '<tr class="' + collapseClass + anomalyClass + '">'
+        + '<td class="checkbox-cell"><input type="checkbox" class="row-check" data-key="' + encodeURIComponent(s.key) + '" ' + checked + '></td>'
+        + '<td><span class="uuid-badge" data-uuid="' + escapeHtml(s.uuid_full) + '" title="Click to filter to this tester">' + escapeHtml(s.uuid_prefix) + '</span></td>'
+        + '<td class="profile-cell" title="' + escapeHtml(s.profile_headline || "") + '">' + escapeHtml(s.profile_headline || "—") + '</td>'
+        + '<td class="when-cell"><span class="date-main">' + time.date + '</span><span class="relative-time">' + time.relative + '</span></td>'
+        + '<td>' + (s.app_version ? '<span class="version-pill">' + escapeHtml(s.app_version) + '</span>' : "—") + '</td>'
+        + '<td class="num">' + (s.total_scraped ?? "—") + '</td>'
+        + '<td class="num">' + (s.qualifying ?? "—") + '</td>'
+        + '<td class="num strong-cell">' + (s.strong ?? "—") + deltaChipForStrong(s) + '</td>'
+        + '<td class="num">' + (s.good ?? "—") + '</td>'
+        + '<td class="num">' + (s.maybe ?? "—") + '</td>'
+        + '<td class="num">' + (s.stretch ?? "—") + '</td>'
+        + '<td class="num">' + anomalyDisplay + '</td>'
+        + '<td class="num">' + (s.cost_usd != null ? "$" + s.cost_usd.toFixed(2) : "—") + '</td>'
+        + '<td class="num">' + (s.duration_s != null ? Math.round(s.duration_s) + "s" : "—") + '</td>'
+        + '<td>' + titles + '</td>'
+        + '<td><a href="' + rawHref + '" target="_blank">JSON</a></td>'
+        + '</tr>';
+    }
+
+    function render() {
+      const rows = getFilteredSorted();
+      const tbody = document.getElementById("runs-tbody");
+      if (rows.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="16" class="empty-state">No runs match the current filter.</td></tr>';
+      } else {
+        tbody.innerHTML = rows.map(rowHtml).join("");
+      }
+      document.getElementById("visible-count").textContent =
+        "Showing " + rows.length + " of " + ALL.length + " runs";
+
+      // Update header sort indicators
+      document.querySelectorAll("th[data-sort]").forEach(th => {
+        th.classList.remove("sorted-asc", "sorted-desc");
+        if (th.dataset.sort === state.sortField) {
+          th.classList.add(state.sortDir === "asc" ? "sorted-asc" : "sorted-desc");
+        }
+      });
+
+      // Per-tester summary card
+      const summaryCard = document.getElementById("per-tester-summary");
+      if (state.filterUuid && PER_TESTER[state.filterUuid]) {
+        const t = PER_TESTER[state.filterUuid];
+        summaryCard.innerHTML =
+          '<div class="row">'
+          + '<div><div class="item-label">Tester</div><div class="item-value mono">' + escapeHtml(state.filterUuid.slice(0, 16)) + '…</div></div>'
+          + '<div><div class="item-label">Runs</div><div class="item-value">' + t.runs + '</div></div>'
+          + '<div><div class="item-label">Avg STRONG</div><div class="item-value">' + (t.avgStrong ?? "—") + '</div></div>'
+          + '<div><div class="item-label">Total spend</div><div class="item-value">$' + t.totalSpend.toFixed(2) + '</div></div>'
+          + '<div><div class="item-label">Latest version</div><div class="item-value">' + (t.latestVersion ? '<span class="version-pill">' + escapeHtml(t.latestVersion) + '</span>' : "—") + '</div></div>'
+          + '</div>'
+          + (t.latestProfile ? '<div class="profile-line">Latest profile: ' + escapeHtml(t.latestProfile) + '</div>' : "");
+        summaryCard.classList.add("active");
+      } else {
+        summaryCard.classList.remove("active");
+      }
+
+      // Update selection bar
+      updateSelectionBar();
+    }
+
+    function updateSelectionBar() {
+      const bar = document.getElementById("selection-bar");
+      const n = state.selected.size;
+      document.getElementById("selection-count").textContent = n + " selected";
+      if (n > 0) bar.classList.add("active");
+      else bar.classList.remove("active");
+      document.getElementById("download-selected").disabled = n === 0;
+    }
+
+    // ============================================================
+    // Wire up event handlers
+    // ============================================================
+    document.getElementById("tester-filter").addEventListener("change", e => {
+      state.filterUuid = e.target.value;
+      render();
+    });
+    document.getElementById("search-box").addEventListener("input", e => {
+      state.search = e.target.value;
+      render();
+    });
+    document.querySelectorAll("th[data-sort]").forEach(th => {
+      th.addEventListener("click", () => {
+        const field = th.dataset.sort;
+        if (state.sortField === field) {
+          state.sortDir = state.sortDir === "asc" ? "desc" : "asc";
+        } else {
+          state.sortField = field;
+          state.sortDir = "desc";
+        }
+        render();
+      });
+    });
+
+    // Delegated event handlers for dynamic rows
+    document.addEventListener("click", (e) => {
+      const target = e.target;
+      // UUID badge click → filter to that tester
+      if (target.classList && target.classList.contains("uuid-badge")) {
+        const uuid = target.dataset.uuid;
+        document.getElementById("tester-filter").value = uuid;
+        state.filterUuid = uuid;
+        render();
+      }
+    });
+    document.addEventListener("change", (e) => {
+      const target = e.target;
+      // Row checkbox toggled
+      if (target.classList && target.classList.contains("row-check")) {
+        const key = decodeURIComponent(target.dataset.key);
+        if (target.checked) state.selected.add(key);
+        else state.selected.delete(key);
+        updateSelectionBar();
+      }
+    });
+
+    // Select-all toggles only currently-visible (filtered + searched) rows
+    document.getElementById("select-all").addEventListener("change", e => {
+      const visible = getFilteredSorted();
+      if (e.target.checked) {
+        visible.forEach(r => state.selected.add(r.key));
+      } else {
+        visible.forEach(r => state.selected.delete(r.key));
+      }
+      render();
+    });
+
+    document.getElementById("clear-selection").addEventListener("click", () => {
+      state.selected.clear();
+      render();
+    });
+
+    // Download combined JSON for all selected runs
+    document.getElementById("download-selected").addEventListener("click", async () => {
+      const btn = document.getElementById("download-selected");
+      const originalText = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = "Fetching " + state.selected.size + " audits...";
+      try {
+        const keys = [...state.selected];
+        // Fetch each audit JSON in parallel
+        const results = await Promise.all(keys.map(async (k) => {
+          const url = '/v1/admin/run?k=' + encodeURIComponent(k) + '&token=' + encodeURIComponent(TOKEN);
+          const res = await fetch(url);
+          if (!res.ok) throw new Error("fetch failed for " + k);
+          const audit = await res.json();
+          return { _meta: { r2_key: k }, ...audit };
+        }));
+        const combined = {
+          exported_at: new Date().toISOString(),
+          exported_by: "admin_dashboard",
+          run_count: results.length,
+          filter_uuid: state.filterUuid || null,
+          search_query: state.search || null,
+          runs: results,
+        };
+        const blob = new Blob([JSON.stringify(combined, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+        a.download = "fmsdj-runs-" + (state.filterUuid ? state.filterUuid.slice(0,8) + "-" : "") + stamp + ".json";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        alert("Download failed: " + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
+    });
+
+    // Initial render
+    render();
+  </script>
 </body>
 </html>`;
   return new Response(html, {
