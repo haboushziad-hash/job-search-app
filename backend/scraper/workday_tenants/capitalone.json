@@ -1,0 +1,24 @@
+{
+  "display_name": "Capital One",
+  "careers_url": "https://capitalone.wd12.myworkdayjobs.com/Capital_One",
+  "status": "OK",
+  "reason": "",
+  "elapsed": 0.42,
+  "captured": {
+    "url": "https://capitalone.wd12.myworkdayjobs.com/wday/cxs/capitalone/Capital_One/jobs",
+    "method": "POST",
+    "request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+    "headers": {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+      "Accept": "application/json",
+      "Content-Type": "application/json"
+    },
+    "input_selector_used": ""
+  },
+  "_grinder_meta": {
+    "discovered_at": "2026-05-07T20:21:52.294404+00:00",
+    "industry_hint": "richmond",
+    "active_role_count_at_discovery": 1514,
+    "discovered_via": "bing-via-serper"
+  }
+}

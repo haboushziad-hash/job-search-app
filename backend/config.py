@@ -102,6 +102,12 @@ class Config:
     # calls/mo; backstops the curated ATS tenant lists with whatever
     # Google has indexed (pharma, biotech, retail, etc.).
     SERPER_API_KEY: str = os.getenv("SERPER_API_KEY", "").strip()
+    # v0.3.9: DataForSEO for the ACTUAL Google Jobs endpoint (Serper /jobs
+    # was 404, never existed). Pay-as-you-go, $0.0024/query at priority=2.
+    # ~$3.23/mo at pilot scale. HTTP Basic Auth, login=email, password=API
+    # password (not account password — different field in DataForSEO UI).
+    DATAFORSEO_LOGIN: str = os.getenv("DATAFORSEO_LOGIN", "").strip()
+    DATAFORSEO_PASSWORD: str = os.getenv("DATAFORSEO_PASSWORD", "").strip()
 
     @classmethod
     def is_central_server_mode(cls) -> bool:

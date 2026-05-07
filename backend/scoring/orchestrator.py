@@ -143,11 +143,25 @@ async def score_roles(
     roles: list[Role],
     client: Optional[LLMClient] = None,
     license_key: Optional[str] = None,
-    embed_keep_fraction: float = 0.40,
+    # v0.3.9: bumped 0.40 → 0.55 per peer review. The 0.40 fraction was
+    # cutting 60% of hard-filter survivors before any LLM evaluation. At
+    # current scale (499 hard-filter passing → 199 kept), that's losing
+    # ~3-5 legitimate STRONGs per run to embedding's blunt instrument.
+    # 0.55 keeps ~275 of 499. Cost impact: +$0.04-0.06/run on Stage 2 Flash
+    # (cheap). At v0.3.9 grinder scale (800-1200 hard-filter passing), the
+    # 500-max cap will fire to keep cost bounded.
+    embed_keep_fraction: float = 0.55,
     embed_max_roles: int = 500,
     stage3_skip_above: int = 101,
     stage3_skip_below: int = 55,
-    stage3_max_roles: int = 100,
+    # v0.3.9: bumped 100 → 200 per peer review. v3.7 audit showed 154
+    # roles in the [55, 100] Stage 2 band, but only 80 got Stage 3
+    # evaluated — cap of 100 plus tie-boundary cuts at score=65. Result:
+    # 75 in-band roles never got Pro evaluation, losing ~1-3 STRONGs and
+    # 5-10 GOODs per run that would have been promoted by Stage 3's
+    # +8.6 average uplift. Cap=200 covers the full band even at v3.9
+    # grinder scale. Cost: +$0.10-0.20/run.
+    stage3_max_roles: int = 200,
     log: bool = True,
     progress: Optional[Callable[[int, str, int], None]] = None,
 ) -> tuple[list[Role], RunSummary]:
@@ -180,19 +194,41 @@ async def score_roles(
             if log:
                 print(f"[progress] callback raised (ignored): {e}")
 
-    # ---- 1. Embedding pre-filter ----
-    _emit(50, "Embedding pre-filter", 4, f"Comparing {initial_count:,} roles against your profile semantically...")
+    # ---- 0. Cross-run JD score cache check (v0.3.9) ----
+    # Before any scoring stages run, check the persistent cache for roles
+    # we've already scored against this exact profile within the last 7
+    # days. Cache hits skip Stage 2 + Stage 3 entirely.
+    from backend.scoring import jd_score_cache
+    profile_dump_for_hash = (
+        profile.model_dump(mode="json") if hasattr(profile, "model_dump") else {}
+    )
+    prof_hash = jd_score_cache.profile_hash(profile_dump_for_hash)
+    cache_hits: list[Role] = []
+    cache_misses: list[Role] = []
+    for r in roles:
+        cached = jd_score_cache.lookup(prof_hash, r)
+        if cached:
+            jd_score_cache.apply_to_role(r, cached)
+            cache_hits.append(r)
+        else:
+            cache_misses.append(r)
+    if log:
+        print(f"[orchestrator] JD score cache: {len(cache_hits)} hits, "
+              f"{len(cache_misses)} misses (saving ${len(cache_hits)*0.006:.3f})")
+
+    # ---- 1. Embedding pre-filter (only on cache misses) ----
+    _emit(50, "Embedding pre-filter", 4, f"Comparing {len(cache_misses):,} new roles against your profile semantically (skipped {len(cache_hits)} cached)...")
     if hasattr(client, "current_stage"):
         client.current_stage = "embedding"  # type: ignore[attr-defined]
     after_embed = await filter_roles_by_embedding(
         profile=profile,
-        roles=roles,
+        roles=cache_misses,
         keep_fraction=embed_keep_fraction,
         max_roles=embed_max_roles,
         client=client,
     )
     if log:
-        print(f"[orchestrator] after embedding pre-filter: {len(after_embed)} / {initial_count}")
+        print(f"[orchestrator] after embedding pre-filter: {len(after_embed)} / {len(cache_misses)}")
 
     # ---- 2. Stage 1 LLM pre-filter ----
     _emit(60, "Scoring with AI cascade", 5, f"Stage 1 anti-pattern check on {len(after_embed)} roles (Flash)...")
@@ -276,15 +312,38 @@ async def score_roles(
     if log:
         print(f"[orchestrator] after Stage 3: {s3_count} deep-evaluated")
 
+    # ---- Reunite cache hits with newly-scored roles ----
+    # The cache hits we identified at Phase 0 need to be merged back into
+    # the scored pool. They already have full final_score / final_tier from
+    # cache, so they bypass the finalize step.
+    scored = scored + cache_hits
+
     # ---- 5. Finalize scores + backfill salary + apply realism penalty ----
     # We backpop salary FIRST so the realism penalty in _finalize_score sees
     # any LLM-extracted salary that wasn't in the structured fields.
+    # Cache-hit roles already have final_score; finalize is idempotent for them.
     for r in scored:
         _backpop_salary_from_reasoning(r)
         _finalize_score(r, profile=profile)
 
     qualifying = [r for r in scored if (r.final_score or 0) >= 40]
     qualifying.sort(key=lambda r: r.final_score or 0, reverse=True)
+
+    # ---- 5b. Persist newly-scored roles to JD score cache (v0.3.9) ----
+    # Skip cache hits (already in cache). Only store roles that went
+    # through Stage 2/3 this run.
+    cache_hit_keys = {id(r) for r in cache_hits}
+    cache_stored = 0
+    for r in qualifying:
+        if id(r) in cache_hit_keys:
+            continue
+        try:
+            jd_score_cache.store(prof_hash, r)
+            cache_stored += 1
+        except Exception:
+            pass  # cache failures shouldn't break the run
+    if log and cache_stored:
+        print(f"[orchestrator] cached {cache_stored} new role scores for cross-run reuse")
 
     # ---- Build run summary ----
     duration = int(time.perf_counter() - started_at)

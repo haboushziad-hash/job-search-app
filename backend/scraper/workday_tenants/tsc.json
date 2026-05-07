@@ -1,0 +1,24 @@
+{
+  "display_name": "Tractor Supply Company",
+  "careers_url": "https://tsc.wd12.myworkdayjobs.com/TSC-Careers",
+  "status": "OK",
+  "reason": "",
+  "elapsed": 0.59,
+  "captured": {
+    "url": "https://tsc.wd12.myworkdayjobs.com/wday/cxs/tsc/TSC-Careers/jobs",
+    "method": "POST",
+    "request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+    "headers": {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+      "Accept": "application/json",
+      "Content-Type": "application/json"
+    },
+    "input_selector_used": ""
+  },
+  "_grinder_meta": {
+    "discovered_at": "2026-05-07T20:24:10.483596+00:00",
+    "industry_hint": "dmv",
+    "active_role_count_at_discovery": 81,
+    "discovered_via": "bing-via-serper"
+  }
+}

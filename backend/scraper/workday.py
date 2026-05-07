@@ -154,11 +154,13 @@ class WorkdayScraper(BaseScraper):
         posted_within_days: Optional[int] = 30,
     ) -> list[Role]:
         # Workday tenants are independent — fan out across all tenants × keywords
-        # Concurrency cap (max 12 in-flight) prevents the whole pipeline from
-        # stalling when 1-2 slow tenants would otherwise hold up `gather()`.
-        # Per-tenant-keyword timeout (30s wall-clock, was 45s) ensures one slow
-        # tenant can't hang the run.
-        sem = asyncio.Semaphore(12)
+        # v0.3.9: bumped concurrency 12 → 20 per peer review. At 200+ tenants
+        # (post-grinder integration), 12-concurrency = ~30 second wall-clock for
+        # Workday phase alone. 20-concurrency = ~18s wall-clock at 200 tenants,
+        # ~45s at 500 tenants (auto-grind v3.10 scale). Per-tenant API still
+        # gets respected (no more than ~1 in-flight per tenant due to sequential
+        # keyword loop). Per-tenant-keyword timeout (30s wall-clock) preserved.
+        sem = asyncio.Semaphore(20)
 
         # Per-tenant 500-error tracker. If a tenant returns 500 to >=3 keyword
         # queries in a row, skip remaining keywords for that tenant. Run 3

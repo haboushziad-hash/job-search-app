@@ -1,0 +1,24 @@
+{
+  "display_name": "Memorial Hermann Health",
+  "careers_url": "https://memorialhermann.wd5.myworkdayjobs.com/external",
+  "status": "OK",
+  "reason": "",
+  "elapsed": 0.45,
+  "captured": {
+    "url": "https://memorialhermann.wd5.myworkdayjobs.com/wday/cxs/memorialhermann/external/jobs",
+    "method": "POST",
+    "request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+    "headers": {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+      "Accept": "application/json",
+      "Content-Type": "application/json"
+    },
+    "input_selector_used": ""
+  },
+  "_grinder_meta": {
+    "discovered_at": "2026-05-07T20:25:51.809260+00:00",
+    "industry_hint": "dmv",
+    "active_role_count_at_discovery": 528,
+    "discovered_via": "bing-via-serper"
+  }
+}

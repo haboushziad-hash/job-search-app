@@ -1,0 +1,24 @@
+{
+  "display_name": "Workday HCM Portal (multi-tenant)",
+  "careers_url": "https://hcmportal.wd5.myworkdayjobs.com/Search",
+  "status": "OK",
+  "reason": "",
+  "elapsed": 2.33,
+  "captured": {
+    "url": "https://hcmportal.wd5.myworkdayjobs.com/wday/cxs/hcmportal/Search/jobs",
+    "method": "POST",
+    "request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+    "headers": {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+      "Accept": "application/json",
+      "Content-Type": "application/json"
+    },
+    "input_selector_used": ""
+  },
+  "_grinder_meta": {
+    "discovered_at": "2026-05-07T20:25:08.196099+00:00",
+    "industry_hint": "dmv",
+    "active_role_count_at_discovery": 1446,
+    "discovered_via": "bing-via-serper"
+  }
+}

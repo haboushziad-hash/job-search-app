@@ -1,0 +1,3057 @@
+{
+  "summary": {
+    "started_at": "2026-05-07T20:20:20.207170+00:00",
+    "finished_at": "2026-05-07T20:26:24.766222+00:00",
+    "duration_seconds": 364.6,
+    "serper_queries_run": 46,
+    "dataforseo_queries_run": 6,
+    "candidates_found": 146,
+    "candidates_validated": 107,
+    "candidates_failed": 39,
+    "duplicates_skipped": 0,
+    "queries_per_industry": {
+      "richmond": 18,
+      "dmv": 28
+    },
+    "candidates_per_industry": {
+      "richmond": 61,
+      "dmv": 85
+    },
+    "cost_estimate_usd": 0.0036,
+    "by_industry": {
+      "Government Contracting": 4,
+      "Healthcare/Pharma": 9,
+      "Insurance": 6,
+      "Unclassified (richmond)": 24,
+      "Tech": 8,
+      "Retail/CPG": 5,
+      "Energy": 1,
+      "Industrial/Manufacturing": 11,
+      "Unclassified (dmv)": 39
+    },
+    "validated_workday": 107,
+    "validated_icims": 0,
+    "total_validated": 107
+  },
+  "workday_new": [
+    {
+      "ats": "workday",
+      "tenant_id": "ngc",
+      "display_name": "Ngc",
+      "careers_url": "https://ngc.wd1.myworkdayjobs.com/Northrop_Grumman_External_Site",
+      "cxs_url": "https://ngc.wd1.myworkdayjobs.com/wday/cxs/ngc/Northrop_Grumman_External_Site/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 2454,
+      "industry": "Industrial/Manufacturing",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Sr. Staff Systems Data Architect",
+        "Associate Supply Chain Procurement Specialist",
+        "Document Control Security Specialist 3/4"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:25:31.605349+00:00",
+      "elapsed_seconds": 1.43,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "asmglobal",
+      "display_name": "Asmglobal",
+      "careers_url": "https://asmglobal.wd1.myworkdayjobs.com/Careers",
+      "cxs_url": "https://asmglobal.wd1.myworkdayjobs.com/wday/cxs/asmglobal/Careers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 2329,
+      "industry": "Unclassified (richmond)",
+      "industry_hint": "richmond",
+      "sample_titles": [
+        "Premium Services & Catering Supervisor - Baxter Arena",
+        "Guest Experience Training Manager",
+        "Warehouse Supervisor"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:21:11.798672+00:00",
+      "elapsed_seconds": 0.63,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "dickssportinggoods",
+      "display_name": "Dickssportinggoods",
+      "careers_url": "https://dickssportinggoods.wd1.myworkdayjobs.com/DSG",
+      "cxs_url": "https://dickssportinggoods.wd1.myworkdayjobs.com/wday/cxs/dickssportinggoods/DSG/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 2000,
+      "industry": "Tech",
+      "industry_hint": "richmond",
+      "sample_titles": [
+        "Software Engineer II - Merchandising",
+        "Legal Analyst - Real Estate",
+        "Retail Customer Service Specialist"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:21:30.680126+00:00",
+      "elapsed_seconds": 0.96,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "cw",
+      "display_name": "Cw",
+      "careers_url": "https://cw.wd1.myworkdayjobs.com/External",
+      "cxs_url": "https://cw.wd1.myworkdayjobs.com/wday/cxs/cw/External/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 2000,
+      "industry": "Unclassified (richmond)",
+      "industry_hint": "richmond",
+      "sample_titles": [
+        "Project Manager (Data Centre)",
+        "Project Scheduler (Data Centre)",
+        "Facility Coordinator"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:21:46.458996+00:00",
+      "elapsed_seconds": 1.64,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "petco",
+      "display_name": "Petco",
+      "careers_url": "https://petco.wd1.myworkdayjobs.com/External",
+      "cxs_url": "https://petco.wd1.myworkdayjobs.com/wday/cxs/petco/External/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 2000,
+      "industry": "Unclassified (dmv)",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Associate Veterinarian",
+        "Associate Veterinarian",
+        "Global Sourcing Manager"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:26:23.246697+00:00",
+      "elapsed_seconds": 1.36,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "leidos",
+      "display_name": "Leidos",
+      "careers_url": "https://leidos.wd5.myworkdayjobs.com/External",
+      "cxs_url": "https://leidos.wd5.myworkdayjobs.com/wday/cxs/leidos/External/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 1995,
+      "industry": "Unclassified (dmv)",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Financial Services Budget Execution/Voucher Analyst",
+        "Operations Manager",
+        "Senior IT Infrastructure Manager"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:24:01.872446+00:00",
+      "elapsed_seconds": 1.83,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "redrobin",
+      "display_name": "Redrobin",
+      "careers_url": "https://redrobin.wd1.myworkdayjobs.com/RedRobin_Careers",
+      "cxs_url": "https://redrobin.wd1.myworkdayjobs.com/wday/cxs/redrobin/RedRobin_Careers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 1928,
+      "industry": "Unclassified (richmond)",
+      "industry_hint": "richmond",
+      "sample_titles": [
+        "Restaurant Service Manager",
+        "Restaurant Kitchen Manager",
+        "Restaurant Service Manager"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:22:15.440532+00:00",
+      "elapsed_seconds": 1.16,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "bah",
+      "display_name": "Bah",
+      "careers_url": "https://bah.wd1.myworkdayjobs.com/BAH_Jobs",
+      "cxs_url": "https://bah.wd1.myworkdayjobs.com/wday/cxs/bah/BAH_Jobs/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 1859,
+      "industry": "Unclassified (richmond)",
+      "industry_hint": "richmond",
+      "sample_titles": [
+        "Agile Coach and Transformation Lead",
+        "Program Manager, Lead",
+        "Cyber Automation Engineer"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:21:49.090714+00:00",
+      "elapsed_seconds": 1.32,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "tapestry",
+      "display_name": "Tapestry",
+      "careers_url": "https://tapestry.wd108.myworkdayjobs.com/Tapestry_Careers",
+      "cxs_url": "https://tapestry.wd108.myworkdayjobs.com/wday/cxs/tapestry/Tapestry_Careers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 1616,
+      "industry": "Unclassified (dmv)",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Sales Associate III",
+        "Temporary Sales Associate",
+        "Sales Associate III"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:23:54.796179+00:00",
+      "elapsed_seconds": 0.51,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "capitalone",
+      "display_name": "Capitalone",
+      "careers_url": "https://capitalone.wd12.myworkdayjobs.com/Capital_One",
+      "cxs_url": "https://capitalone.wd12.myworkdayjobs.com/wday/cxs/capitalone/Capital_One/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 1514,
+      "industry": "Tech",
+      "industry_hint": "richmond",
+      "sample_titles": [
+        "Principal Associate, Front End Design Systems",
+        "Sr. Director, Chief of Staff",
+        "Principal Associate Software Engineer - International Card Tech - Android"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:21:52.294404+00:00",
+      "elapsed_seconds": 0.42,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "wawa",
+      "display_name": "Wawa",
+      "careers_url": "https://wawa.wd1.myworkdayjobs.com/Careers",
+      "cxs_url": "https://wawa.wd1.myworkdayjobs.com/wday/cxs/wawa/Careers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 1472,
+      "industry": "Unclassified (richmond)",
+      "industry_hint": "richmond",
+      "sample_titles": [
+        "Credit Card Analyst",
+        "Customer Service Associate",
+        "Customer Service Associate"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:20:55.537662+00:00",
+      "elapsed_seconds": 1.33,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "kbr",
+      "display_name": "Kbr",
+      "careers_url": "https://kbr.wd5.myworkdayjobs.com/KBR_Careers",
+      "cxs_url": "https://kbr.wd5.myworkdayjobs.com/wday/cxs/kbr/KBR_Careers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 1460,
+      "industry": "Healthcare/Pharma",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Special Operations Cognitive Enhancement Practitioner (SOCEUR, Stuttgart, Germany)",
+        "Operational Requirements Analyst - Gatekeeper",
+        "AFCAP V ADAB DFAC: Site Manager (Secret Clearance)"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:24:12.839528+00:00",
+      "elapsed_seconds": 1.13,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "hcmportal",
+      "display_name": "Hcmportal",
+      "careers_url": "https://hcmportal.wd5.myworkdayjobs.com/Search",
+      "cxs_url": "https://hcmportal.wd5.myworkdayjobs.com/wday/cxs/hcmportal/Search/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 1446,
+      "industry": "Unclassified (dmv)",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Solutions Engagement Consultant",
+        "PT Supervisor Revenue Recovery",
+        "Hub Team Leader"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:25:08.196099+00:00",
+      "elapsed_seconds": 2.33,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "vca",
+      "display_name": "Vca",
+      "careers_url": "https://vca.wd1.myworkdayjobs.com/Careers",
+      "cxs_url": "https://vca.wd1.myworkdayjobs.com/wday/cxs/vca/Careers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 1429,
+      "industry": "Unclassified (dmv)",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Registered Veterinary Technician",
+        "Associate Veterinarian",
+        "Relief Veterinary Technician"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:24:46.714073+00:00",
+      "elapsed_seconds": 2.73,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "flextronics",
+      "display_name": "Flextronics",
+      "careers_url": "https://flextronics.wd1.myworkdayjobs.com/Careers",
+      "cxs_url": "https://flextronics.wd1.myworkdayjobs.com/wday/cxs/flextronics/Careers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 1275,
+      "industry": "Unclassified (richmond)",
+      "industry_hint": "richmond",
+      "sample_titles": [
+        "Equipment Maintenance Technician",
+        "Business Development Associate",
+        "Debug Technician"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:21:05.428711+00:00",
+      "elapsed_seconds": 2.11,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "bmo",
+      "display_name": "Bmo",
+      "careers_url": "https://bmo.wd3.myworkdayjobs.com/External",
+      "cxs_url": "https://bmo.wd3.myworkdayjobs.com/wday/cxs/bmo/External/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 1256,
+      "industry": "Unclassified (richmond)",
+      "industry_hint": "richmond",
+      "sample_titles": [
+        "Agile Delivery Manager",
+        "Business Banking Relationship Manager Trainee",
+        "Customer Service Representative"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:23:28.594461+00:00",
+      "elapsed_seconds": 1.19,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "carmax",
+      "display_name": "Carmax",
+      "careers_url": "https://carmax.wd1.myworkdayjobs.com/External",
+      "cxs_url": "https://carmax.wd1.myworkdayjobs.com/wday/cxs/carmax/External/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 1197,
+      "industry": "Unclassified (richmond)",
+      "industry_hint": "richmond",
+      "sample_titles": [
+        "Engineer II, Data",
+        "Automotive Technician Overnight Shift",
+        "Engineer II, Software"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:21:32.534995+00:00",
+      "elapsed_seconds": 1.05,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "bjswholesaleclub",
+      "display_name": "Bjswholesaleclub",
+      "careers_url": "https://bjswholesaleclub.wd1.myworkdayjobs.com/BJsCareers",
+      "cxs_url": "https://bjswholesaleclub.wd1.myworkdayjobs.com/wday/cxs/bjswholesaleclub/BJsCareers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 1169,
+      "industry": "Unclassified (richmond)",
+      "industry_hint": "richmond",
+      "sample_titles": [
+        "Assistant Overnight Manager \u2013 Forklift Experience Required",
+        "Full Time Deli Clerk",
+        "Part Time Deli Clerk"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:21:50.191447+00:00",
+      "elapsed_seconds": 1.1,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "signetjewelers",
+      "display_name": "Signetjewelers",
+      "careers_url": "https://signetjewelers.wd1.myworkdayjobs.com/Kay_Jewelers",
+      "cxs_url": "https://signetjewelers.wd1.myworkdayjobs.com/wday/cxs/signetjewelers/Kay_Jewelers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 1146,
+      "industry": "Retail/CPG",
+      "industry_hint": "richmond",
+      "sample_titles": [
+        "Assistant Store Manager - Kay Jewelers Outlet - Fashion Outlets Niagara Falls USA",
+        "Assistant Store Manager - Kay Jewelers Outlet - Tanger Outlet Center - Riverhead",
+        "Store Manager - Kay Jewelers - Hobby Lobby Plaza"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:21:40.567838+00:00",
+      "elapsed_seconds": 0.97,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "ms",
+      "display_name": "Ms",
+      "careers_url": "https://ms.wd5.myworkdayjobs.com/private",
+      "cxs_url": "https://ms.wd5.myworkdayjobs.com/wday/cxs/ms/private/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 1016,
+      "industry": "Tech",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Intern",
+        "PWM Analyst",
+        ""
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:24:07.103970+00:00",
+      "elapsed_seconds": 1.22,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "cisco",
+      "display_name": "Cisco",
+      "careers_url": "https://cisco.wd5.myworkdayjobs.com/Cisco_Careers",
+      "cxs_url": "https://cisco.wd5.myworkdayjobs.com/wday/cxs/cisco/Cisco_Careers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 987,
+      "industry": "Unclassified (dmv)",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Principal Digital Design Lead",
+        "Product Manager",
+        "HW Post-Silicon Validation Engineer"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:23:54.286321+00:00",
+      "elapsed_seconds": 0.61,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "myhrabc",
+      "display_name": "Myhrabc",
+      "careers_url": "https://myhrabc.wd5.myworkdayjobs.com/Global",
+      "cxs_url": "https://myhrabc.wd5.myworkdayjobs.com/wday/cxs/myhrabc/Global/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 879,
+      "industry": "Healthcare/Pharma",
+      "industry_hint": "richmond",
+      "sample_titles": [
+        "Industrial Automation Technician III",
+        "Industrial Electrical Technician III",
+        "Industrial Maintenance Technician III"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:21:26.048457+00:00",
+      "elapsed_seconds": 0.94,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "fifththird",
+      "display_name": "Fifththird",
+      "careers_url": "https://fifththird.wd5.myworkdayjobs.com/53careers",
+      "cxs_url": "https://fifththird.wd5.myworkdayjobs.com/wday/cxs/fifththird/53careers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 876,
+      "industry": "Retail/CPG",
+      "industry_hint": "richmond",
+      "sample_titles": [
+        "Retail Personal Banker l - Cincinnati (Hamilton County)",
+        "Fraud Business Analyst",
+        "Commercial Middle Market Team Lead"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:23:25.712470+00:00",
+      "elapsed_seconds": 1.22,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "intel",
+      "display_name": "Intel",
+      "careers_url": "https://intel.wd1.myworkdayjobs.com/External",
+      "cxs_url": "https://intel.wd1.myworkdayjobs.com/wday/cxs/intel/External/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 793,
+      "industry": "Unclassified (dmv)",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Sr. Infrastructure Engineer \u2013 Linux OS",
+        "Software Application Development Engineer Grade",
+        "Senior Applications and Solutions Engineer - Foundry Services"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:26:24.264699+00:00",
+      "elapsed_seconds": 1.02,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "geaerospace",
+      "display_name": "Geaerospace",
+      "careers_url": "https://geaerospace.wd5.myworkdayjobs.com/GE_ExternalSite",
+      "cxs_url": "https://geaerospace.wd5.myworkdayjobs.com/wday/cxs/geaerospace/GE_ExternalSite/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 737,
+      "industry": "Industrial/Manufacturing",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Operator/Operatorka Proces\u00f3w Termicznych \u2013 piece pr\u00f3\u017cniowe (k/m/x)",
+        "Training Leader",
+        "Executive HR Business Partner \u2013 Legal & Compliance and Transformation Office"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:25:33.789035+00:00",
+      "elapsed_seconds": 0.71,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "guidehouse",
+      "display_name": "Guidehouse",
+      "careers_url": "https://guidehouse.wd1.myworkdayjobs.com/External",
+      "cxs_url": "https://guidehouse.wd1.myworkdayjobs.com/wday/cxs/guidehouse/External/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 701,
+      "industry": "Government Contracting",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Hospital Admissions Rep - Night  Shift, Full Time Onsite",
+        "Federal Financial Management Modernization Project Lead",
+        "IT Project Manager"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:23:50.569287+00:00",
+      "elapsed_seconds": 1.02,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "mars",
+      "display_name": "Mars",
+      "careers_url": "https://mars.wd3.myworkdayjobs.com/External",
+      "cxs_url": "https://mars.wd3.myworkdayjobs.com/wday/cxs/mars/External/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 655,
+      "industry": "Industrial/Manufacturing",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Customer Development Analyst",
+        "Cat Caretaker",
+        "Gerente de Quality & Food Safety (Q&FS)"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:23:56.647508+00:00",
+      "elapsed_seconds": 1.38,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "pg",
+      "display_name": "Pg",
+      "careers_url": "https://pg.wd5.myworkdayjobs.com/1000",
+      "cxs_url": "https://pg.wd5.myworkdayjobs.com/wday/cxs/pg/1000/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 623,
+      "industry": "Industrial/Manufacturing",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Creative Project Manager - Beauty Care",
+        "Manufacturing Co-Op",
+        "T\u00e9cnico de Produ\u00e7\u00e3o | Louveira/SP"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:25:22.250722+00:00",
+      "elapsed_seconds": 1.91,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "mymvw",
+      "display_name": "Mymvw",
+      "careers_url": "https://mymvw.wd5.myworkdayjobs.com/mvw",
+      "cxs_url": "https://mymvw.wd5.myworkdayjobs.com/wday/cxs/mymvw/mvw/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 534,
+      "industry": "Unclassified (dmv)",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Food & Beverage Attendant",
+        "Supervisor Ops Front Desk",
+        "Customer Care Specialist (Bilingual Japanese/English) $30.49/hr"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:25:38.618814+00:00",
+      "elapsed_seconds": 1.32,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "memorialhermann",
+      "display_name": "Memorialhermann",
+      "careers_url": "https://memorialhermann.wd5.myworkdayjobs.com/external",
+      "cxs_url": "https://memorialhermann.wd5.myworkdayjobs.com/wday/cxs/memorialhermann/external/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 528,
+      "industry": "Healthcare/Pharma",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Registered Nurse Full Time Medical Surgical",
+        "RN-Critical Care IMCU-FT, Days (Memorial City)",
+        "RN - Medical Surgical, PT Days (Pearland)"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:25:51.809260+00:00",
+      "elapsed_seconds": 0.45,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "crateandbarrel",
+      "display_name": "Crateandbarrel",
+      "careers_url": "https://crateandbarrel.wd1.myworkdayjobs.com/CBH",
+      "cxs_url": "https://crateandbarrel.wd1.myworkdayjobs.com/wday/cxs/crateandbarrel/CBH/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 513,
+      "industry": "Retail/CPG",
+      "industry_hint": "richmond",
+      "sample_titles": [
+        "Assistant Store Leader, Operations",
+        "Designer",
+        "Sales Associate"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:21:39.596556+00:00",
+      "elapsed_seconds": 0.74,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "druryhotels",
+      "display_name": "Druryhotels",
+      "careers_url": "https://druryhotels.wd5.myworkdayjobs.com/druryjobs",
+      "cxs_url": "https://druryhotels.wd5.myworkdayjobs.com/wday/cxs/druryhotels/druryjobs/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 508,
+      "industry": "Unclassified (richmond)",
+      "industry_hint": "richmond",
+      "sample_titles": [
+        "Maintenance Technician II",
+        "Assistant General Manager",
+        "Hotel Maintenance Technician - Plaza North Stone Oak"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:21:18.914117+00:00",
+      "elapsed_seconds": 1.04,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "bdx",
+      "display_name": "Bdx",
+      "careers_url": "https://bdx.wd1.myworkdayjobs.com/EXTERNAL_CAREER_SITE_USA",
+      "cxs_url": "https://bdx.wd1.myworkdayjobs.com/wday/cxs/bdx/EXTERNAL_CAREER_SITE_USA/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 508,
+      "industry": "Healthcare/Pharma",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Director, Clinical Partnerships & Solutions",
+        "\u00a0Electro-Mechanical Technician - D Shift",
+        "R&D Test Engineer II"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:25:49.620196+00:00",
+      "elapsed_seconds": 1.51,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "erickson",
+      "display_name": "Erickson",
+      "careers_url": "https://erickson.wd108.myworkdayjobs.com/External",
+      "cxs_url": "https://erickson.wd108.myworkdayjobs.com/wday/cxs/erickson/External/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 505,
+      "industry": "Unclassified (dmv)",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Activities Assistant",
+        "Shuttle Driver",
+        "Dishwasher/Kitchen Worker (Part-Time)"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:24:43.984732+00:00",
+      "elapsed_seconds": 0.65,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "aritzia",
+      "display_name": "Aritzia",
+      "careers_url": "https://aritzia.wd3.myworkdayjobs.com/External",
+      "cxs_url": "https://aritzia.wd3.myworkdayjobs.com/wday/cxs/aritzia/External/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 462,
+      "industry": "Unclassified (dmv)",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Transformation Management Office - Operations Opportunities",
+        "Food & Beverage - Barista, Overnight - A-OK Caf\u00e9 (Front of House)",
+        "Food & Beverage - Service Associate, Overnight - A-OK Commissary ( Front of House)"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:23:49.545873+00:00",
+      "elapsed_seconds": 4.28,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "townepark",
+      "display_name": "Townepark",
+      "careers_url": "https://townepark.wd5.myworkdayjobs.com/ext",
+      "cxs_url": "https://townepark.wd5.myworkdayjobs.com/wday/cxs/townepark/ext/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 454,
+      "industry": "Unclassified (dmv)",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Valet Attendant \u2013 Dossier $16.50 - $17.50/HR + Tips",
+        "Valet Attendant \u2013 Hilton Vacation Club Lake Tahoe Resort $16.90/HR + Tips",
+        "Resort Bell Attendant - JW Marriott San Antonio Hill Country Resort & Spa"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:25:44.020765+00:00",
+      "elapsed_seconds": 0.66,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "vcuhealth",
+      "display_name": "Vcuhealth",
+      "careers_url": "https://vcuhealth.wd1.myworkdayjobs.com/VCUHealth_careers",
+      "cxs_url": "https://vcuhealth.wd1.myworkdayjobs.com/wday/cxs/vcuhealth/VCUHealth_careers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 403,
+      "industry": "Healthcare/Pharma",
+      "industry_hint": "richmond",
+      "sample_titles": [
+        "Certified Medical Assistant (CMA) - Float Pool - Days",
+        "Registered Nurse - Orthopedic Specialty - Days",
+        "Sonographer II - Children's Hospital of Richmond - Rotating"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:20:22.912300+00:00",
+      "elapsed_seconds": 0.54,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "reitmr",
+      "display_name": "Reitmr",
+      "careers_url": "https://reitmr.wd5.myworkdayjobs.com/Sonesta",
+      "cxs_url": "https://reitmr.wd5.myworkdayjobs.com/wday/cxs/reitmr/Sonesta/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 402,
+      "industry": "Unclassified (dmv)",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Group Housing Coordinator",
+        "Senior Account Director - Group Sales",
+        "Housekeeping Manager"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:25:43.363384+00:00",
+      "elapsed_seconds": 0.89,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "warnerbros",
+      "display_name": "Warnerbros",
+      "careers_url": "https://warnerbros.wd5.myworkdayjobs.com/global",
+      "cxs_url": "https://warnerbros.wd5.myworkdayjobs.com/wday/cxs/warnerbros/global/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 391,
+      "industry": "Unclassified (dmv)",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Editor-Writer, Wellness CNN",
+        "Machine Learning Engineer II, CNN Digital Products and Services",
+        "Data Engineer I,  CNN Digital Products and Services"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:26:18.807012+00:00",
+      "elapsed_seconds": 1.24,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "workday",
+      "display_name": "Workday",
+      "careers_url": "https://workday.wd5.myworkdayjobs.com/Workday",
+      "cxs_url": "https://workday.wd5.myworkdayjobs.com/wday/cxs/workday/Workday/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 390,
+      "industry": "Unclassified (richmond)",
+      "industry_hint": "richmond",
+      "sample_titles": [
+        "Sr Associate Deal Ops Manager, Net New",
+        "Principal Machine Learning Engineer",
+        "Technical Project Manager - Hiredscore"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:21:35.090772+00:00",
+      "elapsed_seconds": 2.56,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "moog",
+      "display_name": "Moog",
+      "careers_url": "https://moog.wd5.myworkdayjobs.com/MOOG_External_Career_Site",
+      "cxs_url": "https://moog.wd5.myworkdayjobs.com/wday/cxs/moog/MOOG_External_Career_Site/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 373,
+      "industry": "Unclassified (dmv)",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Intern, Operations",
+        "Staff Project Engineer",
+        "Electrical Engineering Manager"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:25:34.361914+00:00",
+      "elapsed_seconds": 0.57,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "geico",
+      "display_name": "Geico",
+      "careers_url": "https://geico.wd1.myworkdayjobs.com/External",
+      "cxs_url": "https://geico.wd1.myworkdayjobs.com/wday/cxs/geico/External/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 337,
+      "industry": "Unclassified (dmv)",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Senior Product Manager, Payments-1",
+        "Senior Product Manager - Customer Identity and Access Management",
+        "Principal Product Manager - Customer Identity and Access Management"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:24:04.868208+00:00",
+      "elapsed_seconds": 1.56,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "aero",
+      "display_name": "Aero",
+      "careers_url": "https://aero.wd5.myworkdayjobs.com/External",
+      "cxs_url": "https://aero.wd5.myworkdayjobs.com/wday/cxs/aero/External/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 334,
+      "industry": "Unclassified (dmv)",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Systems Director - Space-Based Missile Defense",
+        "Satellite Systems Analyst",
+        "Section  Manager - Software Implementation and Integration"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:25:03.415975+00:00",
+      "elapsed_seconds": 0.79,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "clark",
+      "display_name": "Clark",
+      "careers_url": "https://clark.wd503.myworkdayjobs.com/ClarkExternal",
+      "cxs_url": "https://clark.wd503.myworkdayjobs.com/wday/cxs/clark/ClarkExternal/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 305,
+      "industry": "Unclassified (richmond)",
+      "industry_hint": "richmond",
+      "sample_titles": [
+        "Concrete Carpenter",
+        "Concrete Laborer",
+        "Laborer"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:20:54.209655+00:00",
+      "elapsed_seconds": 0.64,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "avav",
+      "display_name": "Avav",
+      "careers_url": "https://avav.wd1.myworkdayjobs.com/avav",
+      "cxs_url": "https://avav.wd1.myworkdayjobs.com/wday/cxs/avav/avav/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 302,
+      "industry": "Tech",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Production Supervisor",
+        "Sr. Systems Engineer",
+        "Electronic Technician"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:25:25.923186+00:00",
+      "elapsed_seconds": 0.75,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "pfg",
+      "display_name": "Pfg",
+      "careers_url": "https://pfg.wd3.myworkdayjobs.com/SaveonfoodsCareers",
+      "cxs_url": "https://pfg.wd3.myworkdayjobs.com/wday/cxs/pfg/SaveonfoodsCareers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 271,
+      "industry": "Healthcare/Pharma",
+      "industry_hint": "richmond",
+      "sample_titles": [
+        "Registered Pharmacy Technician",
+        "Pharmacy Assistant",
+        "Delivery Driver - Vernon"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:22:14.279067+00:00",
+      "elapsed_seconds": 0.86,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "conagrabrands",
+      "display_name": "Conagrabrands",
+      "careers_url": "https://conagrabrands.wd1.myworkdayjobs.com/Careers_US",
+      "cxs_url": "https://conagrabrands.wd1.myworkdayjobs.com/wday/cxs/conagrabrands/Careers_US/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 263,
+      "industry": "Industrial/Manufacturing",
+      "industry_hint": "richmond",
+      "sample_titles": [
+        "Product Lifecycle Management Specialist",
+        "General Labor",
+        "Machine Operator - 1st Shift"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:22:16.862710+00:00",
+      "elapsed_seconds": 0.87,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "wwwinc",
+      "display_name": "Wwwinc",
+      "careers_url": "https://wwwinc.wd1.myworkdayjobs.com/WWW",
+      "cxs_url": "https://wwwinc.wd1.myworkdayjobs.com/wday/cxs/wwwinc/WWW/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 254,
+      "industry": "Retail/CPG",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Contact Center AI Specialist",
+        "Senior Manager, Sales Planning - Merrell",
+        "Part Time Store Associate - Rockford Footwear Depot"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:25:09.854747+00:00",
+      "elapsed_seconds": 0.47,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "snc",
+      "display_name": "Snc",
+      "careers_url": "https://snc.wd1.myworkdayjobs.com/SNC_External_Career_Site",
+      "cxs_url": "https://snc.wd1.myworkdayjobs.com/wday/cxs/snc/SNC_External_Career_Site/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 244,
+      "industry": "Industrial/Manufacturing",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Avionics Technician IV",
+        "Aircraft Inspector IV (Deployable)",
+        "Logistics Specialist I - Inventory (Contract)"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:25:27.875316+00:00",
+      "elapsed_seconds": 0.44,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "oregon",
+      "display_name": "Oregon",
+      "careers_url": "https://oregon.wd5.myworkdayjobs.com/SOR_External_Career_Site",
+      "cxs_url": "https://oregon.wd5.myworkdayjobs.com/wday/cxs/oregon/SOR_External_Career_Site/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 201,
+      "industry": "Unclassified (dmv)",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Facility Energy Technician 3 (HVAC)",
+        "Property Appraiser Registration",
+        "Field ServicesTechnician"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:25:02.625891+00:00",
+      "elapsed_seconds": 1.4,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "markelcorp",
+      "display_name": "Markelcorp",
+      "careers_url": "https://markelcorp.wd5.myworkdayjobs.com/GlobalCareers",
+      "cxs_url": "https://markelcorp.wd5.myworkdayjobs.com/wday/cxs/markelcorp/GlobalCareers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 175,
+      "industry": "Insurance",
+      "industry_hint": "richmond",
+      "sample_titles": [
+        "Senior Claims Examiner, Construction",
+        "Senior Account Specialist - Environmental",
+        "Support Specialist:  FI"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:21:19.851793+00:00",
+      "elapsed_seconds": 0.94,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "shawinc",
+      "display_name": "Shawinc",
+      "careers_url": "https://shawinc.wd1.myworkdayjobs.com/External",
+      "cxs_url": "https://shawinc.wd1.myworkdayjobs.com/wday/cxs/shawinc/External/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 171,
+      "industry": "Industrial/Manufacturing",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Lift Truck Operator - PART TIME",
+        "Lift Truck Operator | Rugs",
+        "Beam Tufting Creeler Operator-3"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:25:19.459185+00:00",
+      "elapsed_seconds": 0.87,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "patientfirst",
+      "display_name": "Patientfirst",
+      "careers_url": "https://patientfirst.wd5.myworkdayjobs.com/PatientFirst",
+      "cxs_url": "https://patientfirst.wd5.myworkdayjobs.com/wday/cxs/patientfirst/PatientFirst/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 158,
+      "industry": "Healthcare/Pharma",
+      "industry_hint": "richmond",
+      "sample_titles": [
+        "X-ray Technologist",
+        "X-ray Technologist",
+        "Patient Service Representative"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:20:25.071233+00:00",
+      "elapsed_seconds": 0.92,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "ultra",
+      "display_name": "Ultra",
+      "careers_url": "https://ultra.wd3.myworkdayjobs.com/ultra-careers",
+      "cxs_url": "https://ultra.wd3.myworkdayjobs.com/wday/cxs/ultra/ultra-careers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 149,
+      "industry": "Government Contracting",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Manufacturing Intern (Summer 2026)",
+        "Embedded RUST Software Engineer (Clearance Required)",
+        "Sr. Human Resources Generalist"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:25:28.533458+00:00",
+      "elapsed_seconds": 0.66,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "interstate",
+      "display_name": "Interstate",
+      "careers_url": "https://interstate.wd1.myworkdayjobs.com/InterstateBatteries-Careers",
+      "cxs_url": "https://interstate.wd1.myworkdayjobs.com/wday/cxs/interstate/InterstateBatteries-Careers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 130,
+      "industry": "Unclassified (richmond)",
+      "industry_hint": "richmond",
+      "sample_titles": [
+        "Warehouse Team Member II",
+        "Dispatcher",
+        "Accounting Associate"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:21:26.892074+00:00",
+      "elapsed_seconds": 0.84,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "sierraspace",
+      "display_name": "Sierraspace",
+      "careers_url": "https://sierraspace.wd1.myworkdayjobs.com/Sierra_Space_External_Career_Site",
+      "cxs_url": "https://sierraspace.wd1.myworkdayjobs.com/wday/cxs/sierraspace/Sierra_Space_External_Career_Site/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 122,
+      "industry": "Unclassified (dmv)",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Mechanical Technician II",
+        "Sr. Accountant, Financial Reporting",
+        "Sr Program Cost Scheduling & Control Analyst - Earned Value"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:25:25.170100+00:00",
+      "elapsed_seconds": 0.65,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "mosaic",
+      "display_name": "Mosaic",
+      "careers_url": "https://mosaic.wd5.myworkdayjobs.com/mosaic",
+      "cxs_url": "https://mosaic.wd5.myworkdayjobs.com/wday/cxs/mosaic/mosaic/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 120,
+      "industry": "Unclassified (dmv)",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Electrical Engineer",
+        "Lead, Remote Control Center-1",
+        "Senior Supervisor Production, K3 Mine Operations"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:25:55.597060+00:00",
+      "elapsed_seconds": 0.97,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "aes",
+      "display_name": "Aes",
+      "careers_url": "https://aes.wd1.myworkdayjobs.com/AES_US",
+      "cxs_url": "https://aes.wd1.myworkdayjobs.com/wday/cxs/aes/AES_US/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 103,
+      "industry": "Unclassified (richmond)",
+      "industry_hint": "richmond",
+      "sample_titles": [
+        "Senior Manager, Physical Solutions - Data Center Thermal & Hybrid Origination",
+        "Team Leader, T&D Operations Training",
+        "Market Lead, Transmission Strategy (PJM)"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:22:05.446215+00:00",
+      "elapsed_seconds": 0.75,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "ameresco",
+      "display_name": "Ameresco",
+      "careers_url": "https://ameresco.wd5.myworkdayjobs.com/Ameresco",
+      "cxs_url": "https://ameresco.wd5.myworkdayjobs.com/wday/cxs/ameresco/Ameresco/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 102,
+      "industry": "Unclassified (richmond)",
+      "industry_hint": "richmond",
+      "sample_titles": [
+        "Field Supervisor",
+        "Site Safety Manager",
+        "Talent Acqusition Intern"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:22:06.286374+00:00",
+      "elapsed_seconds": 0.84,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "seic",
+      "display_name": "Seic",
+      "careers_url": "https://seic.wd1.myworkdayjobs.com/SEI_Global_Services",
+      "cxs_url": "https://seic.wd1.myworkdayjobs.com/wday/cxs/seic/SEI_Global_Services/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 97,
+      "industry": "Insurance",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Supervisor, Alternative Investment Funds (HYBRID)",
+        "Supervisor, Investment Fund Services",
+        "Controls Analyst"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:25:01.223781+00:00",
+      "elapsed_seconds": 0.69,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "freddiemac",
+      "display_name": "Freddiemac",
+      "careers_url": "https://freddiemac.wd5.myworkdayjobs.com/External",
+      "cxs_url": "https://freddiemac.wd5.myworkdayjobs.com/wday/cxs/freddiemac/External/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 94,
+      "industry": "Tech",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Seller Credit Risk Manager",
+        "Cloud Security Architect Lead",
+        "Software Engineering, Mgr"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:26:07.401917+00:00",
+      "elapsed_seconds": 0.86,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "web",
+      "display_name": "Web",
+      "careers_url": "https://web.wd1.myworkdayjobs.com/ExternalCareerSite",
+      "cxs_url": "https://web.wd1.myworkdayjobs.com/wday/cxs/web/ExternalCareerSite/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 89,
+      "industry": "Tech",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "IT Service Operations Analyst",
+        "Senior Java Software Engineer",
+        "Vaga Afirmativa para PCD - Assistente de Suporte N1 Financeiro"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:25:22.889726+00:00",
+      "elapsed_seconds": 0.64,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "alcoa",
+      "display_name": "Alcoa",
+      "careers_url": "https://alcoa.wd5.myworkdayjobs.com/Careers",
+      "cxs_url": "https://alcoa.wd5.myworkdayjobs.com/wday/cxs/alcoa/Careers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 88,
+      "industry": "Unclassified (richmond)",
+      "industry_hint": "richmond",
+      "sample_titles": [
+        "HR Specialist - Lake Charles",
+        "Ing\u00e9nieur(e) \u2013 Int\u00e9grit\u00e9 et des actifs",
+        "Resource and Reserve Planning Manager"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:22:33.756808+00:00",
+      "elapsed_seconds": 1.27,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "rwlasvegas",
+      "display_name": "Rwlasvegas",
+      "careers_url": "https://rwlasvegas.wd501.myworkdayjobs.com/RWLV_External_Careers",
+      "cxs_url": "https://rwlasvegas.wd501.myworkdayjobs.com/wday/cxs/rwlasvegas/RWLV_External_Careers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 85,
+      "industry": "Unclassified (dmv)",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Vice President, Korean Marketing",
+        "Director, Far East Marketing",
+        "HR Manager, Team Member & Labor Relations"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:25:44.665963+00:00",
+      "elapsed_seconds": 0.65,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "rb",
+      "display_name": "Rb",
+      "careers_url": "https://rb.wd5.myworkdayjobs.com/FRS",
+      "cxs_url": "https://rb.wd5.myworkdayjobs.com/wday/cxs/rb/FRS/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 81,
+      "industry": "Government Contracting",
+      "industry_hint": "richmond",
+      "sample_titles": [
+        "Site Reliability Analyst",
+        "Federal Reserve Financial Services Software Engineer I",
+        "Principal Architect - Money and Payments R&D"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:20:22.370010+00:00",
+      "elapsed_seconds": 0.92,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "tsc",
+      "display_name": "Tsc",
+      "careers_url": "https://tsc.wd12.myworkdayjobs.com/TSC-Careers",
+      "cxs_url": "https://tsc.wd12.myworkdayjobs.com/wday/cxs/tsc/TSC-Careers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 81,
+      "industry": "Unclassified (dmv)",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Temporary Assembler",
+        "Senior Hardware Design Engineer",
+        "Recruiting Manager"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:24:10.483596+00:00",
+      "elapsed_seconds": 0.59,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "cartech",
+      "display_name": "Cartech",
+      "careers_url": "https://cartech.wd5.myworkdayjobs.com/CTCExternal",
+      "cxs_url": "https://cartech.wd5.myworkdayjobs.com/wday/cxs/cartech/CTCExternal/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 79,
+      "industry": "Unclassified (dmv)",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "MACHINIST APPRENTICE - RESUME REQUIRED",
+        "Mobile Equipment PM Technician - RESUME REQUIRED",
+        "Electrician"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:25:13.919446+00:00",
+      "elapsed_seconds": 0.83,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "enbridge",
+      "display_name": "Enbridge",
+      "careers_url": "https://enbridge.wd3.myworkdayjobs.com/enbridge_careers",
+      "cxs_url": "https://enbridge.wd3.myworkdayjobs.com/wday/cxs/enbridge/enbridge_careers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 76,
+      "industry": "Unclassified (richmond)",
+      "industry_hint": "richmond",
+      "sample_titles": [
+        "Sr Legal Counsel",
+        "Mechanical Technician II",
+        "Regulatory Compliance Engineer Specialist"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:22:04.691813+00:00",
+      "elapsed_seconds": 1.05,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "outrigger",
+      "display_name": "Outrigger",
+      "careers_url": "https://outrigger.wd5.myworkdayjobs.com/OutriggerEnterprisesGroup",
+      "cxs_url": "https://outrigger.wd5.myworkdayjobs.com/wday/cxs/outrigger/OutriggerEnterprisesGroup/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 75,
+      "industry": "Unclassified (dmv)",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Line Cook",
+        "Assistant F&B Outlets Manager",
+        "Bartender - Piko"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:25:45.575039+00:00",
+      "elapsed_seconds": 0.91,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "dukeenergy",
+      "display_name": "Dukeenergy",
+      "careers_url": "https://dukeenergy.wd1.myworkdayjobs.com/search",
+      "cxs_url": "https://dukeenergy.wd1.myworkdayjobs.com/wday/cxs/dukeenergy/search/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 72,
+      "industry": "Unclassified (richmond)",
+      "industry_hint": "richmond",
+      "sample_titles": [
+        "Engineering Technologist I or II",
+        "Senior Nuclear Engineer/Nuclear Engineer III",
+        "Nuclear Engineer III or Senior Fuels PUMA"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:22:02.746225+00:00",
+      "elapsed_seconds": 0.99,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "richmond",
+      "display_name": "Richmond",
+      "careers_url": "https://richmond.wd5.myworkdayjobs.com/staff_faculty",
+      "cxs_url": "https://richmond.wd5.myworkdayjobs.com/wday/cxs/richmond/staff_faculty/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 71,
+      "industry": "Unclassified (richmond)",
+      "industry_hint": "richmond",
+      "sample_titles": [
+        "Area Coordinator",
+        "Associate Director of Operations and Student Centers",
+        "Executive Chef"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:20:26.858476+00:00",
+      "elapsed_seconds": 1.79,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "path",
+      "display_name": "Path",
+      "careers_url": "https://path.wd1.myworkdayjobs.com/External",
+      "cxs_url": "https://path.wd1.myworkdayjobs.com/wday/cxs/path/External/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 68,
+      "industry": "Unclassified (dmv)",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Procurement Officer, PATH Kenya, Nuru ya Mtoto",
+        "Interns, Malaria Program, REACH Malaria",
+        "Interns, Finance & Operations, REACH Malaria"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:25:08.595487+00:00",
+      "elapsed_seconds": 0.4,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "calistacorp",
+      "display_name": "Calistacorp",
+      "careers_url": "https://calistacorp.wd1.myworkdayjobs.com/CalistaBrice",
+      "cxs_url": "https://calistacorp.wd1.myworkdayjobs.com/wday/cxs/calistacorp/CalistaBrice/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 67,
+      "industry": "Unclassified (dmv)",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Professional Land Surveyor",
+        "Land Surveyor I",
+        "Project Estimator"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:25:14.579089+00:00",
+      "elapsed_seconds": 0.66,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "gnw",
+      "display_name": "Gnw",
+      "careers_url": "https://gnw.wd1.myworkdayjobs.com/GNW",
+      "cxs_url": "https://gnw.wd1.myworkdayjobs.com/wday/cxs/gnw/GNW/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 64,
+      "industry": "Insurance",
+      "industry_hint": "richmond",
+      "sample_titles": [
+        "Program Manager, Finance Transformation",
+        "Principal Data Analyst",
+        "Application Development Analyst"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:20:23.538494+00:00",
+      "elapsed_seconds": 0.63,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "marymount",
+      "display_name": "Marymount",
+      "careers_url": "https://marymount.wd5.myworkdayjobs.com/Careers",
+      "cxs_url": "https://marymount.wd5.myworkdayjobs.com/wday/cxs/marymount/Careers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 63,
+      "industry": "Unclassified (dmv)",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Assistant Soccer Coach for Goalkeepers",
+        "Facilities Maintenance Technician",
+        "Head Athletic Trainer"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:24:11.708080+00:00",
+      "elapsed_seconds": 1.22,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "acrt",
+      "display_name": "Acrt",
+      "careers_url": "https://acrt.wd1.myworkdayjobs.com/ACRT_Careers",
+      "cxs_url": "https://acrt.wd1.myworkdayjobs.com/wday/cxs/acrt/ACRT_Careers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 62,
+      "industry": "Unclassified (richmond)",
+      "industry_hint": "richmond",
+      "sample_titles": [
+        "Forester | Houston, TX",
+        "Line Locate Technician | Rochester, NY (DOT)",
+        "Consulting Utility Forester | Indianapolis, IN / Greensburg, IN"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:22:07.126434+00:00",
+      "elapsed_seconds": 0.84,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "ntst",
+      "display_name": "Ntst",
+      "careers_url": "https://ntst.wd1.myworkdayjobs.com/Careers",
+      "cxs_url": "https://ntst.wd1.myworkdayjobs.com/wday/cxs/ntst/Careers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 62,
+      "industry": "Tech",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Senior QA Engineer- Onsite Overland Park, KS",
+        "Senior Quality Assurance Engineer",
+        "Quality Assurance Engineer- Onsite Overland Park, KS(Open to May 2026 Grads)"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:25:51.357582+00:00",
+      "elapsed_seconds": 0.76,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "skookum",
+      "display_name": "Skookum",
+      "careers_url": "https://skookum.wd1.myworkdayjobs.com/Careers",
+      "cxs_url": "https://skookum.wd1.myworkdayjobs.com/wday/cxs/skookum/Careers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 52,
+      "industry": "Unclassified (dmv)",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Direct Digital Controls Technician",
+        "General Maintenance Worker III",
+        "Programmer Analyst I"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:25:20.344960+00:00",
+      "elapsed_seconds": 0.89,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "fanniemae",
+      "display_name": "Fanniemae",
+      "careers_url": "https://fanniemae.wd1.myworkdayjobs.com/FannieMaeCareers",
+      "cxs_url": "https://fanniemae.wd1.myworkdayjobs.com/wday/cxs/fanniemae/FannieMaeCareers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 51,
+      "industry": "Unclassified (dmv)",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Mortgage Ops Lead - Document Custody",
+        "Project Manager, Strategic Event Lead",
+        "IT Internal Auditor - Advisor"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:26:00.207205+00:00",
+      "elapsed_seconds": 0.73,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "washpost",
+      "display_name": "Washpost",
+      "careers_url": "https://washpost.wd5.myworkdayjobs.com/washingtonpostcareers",
+      "cxs_url": "https://washpost.wd5.myworkdayjobs.com/wday/cxs/washpost/washingtonpostcareers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 50,
+      "industry": "Unclassified (dmv)",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Client Partner, Tech & B2B",
+        "Payroll Workday Lead",
+        "Local Education Reporter"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:24:21.539575+00:00",
+      "elapsed_seconds": 3.89,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "akamerica",
+      "display_name": "Akamerica",
+      "careers_url": "https://akamerica.wd501.myworkdayjobs.com/aka",
+      "cxs_url": "https://akamerica.wd501.myworkdayjobs.com/wday/cxs/akamerica/aka/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 49,
+      "industry": "Industrial/Manufacturing",
+      "industry_hint": "richmond",
+      "sample_titles": [
+        "Senior Optical Inspection Technician",
+        "Quality Control Lab Technician",
+        "FP&A and Accounting Specialist"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:23:29.265986+00:00",
+      "elapsed_seconds": 0.67,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "bgfoods",
+      "display_name": "Bgfoods",
+      "careers_url": "https://bgfoods.wd1.myworkdayjobs.com/BG_Foods_Careers",
+      "cxs_url": "https://bgfoods.wd1.myworkdayjobs.com/wday/cxs/bgfoods/BG_Foods_Careers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 46,
+      "industry": "Industrial/Manufacturing",
+      "industry_hint": "richmond",
+      "sample_titles": [
+        "Food Safety & Quality Assurance Specialist",
+        "Sr. HR Business Partner",
+        "Forklift Operator"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:22:15.996072+00:00",
+      "elapsed_seconds": 0.56,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "choicehotels",
+      "display_name": "Choicehotels",
+      "careers_url": "https://choicehotels.wd5.myworkdayjobs.com/External",
+      "cxs_url": "https://choicehotels.wd5.myworkdayjobs.com/wday/cxs/choicehotels/External/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 46,
+      "industry": "Unclassified (dmv)",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Director, Credit to Cash",
+        "Analytics & AI Strategy Senior Manager",
+        "Project Portfolio Analyst 2"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:24:05.879456+00:00",
+      "elapsed_seconds": 1.01,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "premierinc",
+      "display_name": "Premierinc",
+      "careers_url": "https://premierinc.wd1.myworkdayjobs.com/External_Professional",
+      "cxs_url": "https://premierinc.wd1.myworkdayjobs.com/wday/cxs/premierinc/External_Professional/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 44,
+      "industry": "Tech",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Senior Cloud Engineer",
+        "Director Advisory Services",
+        "Software Engineer Intern"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:25:17.988222+00:00",
+      "elapsed_seconds": 0.75,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "wgl",
+      "display_name": "Wgl",
+      "careers_url": "https://wgl.wd5.myworkdayjobs.com/AltaGas",
+      "cxs_url": "https://wgl.wd5.myworkdayjobs.com/wday/cxs/wgl/AltaGas/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 40,
+      "industry": "Energy",
+      "industry_hint": "richmond",
+      "sample_titles": [
+        "WGL - Technical Accounting and Policy Lead",
+        "SEMCO - GIS Specialist",
+        "WGL - Lead, Public Space Permitting Compliance"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:22:03.646336+00:00",
+      "elapsed_seconds": 0.9,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "westernexp",
+      "display_name": "Westernexp",
+      "careers_url": "https://westernexp.wd5.myworkdayjobs.com/WSX",
+      "cxs_url": "https://westernexp.wd5.myworkdayjobs.com/wday/cxs/westernexp/WSX/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 34,
+      "industry": "Unclassified (richmond)",
+      "industry_hint": "richmond",
+      "sample_titles": [
+        "Recruiter",
+        "Driver Manager",
+        "Accounts Receivable Clerk"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:21:56.157918+00:00",
+      "elapsed_seconds": 0.76,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "ngs",
+      "display_name": "Ngs",
+      "careers_url": "https://ngs.wd1.myworkdayjobs.com/ngs_external_career_site",
+      "cxs_url": "https://ngs.wd1.myworkdayjobs.com/wday/cxs/ngs/ngs_external_career_site/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 34,
+      "industry": "Retail/CPG",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Coordinator, Photo Ark (Science and Innovation)",
+        "Producer, National Geographic Live",
+        "Supervising Engineer (2pm - 10:30pm Shift Monday - Friday)"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:24:16.742800+00:00",
+      "elapsed_seconds": 0.69,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "vacu",
+      "display_name": "Vacu",
+      "careers_url": "https://vacu.wd1.myworkdayjobs.com/vacu_careers",
+      "cxs_url": "https://vacu.wd1.myworkdayjobs.com/wday/cxs/vacu/vacu_careers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 32,
+      "industry": "Unclassified (richmond)",
+      "industry_hint": "richmond",
+      "sample_titles": [
+        "Lending Processor - Direct II",
+        "Contact Center Lending Advisor - $2,500 Commitment Bonus",
+        "Universal Branch Representative I - Scott's Addition Branch"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:20:24.146368+00:00",
+      "elapsed_seconds": 0.61,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "groundswell",
+      "display_name": "Groundswell",
+      "careers_url": "https://groundswell.wd12.myworkdayjobs.com/groundswell",
+      "cxs_url": "https://groundswell.wd12.myworkdayjobs.com/wday/cxs/groundswell/groundswell/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 30,
+      "industry": "Government Contracting",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Federal Financial Audit Subject Matter Expert (SME)",
+        "Appian Test Engineering Lead",
+        "Senior Product Delivery Manager (Federal) - UiPath"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:23:55.268660+00:00",
+      "elapsed_seconds": 0.47,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "wmeimg",
+      "display_name": "Wmeimg",
+      "careers_url": "https://wmeimg.wd1.myworkdayjobs.com/160over90US",
+      "cxs_url": "https://wmeimg.wd1.myworkdayjobs.com/wday/cxs/wmeimg/160over90US/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 29,
+      "industry": "Unclassified (dmv)",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Senior Digital Media Specialist",
+        "Temporary Contract Trainer",
+        "Marketing & Digital Analyst"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:25:39.005674+00:00",
+      "elapsed_seconds": 0.39,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "mwaa",
+      "display_name": "Mwaa",
+      "careers_url": "https://mwaa.wd1.myworkdayjobs.com/MWAA",
+      "cxs_url": "https://mwaa.wd1.myworkdayjobs.com/wday/cxs/mwaa/MWAA/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 28,
+      "industry": "Unclassified (dmv)",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Airport Police Officer (VA & Out-of-State) Lateral ($10,000 Sign-on-Bonus) (PAT & Written Exam Scheduled for June 6, 2026 @ 8 AM)",
+        "Airport Police Officer Trainee ($10,000 Sign-on-Bonus) (PAT & Written Exam Scheduled for June 6, 2026 @ 8 AM)",
+        "Construction DCA Department Manager"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:24:23.162096+00:00",
+      "elapsed_seconds": 0.82,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "calix",
+      "display_name": "Calix",
+      "careers_url": "https://calix.wd1.myworkdayjobs.com/External",
+      "cxs_url": "https://calix.wd1.myworkdayjobs.com/wday/cxs/calix/External/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 25,
+      "industry": "Unclassified (dmv)",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Regional Vice President, Sales - Southeast Region",
+        "Technical Program Manager, Calix Cloud",
+        "Senior Systems Engineer, Technical Support"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:25:12.171336+00:00",
+      "elapsed_seconds": 0.88,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "acxiomllc",
+      "display_name": "Acxiomllc",
+      "careers_url": "https://acxiomllc.wd5.myworkdayjobs.com/AcxiomUSA",
+      "cxs_url": "https://acxiomllc.wd5.myworkdayjobs.com/wday/cxs/acxiomllc/AcxiomUSA/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 25,
+      "industry": "Industrial/Manufacturing",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Advisory Solution Director - Salesforce Practice(Consumer Business Services)",
+        "Sr. Delivery Analyst",
+        "Advisory Solution Director - Salesforce Practice (Financial Services)"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:25:56.975151+00:00",
+      "elapsed_seconds": 1.38,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "hamiltoncountyindiana",
+      "display_name": "Hamiltoncountyindiana",
+      "careers_url": "https://hamiltoncountyindiana.wd1.myworkdayjobs.com/Careers",
+      "cxs_url": "https://hamiltoncountyindiana.wd1.myworkdayjobs.com/wday/cxs/hamiltoncountyindiana/Careers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 19,
+      "industry": "Healthcare/Pharma",
+      "industry_hint": "richmond",
+      "sample_titles": [
+        "PT- HHW Technician",
+        "Public Health Nurse",
+        "PT Deputy Clerk-Civil"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:23:26.367284+00:00",
+      "elapsed_seconds": 0.65,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "ambgroup",
+      "display_name": "Ambgroup",
+      "careers_url": "https://ambgroup.wd1.myworkdayjobs.com/ambse",
+      "cxs_url": "https://ambgroup.wd1.myworkdayjobs.com/wday/cxs/ambgroup/ambse/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 17,
+      "industry": "Unclassified (dmv)",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Academy Fitness Coach",
+        "Control Room Producer",
+        "XPression Designer and Programmer"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:25:39.607777+00:00",
+      "elapsed_seconds": 0.6,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "calwatergroup",
+      "display_name": "Calwatergroup",
+      "careers_url": "https://calwatergroup.wd5.myworkdayjobs.com/CWSG",
+      "cxs_url": "https://calwatergroup.wd5.myworkdayjobs.com/wday/cxs/calwatergroup/CWSG/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 16,
+      "industry": "Unclassified (dmv)",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Fleet Manager",
+        "Supervisor/Superintendent",
+        "Utility Worker"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:25:13.088579+00:00",
+      "elapsed_seconds": 0.92,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "tel",
+      "display_name": "Tel",
+      "careers_url": "https://tel.wd3.myworkdayjobs.com/TEL-Careers",
+      "cxs_url": "https://tel.wd3.myworkdayjobs.com/wday/cxs/tel/TEL-Careers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 16,
+      "industry": "Unclassified (dmv)",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Materials Handler=6 month contract",
+        "Technical Program Manager III",
+        "Field Service/Start-Up Engineer, Contract - Night Shift"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:25:50.592907+00:00",
+      "elapsed_seconds": 0.97,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "rand",
+      "display_name": "Rand",
+      "careers_url": "https://rand.wd5.myworkdayjobs.com/External_Career_Site",
+      "cxs_url": "https://rand.wd5.myworkdayjobs.com/wday/cxs/rand/External_Career_Site/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 15,
+      "industry": "Unclassified (dmv)",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Alternate Facility Security Officer (FSO)",
+        "Associate AI Security Resident",
+        "Workplace\u202fOperations\u202fSpecialist\u202fIII\u00a0"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:24:17.646557+00:00",
+      "elapsed_seconds": 0.9,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "atlanticmedia",
+      "display_name": "Atlanticmedia",
+      "careers_url": "https://atlanticmedia.wd1.myworkdayjobs.com/Careers",
+      "cxs_url": "https://atlanticmedia.wd1.myworkdayjobs.com/wday/cxs/atlanticmedia/Careers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 14,
+      "industry": "Unclassified (dmv)",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Staff Writer",
+        "Art Director",
+        "Engineer"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:24:22.341788+00:00",
+      "elapsed_seconds": 0.8,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "dinebrands",
+      "display_name": "Dinebrands",
+      "careers_url": "https://dinebrands.wd503.myworkdayjobs.com/DineCareers",
+      "cxs_url": "https://dinebrands.wd503.myworkdayjobs.com/wday/cxs/dinebrands/DineCareers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 13,
+      "industry": "Unclassified (richmond)",
+      "industry_hint": "richmond",
+      "sample_titles": [
+        "Associate Manager, Off-Premise  (IHOP)",
+        "Legal Specialist",
+        "Franchise Operations Consultant"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:22:17.371379+00:00",
+      "elapsed_seconds": 0.51,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "performant",
+      "display_name": "Performant",
+      "careers_url": "https://performant.wd1.myworkdayjobs.com/Performant",
+      "cxs_url": "https://performant.wd1.myworkdayjobs.com/wday/cxs/performant/Performant/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 13,
+      "industry": "Healthcare/Pharma",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Medical Review Nurse - CMS RAC (Government audits)",
+        "Medical Review Nurse - Home Health Auditor",
+        "Quality Assurance Supervisor (Clinical RN)"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:25:18.586775+00:00",
+      "elapsed_seconds": 0.6,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "kmkp",
+      "display_name": "Kmkp",
+      "careers_url": "https://kmkp.wd1.myworkdayjobs.com/Careers",
+      "cxs_url": "https://kmkp.wd1.myworkdayjobs.com/wday/cxs/kmkp/Careers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 11,
+      "industry": "Industrial/Manufacturing",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Travel Youth Care Worker (ICE Transport)",
+        "Logistics Specialist - Field (ICE Transport)",
+        "Field Site Supervisor"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:25:04.381020+00:00",
+      "elapsed_seconds": 0.97,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "gaig",
+      "display_name": "Gaig",
+      "careers_url": "https://gaig.wd1.myworkdayjobs.com/Summit_External",
+      "cxs_url": "https://gaig.wd1.myworkdayjobs.com/wday/cxs/gaig/Summit_External/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 11,
+      "industry": "Insurance",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Data Reporting Analyst/Sr. Data Reporting & Analysis Specialist",
+        "Managed Care Specialist",
+        "Senior Underwriter (MO)"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:25:57.763420+00:00",
+      "elapsed_seconds": 0.79,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "mhgi",
+      "display_name": "Mhgi",
+      "careers_url": "https://mhgi.wd1.myworkdayjobs.com/MeritageCareers",
+      "cxs_url": "https://mhgi.wd1.myworkdayjobs.com/wday/cxs/mhgi/MeritageCareers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 10,
+      "industry": "Unclassified (richmond)",
+      "industry_hint": "richmond",
+      "sample_titles": [
+        "Wendy's General Manager - Indiana",
+        "Wendy's General Manager - Atlanta, GA",
+        "Accounts Payable Specialist"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:21:31.483768+00:00",
+      "elapsed_seconds": 0.8,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "gen",
+      "display_name": "Gen",
+      "careers_url": "https://gen.wd1.myworkdayjobs.com/Careers",
+      "cxs_url": "https://gen.wd1.myworkdayjobs.com/wday/cxs/gen/Careers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 9,
+      "industry": "Unclassified (dmv)",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Software QA Engineer Intern",
+        "Red Team Summer Intern \u2013 AI & Offensive Security",
+        "Backend Engineering Intern"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:25:09.386984+00:00",
+      "elapsed_seconds": 0.79,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "orix",
+      "display_name": "Orix",
+      "careers_url": "https://orix.wd5.myworkdayjobs.com/lument",
+      "cxs_url": "https://orix.wd5.myworkdayjobs.com/wday/cxs/orix/lument/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 5,
+      "industry": "Insurance",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Associate, Tax & Insurance",
+        "Associate Asset Management - Client Services",
+        "Director, Production Analytical Support"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:26:08.318038+00:00",
+      "elapsed_seconds": 0.92,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "saif",
+      "display_name": "Saif",
+      "careers_url": "https://saif.wd5.myworkdayjobs.com/SAIF",
+      "cxs_url": "https://saif.wd5.myworkdayjobs.com/wday/cxs/saif/SAIF/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 4,
+      "industry": "Insurance",
+      "industry_hint": "dmv",
+      "sample_titles": [
+        "Sr Actuarial Analyst",
+        "Associate Actuary",
+        "Industrial Hygiene and Health Techn"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T20:25:00.530522+00:00",
+      "elapsed_seconds": 5.29,
+      "notes": ""
+    }
+  ],
+  "icims_new": [],
+  "failed": [
+    {
+      "ats": "workday",
+      "tenant": "uhaul",
+      "url": "https://uhaul.wd1.myworkdayjobs.com/en-US/UhaulJobs/job/Mobile-Repair-Specialist_R241318",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "davita",
+      "url": "https://davita.wd1.myworkdayjobs.com/es/DKC_External/job/03417---Henrico-County-Dialysis/Registered-Nurse_R0454068-1",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "tjx",
+      "url": "https://tjx.wd1.myworkdayjobs.com/en-US/TJX_EXTERNAL/job/Henrico-VA-23233/Lighting-and-Art-Gallery-Coordinator_REQ112237/apply/applyManually?utm_source=bandana",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "easyservice",
+      "url": "https://easyservice.wd5.myworkdayjobs.com/en-US/BonSecoursCareers/job/Off-Duty-Police-Officer---St-Francis-Medical-Center---PRN_R268917",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "humana",
+      "url": "https://humana.wd5.myworkdayjobs.com/en-US/CenterWell_External_Career_Site/job/Medical-Assistant_R-412552",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "oreillyauto",
+      "url": "https://oreillyauto.wd1.myworkdayjobs.com/en-US/oreilly/job/Store-03934-Henrico-VA/Store-Manager-in-Training_R142751",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "owensminor",
+      "url": "https://owensminor.wd1.myworkdayjobs.com/en-US/OMCareers/job/Financial-Reporting-Manager_REQ_26_30022",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "terex",
+      "url": "https://terex.wd1.myworkdayjobs.com/en-US/terexcareers/job/Service-Coordinator---Glen-Allen--VA_REQ-11910",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "fnbcorp",
+      "url": "https://fnbcorp.wd501.myworkdayjobs.com/en-US/FNBCORP/job/Branch-Manager_2026-00917",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "gapinc",
+      "url": "https://gapinc.wd1.myworkdayjobs.com/en-US/GAPINC/job/Retail-Sales-Associate---Short-Pump-TC_R175490",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "justfab",
+      "url": "https://justfab.wd1.myworkdayjobs.com/en-US/fabletics/job/Retail-Part-Time-Store-Associate--Fabletics--Short-Pump---Richmond--VA-_R5089E-1",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "ensemblehp",
+      "url": "https://ensemblehp.wd5.myworkdayjobs.com/en-US/EnsembleHealthPartnersCareers/job/Patient-Access-Specialist_R042753",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "tidalwaveautospa",
+      "url": "https://tidalwaveautospa.wd1.myworkdayjobs.com/en-us/twas/job/mechanicsville-va/",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "gdit",
+      "url": "https://gdit.wd5.myworkdayjobs.com/en-US/External_Career_Site/job/Senior-Back-End-Developer--C----NET-8---Azure-Functions---APIM---SQL_RQ217354-1",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "csgi",
+      "url": "https://csgi.wd5.myworkdayjobs.com/en-US/CSGCareers/job/Technical-Recruiter---APAC_31270",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "airliquidehr",
+      "url": "https://airliquidehr.wd3.myworkdayjobs.com/en-US/airliquideexternalcareer/job/Brazil-So-Paulo/Analista-de-Laboratrio-I_R10076128",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "borgwarner",
+      "url": "https://borgwarner.wd5.myworkdayjobs.com/pt-BR/BorgWarner_Careers/job/San-Luis-Potos-Mxico/IT-Client-Support_R2026-0500",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "raymondjames",
+      "url": "https://raymondjames.wd1.myworkdayjobs.com/en-US/RaymondJamesCareers/job/Client-Service-Associate_R-0010956",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "chesterfield",
+      "url": "https://chesterfield.wd5.myworkdayjobs.com/en-US/CCPS1/job/Head-Coach---High-School---Football_R-0000001861",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "topbuild",
+      "url": "https://topbuild.wd501.myworkdayjobs.com/es/TruTeam_External/job/Sales-Consultant--Hamilton-OH-_R-122357",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "fastretailing",
+      "url": "https://fastretailing.wd3.myworkdayjobs.com/en-US/retail_us_Uniqlo/job/Tysons-Corner-Sales-Associate--Part-Time-_R00000004168391",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "thomsonreuters",
+      "url": "https://thomsonreuters.wd5.myworkdayjobs.com/en-US/External_Career_Site/job/Analyst_JREQ196033",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "transunion",
+      "url": "https://transunion.wd5.myworkdayjobs.com/en-US/TransUnion/job/Compliance-Advisor---Global-Fraud-Solutions_19038750",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "modernatx",
+      "url": "https://modernatx.wd1.myworkdayjobs.com/en-US/M_tx/job/Senior-Product-Manager--Clinical-Safety-and-Pharmacovigilance-Systems_R18475",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "globalhr",
+      "url": "https://globalhr.wd5.myworkdayjobs.com/en-US/REC_RTX_Ext_Gateway/job/Raytheon-Full-time-2026---Analyst-Engineering-Services_01836838",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "younglife",
+      "url": "https://younglife.wd5.myworkdayjobs.com/en-US/YoungLife_Careers/job/Staff-Associate---NW-Fairfax--VA_JR102135",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "redfin",
+      "url": "https://redfin.wd1.myworkdayjobs.com/en-US/redfin_careers/job/Real-Estate-Agent---Fairfax-County_55019/apply/autofillWithResume?utm_source=ziprecruiter",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "sec",
+      "url": "https://sec.wd3.myworkdayjobs.com/en-US/Samsung_Careers/job/IT-Support-Analyst---6-Month-Contract_R116450",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "ccf",
+      "url": "https://ccf.wd1.myworkdayjobs.com/en-US/ClevelandClinicCareers/job/Integrations-System-Analyst-III_336908",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "sbcos",
+      "url": "https://sbcos.wd1.myworkdayjobs.com/en-US/SBCOS2/job/Hilton-Garden-Inn---Long-Island-City/Front-Desk-Associate---Full-and-Part-Time-Available_R0029801",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "benchmark",
+      "url": "https://benchmark.wd1.myworkdayjobs.com/en-US/PGH_Careers/job/Front-Desk-Agent---Hilton-University-of-Florida-Conference-Center_R0057615",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "cnx",
+      "url": "https://cnx.wd1.myworkdayjobs.com/en-US/external_global/job/Representative--Operations_R1367169-1",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "walkerdunlop",
+      "url": "https://walkerdunlop.wd1.myworkdayjobs.com/en-US/WD/job/Underwriter_Req-1667",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "troutman",
+      "url": "https://troutman.wd5.myworkdayjobs.com/en-US/TPRecruit1/job/Administrative-Clerk_R4011",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "columbiabank",
+      "url": "https://columbiabank.wd108.myworkdayjobs.com/en-US/Columbia/job/Mortgage-Closer-Funder--Sr_JR101271",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "greyco",
+      "url": "https://greyco.wd108.myworkdayjobs.com/en-US/GTI/job/Analyst_JR0000050",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "openlane",
+      "url": "https://openlane.wd115.myworkdayjobs.com/en-US/OPENLANE_Careers/job/Customer-Service---Quality-Control--Backoffice-_R-254009",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "toyota",
+      "url": "https://toyota.wd503.myworkdayjobs.com/en-US/TMNA/job/Customer-First-Administrator_10325168",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "cfr",
+      "url": "https://cfr.wd5.myworkdayjobs.com/en-US/Buc-careers/job/Category-Analysts-Managers_R4346",
+      "reason": "no_cxs_match_or_no_jobs"
+    }
+  ]
+}

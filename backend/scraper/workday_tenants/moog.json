@@ -1,0 +1,24 @@
+{
+  "display_name": "Moog Inc",
+  "careers_url": "https://moog.wd5.myworkdayjobs.com/MOOG_External_Career_Site",
+  "status": "OK",
+  "reason": "",
+  "elapsed": 0.57,
+  "captured": {
+    "url": "https://moog.wd5.myworkdayjobs.com/wday/cxs/moog/MOOG_External_Career_Site/jobs",
+    "method": "POST",
+    "request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+    "headers": {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+      "Accept": "application/json",
+      "Content-Type": "application/json"
+    },
+    "input_selector_used": ""
+  },
+  "_grinder_meta": {
+    "discovered_at": "2026-05-07T20:25:34.361914+00:00",
+    "industry_hint": "dmv",
+    "active_role_count_at_discovery": 373,
+    "discovered_via": "bing-via-serper"
+  }
+}

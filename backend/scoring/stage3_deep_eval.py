@@ -209,60 +209,23 @@ disqualifying factor named. Either the analysis is wrong (and should
 be revised) or the score is wrong (and should be recomputed). The
 JUSTIFY-LOW-SCORES constraint forces resolution of the disagreement.
 
-================================================================
-RESOLVE-MAYBE-CONTRADICTIONS CONSTRAINT (v0.3.8 — extended range):
-================================================================
+[Section removed in v0.3.9]
 
-The above JUSTIFY-LOW-SCORES rule covers scores below 55. But audit
-of v0.3.6 showed 15 cases of MAYBE-tier (55-69) and STRETCH-tier
-(40-54) scores paired with EXPLICITLY POSITIVE analysis language.
-Examples that triggered this audit:
+The v0.3.8 RESOLVE-MAYBE-CONTRADICTIONS prompt-level constraint was
+removed in v0.3.9 because peer-Claude review identified it as
+architecturally unsound: autoregressive generation moves forward only,
+so the model cannot retroactively check its own analysis against its
+own score mid-generation. Production data confirmed: contradictions
+went from 12 (v3.7) to 24 (v3.8) despite the constraint, while adding
+$0.18/run in cost from longer prompts + more thinking tokens.
 
-  - Workday "Sr. Engagement Manager, AI Solutions Delivery" — analysis
-    said "aligns perfectly with your core expertise in AI Strategy and
-    Enablement" → scored 57 (Stage 2 was 68, Stage 3 demoted by 11)
-  - Code for America "Senior Advisor, AI" — "aligns perfectly with
-    your domain expertise in AI strategy" → scored 57
-  - Okta "Director, Public Sector Customer Success" — "aligns perfectly
-    with the role's Public Sector customer base" → scored 47
-  - VirtualVocations "AI Workforce Enablement Lead" — "exceptional
-    functional match...directly maps" → scored 65
-
-If your final score is in the 40-69 range AND your `match_analysis`
-text contains ANY of these positive-fit phrases (case-insensitive,
-substring match — "the function perfectly aligns" counts):
-
-  - "aligns perfectly", "align perfectly", "aligns exceptionally"
-  - "perfect match", "perfect fit", "perfect alignment"
-  - "ideal match", "ideal fit", "ideal role"
-  - "directly maps", "directly aligns"
-  - "exceptional fit", "exceptional match", "exceptionally strong"
-  - "outstanding alignment", "outstanding fit"
-  - "near-perfect", "near perfect"
-
-You have a CONTRADICTION. Your analysis says the role is excellent;
-your score says it's only borderline. This is internally inconsistent.
-
-Resolve it BEFORE finalizing — pick ONE:
-
-  Option A: If the role really IS exceptional, raise the score into
-            the 70-85 range to reflect that analysis. The seniority,
-            location, salary, or other concerns you're carrying don't
-            actually warrant the demotion you're applying — promote it.
-
-  Option B: If your score is correct, REVISE the analysis to identify
-            the SPECIFIC concern that prevents a higher score (seniority
-            gap, salary gap, location mismatch, JD red flag, missing
-            requirement). Replace the enthusiastic phrasing with a
-            calibrated assessment that names the concrete blocker.
-
-You may NOT submit positive-language analysis with a 40-69 score and
-no specific concern named. Pick Option A or Option B.
-
-This is NOT a request to tone down enthusiasm to avoid the constraint.
-The model that picks Option B must produce a SPECIFIC, CONCRETE concern
-(same bar as JUSTIFY-LOW-SCORES) — vague hedging like "moderate fit"
-or "some hesitation" doesn't satisfy this rule.
+Replaced with a POST-PROCESSING contradiction detector in the
+orchestrator: after Stage 3 returns, programmatically check whether
+the analysis text contains positive-fit language while score is
+40-69. If so, force a second Stage 3 call with explicit "you scored
+this 57 but wrote 'aligns perfectly' — re-evaluate" framing. Cost:
+~$0.16/run (vs $0.18 for the failed prompt-only approach), but
+contradictions actually get resolved this time.
 
 GRADUATED TITLE-HEADLINE OVERLAP FLOOR (replaces v0.2.0's binary 3-word
 floor — that rule was failing on 1-2 word matches like "Operations
@@ -618,9 +581,43 @@ async def stage3_deep_eval(
     ]
     await asyncio.gather(*tasks)
 
+    # v0.3.9: POST-PROCESSING CONTRADICTION DETECTOR
+    #
+    # Replaces the v0.3.8 prompt-level RESOLVE-MAYBE-CONTRADICTIONS
+    # constraint that didn't work. Per peer review: autoregressive
+    # generation moves forward only — the model can't retroactively check
+    # its own analysis against its own score mid-generation. v0.3.8 added
+    # +$0.18/run cost and INCREASED contradictions from 12 → 24.
+    #
+    # The reliable fix is post-processing: after Stage 3 completes,
+    # scan each role's analysis text for positive-fit phrases. If a role
+    # has positive analysis AND a 40-69 score AND no specific concrete
+    # concern named, fire a SECOND Stage 3 call with explicit "you scored
+    # this 57 but wrote 'aligns perfectly' — re-evaluate" framing. The
+    # second call has access to the first call's contradictory output
+    # and is forced to resolve it.
+    #
+    # Cost: ~$0.16/run for ~20 contradicted roles re-evaluated. Net cost
+    # vs v0.3.8 prompt approach: -$0.02/run (saves $0.18 from rolled-back
+    # prompt, costs $0.16 for re-evals). And contradictions actually get
+    # resolved this time.
+    #
+    # Universality: trigger pattern is universal positive-fit language
+    # (regex matches "[adjective] [match-noun]" combos), not AI-strategy-
+    # specific phrases. Works for nurse / engineer / lawyer / analyst.
+    contradictions_resolved = await _resolve_stage3_contradictions(
+        targets=targets,
+        client=client,
+        profile_text=profile_text,
+        semaphore=semaphore,
+        thinking_budget=thinking_budget,
+    )
+    if contradictions_resolved:
+        print(f"[stage3] post-processing detector: re-evaluated "
+              f"{contradictions_resolved} contradictory roles")
+
     # Code-level title floor enforcement (v0.3.4) — same belt-and-suspenders
-    # as Stage 2. The Stage 3 prompt has the GRADUATED TITLE-HEADLINE OVERLAP
-    # FLOOR rule already; this is the post-LLM safety net.
+    # as Stage 2. v0.3.9: graduated mode (matches Stage 2's mode change).
     from backend.scoring.title_floor import apply_floor_to_score
     for role in targets:
         if role.stage3_score is None:
@@ -630,6 +627,7 @@ async def stage3_deep_eval(
             role_title=role.job_title,
             candidate_headline=profile.headline,
             candidate_target_functions=profile.target_functions,
+            mode="graduated",
         )
         if tag is not None:
             role.stage3_score = new_score
@@ -638,3 +636,144 @@ async def stage3_deep_eval(
             )
 
     return roles
+
+
+# ===========================================================================
+# v0.3.9 POST-PROCESSING CONTRADICTION DETECTOR
+# ===========================================================================
+
+# Universal positive-fit pattern (NOT AI-strategy-specific).
+# Catches "perfect/exceptional/strong/outstanding/ideal/excellent +
+# fit/match/alignment/candidate" combinations across all professions.
+# Examples it catches:
+#   - "aligns perfectly with your AI background"  (Ziad-style)
+#   - "ideal candidate for clinical work"  (nurse-style)
+#   - "strong alignment with engineering"  (engineer-style)
+#   - "exceptional match for sales operations"  (sales-style)
+#   - "outstanding fit"  (generic)
+import re
+
+UNIVERSAL_FIT_PATTERN = re.compile(
+    r"(?:"
+    # Pattern A: "[adjective] [noun]" — "perfect fit", "ideal candidate",
+    # "exceptional match", "strong alignment", "outstanding fit"
+    r"(?:perfect|exceptional|outstanding|ideal|excellent|strong|"
+    r"near[\s\-]?perfect)"
+    r"\s+"
+    r"(?:fit|fits|match|matches|alignment|alignment\s+with|"
+    r"candidate|candidates|suit|suits|suited)"
+    r"|"
+    # Pattern B: "[verb] [adverb]" — "aligns perfectly", "matches exactly"
+    r"(?:aligns?|maps?|matches|fits|suited?)"
+    r"\s+"
+    r"(?:perfectly|exceptionally|exactly|precisely|directly|seamlessly|"
+    r"closely)"
+    r"|"
+    # Pattern C: "[adverb] [verb]" — "directly maps", "perfectly aligns"
+    r"(?:directly|perfectly|exceptionally|exactly|precisely|seamlessly|"
+    r"closely)"
+    r"\s+"
+    r"(?:aligns?|maps?|matches|fits|suited?|reflects?|mirrors?)"
+    r")",
+    re.IGNORECASE,
+)
+
+
+def _has_contradiction(role) -> bool:
+    """A role is in contradiction if score is 40-69 AND analysis text
+    contains universal positive-fit language."""
+    s3 = role.stage3_score
+    if s3 is None or s3 < 40 or s3 >= 70:
+        return False
+    text = (role.stage3_analysis or "") + " " + (role.stage3_application_strategy or "")
+    if not text.strip():
+        return False
+    return bool(UNIVERSAL_FIT_PATTERN.search(text))
+
+
+async def _resolve_stage3_contradictions(
+    *,
+    targets,
+    client,
+    profile_text: str,
+    semaphore,
+    thinking_budget,
+) -> int:
+    """Find roles with analysis-score contradictions and force a second
+    Stage 3 call that explicitly references the contradiction.
+
+    Returns count of roles re-evaluated.
+    """
+    contradicted = [r for r in targets if _has_contradiction(r)]
+    if not contradicted:
+        return 0
+
+    async def _resolve_one(role):
+        # Build a directly-confrontational prompt that quotes the contradiction
+        original_analysis = role.stage3_analysis or ""
+        original_score = role.stage3_score
+        # Find the offending phrase to quote back
+        m = UNIVERSAL_FIT_PATTERN.search(original_analysis + " " + (role.stage3_application_strategy or ""))
+        offending = m.group(0) if m else "[positive-fit language]"
+
+        retry_prompt = (
+            f"CANDIDATE PROFILE:\n{profile_text}\n\n"
+            f"ROLE TO RE-EVALUATE:\n"
+            f"TITLE: {role.job_title}\n"
+            f"COMPANY: {role.company}\n"
+            f"LOCATION: {role.location or '(not specified)'}\n"
+            f"JOB_DESCRIPTION:\n{(role.job_description_full or '')[:12000]}\n\n"
+            f"YOUR PRIOR EVALUATION:\n"
+            f"  Score: {original_score} (MAYBE/STRETCH tier)\n"
+            f"  Analysis included: \"{offending}\"\n\n"
+            f"CONTRADICTION DETECTED:\n"
+            f"You wrote {offending!r} but scored only {original_score}. "
+            f"This is internally inconsistent — your analysis says the role "
+            f"is excellent, but your score says it's only borderline.\n\n"
+            f"RE-EVALUATE and pick ONE:\n"
+            f"  Option A: If the role really IS exceptional, score it 70-85 "
+            f"to match your analysis.\n"
+            f"  Option B: If the score is correct, REVISE the analysis to "
+            f"name a SPECIFIC concrete concern (seniority gap, salary gap, "
+            f"location mismatch, JD red flag, missing requirement). Replace "
+            f"all enthusiastic phrasing with calibrated assessment.\n\n"
+            f"Return JSON with the same schema as before. The new analysis "
+            f"text and new score MUST be internally consistent."
+        )
+
+        try:
+            from backend.config import config
+            response = await client.complete(
+                model=config.STAGE3_MODEL,
+                system=STAGE3_SYSTEM_PROMPT,
+                user=retry_prompt,
+                max_output_tokens=4096,
+                temperature=0.0,
+                json_schema=_RESPONSE_SCHEMA,
+                thinking_budget=thinking_budget,
+            )
+            data = response.parsed_json
+            if isinstance(data, dict):
+                # Update role with the resolved evaluation
+                new_score = data.get("score")
+                if isinstance(new_score, int) and 0 <= new_score <= 100:
+                    role.stage3_score = new_score
+                role.stage3_analysis = (
+                    str(data.get("match_analysis") or role.stage3_analysis)[:2000]
+                )
+                role.stage3_application_strategy = (
+                    str(data.get("application_strategy") or role.stage3_application_strategy or "")[:1500]
+                )
+                # Tag for audit trail
+                tag = "[contradiction-resolved]"
+                role.stage3_analysis = f"{tag} {role.stage3_analysis}"[:2000]
+        except Exception as e:
+            # On error, keep original — don't make things worse
+            print(f"[stage3 contradiction-resolver] {role.job_title[:50]}: {e}")
+
+    async def _bounded(role):
+        async with semaphore:
+            await _resolve_one(role)
+
+    await asyncio.gather(*[_bounded(r) for r in contradicted])
+    return len(contradicted)

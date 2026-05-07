@@ -426,9 +426,21 @@ def _calibration_anomalies(
 
 
 def _build_diff(prior: dict, current: dict) -> dict:
-    """Compare two audit dicts. Returns summary of new/disappeared/score-changed roles."""
+    """Compare two audit dicts. Returns summary of new/disappeared/score-changed
+    roles plus STRONG-tier roster turnover (v0.3.9).
+
+    STRONG roster turnover added in v0.3.9 per peer review: prevents the
+    "is STRONG=20 a hidden cap?" confusion by making churn visible.
+    Cheap (pure JSON comparison, no API calls) and immediately tells you
+    whether STRONG-tier shifts are from scoring changes (entered/exited
+    swap on the same role data) or scraper variance (roles that weren't
+    scraped this time)."""
     def _key(r):
-        return f"{(r.get('company') or '').lower()}::{(r.get('job_title') or '').lower()}"
+        # match the existing dict key format — title field name varies
+        # between profile_dump and role_to_audit_dict; normalize
+        company = (r.get("company") or "").lower()
+        title = (r.get("title") or r.get("job_title") or "").lower()
+        return f"{company}::{title}"
 
     prior_map = {_key(r): r for r in prior.get("all_qualifying_roles", [])}
     current_map = {_key(r): r for r in current.get("all_qualifying_roles", [])}
@@ -449,6 +461,28 @@ def _build_diff(prior: dict, current: dict) -> dict:
                 "current_score": c_score,
                 "delta": c_score - p_score,
             })
+
+    # v0.3.9: STRONG roster turnover — answers "is STRONG count stable
+    # because the same roles stay there, or is there healthy churn?"
+    prior_strong_keys = {k for k, r in prior_map.items() if r.get("tier") == "STRONG"}
+    current_strong_keys = {k for k, r in current_map.items() if r.get("tier") == "STRONG"}
+    strong_entered = sorted(current_strong_keys - prior_strong_keys)
+    strong_exited = sorted(prior_strong_keys - current_strong_keys)
+    strong_stable = sorted(current_strong_keys & prior_strong_keys)
+
+    def _strong_summary(key, source_map):
+        r = source_map.get(key, {})
+        return {
+            "company": r.get("company"),
+            "title": r.get("title"),
+            "score": r.get("score"),
+            "tier_in_other_run": (
+                prior_map.get(key, {}).get("tier")
+                if source_map is current_map
+                else current_map.get(key, {}).get("tier")
+            ),
+        }
+
     return {
         "new_roles_count": len(new),
         "disappeared_roles_count": len(disappeared),
@@ -456,6 +490,14 @@ def _build_diff(prior: dict, current: dict) -> dict:
         "new_roles": new[:30],
         "disappeared_roles": disappeared[:30],
         "score_changes": score_changes[:30],
+        # v0.3.9 — STRONG roster turnover diagnostic
+        "strong_turnover": {
+            "entered_count": len(strong_entered),
+            "exited_count": len(strong_exited),
+            "stable_count": len(strong_stable),
+            "entered": [_strong_summary(k, current_map) for k in strong_entered[:20]],
+            "exited": [_strong_summary(k, prior_map) for k in strong_exited[:20]],
+        },
     }
 
 

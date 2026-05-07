@@ -708,10 +708,15 @@ async def stage2_triage(
     cached_content = None
     if use_cache:
         # Try to create a context cache; fall back to inline system prompt
+        # v0.3.9: TTL bumped 3600s (1h) → 86400s (24h) per peer review.
+        # Same-day re-runs reuse the cache without paying creation cost
+        # again. Saves $0.03-0.05 per subsequent same-day run. The cache
+        # is keyed on profile (which rarely changes intra-day), so this
+        # is safe.
         cached_content = await client.create_cache(
             model=config.STAGE2_MODEL,
             system=system_prompt,
-            ttl_seconds=3600,
+            ttl_seconds=86400,
         )
 
         # PRE-WARM (v0.3.5.2): force Gemini to validate + propagate the cache
@@ -756,43 +761,34 @@ async def stage2_triage(
     ]
     scored = await asyncio.gather(*tasks)
 
-    # Title floor enforcement — v0.3.8 STRICT MODE.
+    # Title floor enforcement — v0.3.9 GRADUATED RELAXATION.
     #
-    # History: v0.3.4 added a code-level floor that raised any score below
-    # the title-headline overlap threshold. v0.3.6 production audit showed
-    # 41/149 (28%) qualifying roles were floor-determined — the floor was
-    # acting as the PRIMARY scoring mechanism for nearly a third of the
-    # funnel rather than the safety-net it was designed to be.
+    # History:
+    #   v0.3.4: code-level floor added (3+ word → 70, 2 → 65, 1 → 55).
+    #           Worked but over-applied (28% of qualifying roles in v3.6
+    #           were floor-determined — way too high for a "safety net").
+    #   v0.3.8: STRICT mode — floor only fires on Stage 2 failures. Result:
+    #           dropped 41 qualifying roles, lost 7 STRONGs, regressed
+    #           overall (-22% qualifying vs v3.7).
+    #   v0.3.9: GRADUATED RELAXATION (peer review consensus). Apply floor
+    #           always, but with REDUCED levels:
+    #             3+ word overlap → floor 60 (was 70, was strict-off in v3.8)
+    #             2-word          → floor 55 (was 65, was strict-off in v3.8)
+    #             1-word          → no floor (was 55)
+    #           Preserves protection for strong 2-3 word title matches
+    #           (real STRONGs in adjacency cases) while eliminating the
+    #           1-word over-inflation that produced 28 of 41 floor-
+    #           determined roles in v3.6.
     #
-    # v0.3.8 strict mode: floor ONLY fires when Stage 2 returned no usable
-    # evaluation (cache 403, timeout, error, empty reasoning). When Stage 2
-    # successfully scored the role with substantive reasoning, that score
-    # stands — the floor does not override successful Stage 2 calls.
-    #
-    # Failure-mode floor still uses GRADUATED rules (1-word overlap → no
-    # floor, 2-word → 55, 3+ → 60) — even on cache failures, a 1-word
-    # overlap is too weak to merit a 55 floor. This eliminates the
-    # "score=50 fallback → title-floor=55" pattern that polluted v0.3.5's
-    # MAYBE tier with 96 mechanically-floored roles.
-    #
-    # Audit visibility: when floor fires, the tag includes mode used:
-    #   "[title-floor:60,overlap=ai,strategy,mode=graduated]"
-    #
-    # If v0.3.8 production data shows legitimate roles dropping (e.g.
-    # Marketing-Ops-Manager-style 1-word matches that genuinely deserved
-    # a floor), we revisit and consider widening the failure-mode rules.
-    floors_skipped_stage2_ok = 0
-    floors_applied_failure_mode = 0
+    # The graduated approach trusts Stage 2's calibration for weak (1-word)
+    # overlaps but preserves the safety net for strong title matches that
+    # Stage 2 might under-score on domain hesitation.
+    floors_applied = 0
+    floors_skipped = 0
     for role in scored:
         if role.stage2_score is None:
             continue
 
-        if _stage2_succeeded(role):
-            # Stage 2 evaluated this role — trust its score, no floor
-            floors_skipped_stage2_ok += 1
-            continue
-
-        # Stage 2 failed/missing — apply floor as safety net (graduated mode)
         new_score, tag = apply_floor_to_score(
             score=role.stage2_score,
             role_title=role.job_title,
@@ -804,12 +800,13 @@ async def stage2_triage(
             role.stage2_score = new_score
             role.stage2_tier = score_to_tier(new_score)
             role.stage2_reasoning = f"{tag} {role.stage2_reasoning or ''}".strip()[:1000]
-            floors_applied_failure_mode += 1
+            floors_applied += 1
+        else:
+            floors_skipped += 1
 
-    # Quick observability for tuning future runs
     print(
-        f"[stage2] floor: skipped={floors_skipped_stage2_ok} "
-        f"(Stage 2 ok), applied={floors_applied_failure_mode} (Stage 2 failed)"
+        f"[stage2] floor: applied={floors_applied}, "
+        f"skipped={floors_skipped} (mode=graduated)"
     )
     return scored
 

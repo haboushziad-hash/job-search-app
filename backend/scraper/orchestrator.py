@@ -109,8 +109,13 @@ SCRAPER_REGISTRY: dict[str, type[BaseScraper]] = {
     # (google_jobs.py) currently points at the wrong URL and will silently
     # waste credits per call. Disabled until v0.3.6 rewrite for SerpAPI
     # ($50/mo Hobby tier — the actual home of Google Jobs aggregation).
-    # See ~/.claude/projects/.../memory/project_v036_scraper_queue.md.
-    # "GoogleJobs": GoogleJobsScraper,
+    # v0.3.9: REWRITTEN against DataForSEO's actual Google Jobs endpoint
+    # (verified live). Async task-based: submit → poll → retrieve. ~6-12s
+    # response at priority=2, $0.0024/query. Universal aggregator —
+    # surfaces pharma/healthcare/industrial/retail employers we don't have
+    # in our curated ATS tenant lists. Cost: ~$0.034/run = ~$3.23/mo at
+    # pilot scale. JD body fetched from source_url by runner.py post-scrape.
+    "GoogleJobs": GoogleJobsScraper,
     #
     # v0.3.7: BingJobs DELETED from registry. Serper.dev does not expose
     # a Bing Jobs API. The /jobs endpoint 404s. /search?engine=bing
