@@ -347,6 +347,34 @@ def _role_block(role: Role, jd_max_chars: int = 16000) -> str:
     return "\n".join(parts)
 
 
+def _is_cache_lookup_error(err: Exception) -> bool:
+    """Detect Gemini cache-lookup failures (propagation lag, project mismatch).
+
+    The most common production failure (v0.3.5 audit, 71% of qualifying roles)
+    is `403 PERMISSION_DENIED — CachedContent not found`. The error wording is
+    misleading: the API key DOES have permission, but Gemini's serving node
+    handling this particular request hasn't yet seen the cache resource that
+    was created moments earlier on a different node.
+
+    Other shapes we treat as cache-lookup failures:
+      - "Cached content not found"
+      - "404 NOT_FOUND" referencing a cachedContents resource
+      - Cross-project access (cache created on Key A, call routed to Key B
+        after `_rotate_to_next_key` fired)
+
+    We DO NOT treat generic 403/PERMISSION_DENIED as cache errors — only
+    when the message also references CachedContent / cached_content.
+    """
+    s = str(err)
+    if "CachedContent not found" in s or "Cached content not found" in s:
+        return True
+    if "cachedContents/" in s and ("404" in s or "NOT_FOUND" in s):
+        return True
+    if "PERMISSION_DENIED" in s and ("CachedContent" in s or "cachedContents" in s):
+        return True
+    return False
+
+
 def _salvage_partial_json(text: str) -> dict:
     """Best-effort extraction of score/reasoning from a truncated JSON response.
 
@@ -378,6 +406,59 @@ def _salvage_partial_json(text: str) -> dict:
     return out
 
 
+async def _complete_with_cache_fallback(
+    *,
+    client: LLMClient,
+    prompt: str,
+    cached_content: Optional[object],
+    is_batch: bool,
+    thinking_budget: Optional[int],
+):
+    """Run a Stage 2 completion, falling back to inline system prompt on
+    cache-lookup failure.
+
+    Why this exists (v0.3.5.1): production audit showed 71% of parallel
+    Stage 2 calls hit `CachedContent not found` due to Gemini cache
+    propagation lag. When that happens, this helper retries the SAME call
+    without the cache — preserving the correct LLM-scored result and only
+    sacrificing the 75% input discount on the affected call.
+
+    Order of attempts:
+      1. With cache (cheap path; works for ~30-95% of calls depending on
+         how propagated Gemini's cache is at burst time).
+      2. On cache-lookup error: retry without cache, using the inline
+         system prompt. Retry happens at most ONCE — non-cache errors
+         propagate up to the outer try/except in _score_one.
+    """
+    try:
+        return await client.complete(
+            model=config.STAGE2_MODEL,
+            system=None if cached_content else STAGE2_SYSTEM_PROMPT,
+            user=prompt,
+            max_output_tokens=2048,
+            temperature=0.0,
+            json_schema=_RESPONSE_SCHEMA,
+            cached_content=cached_content,
+            is_batch=is_batch,
+            thinking_budget=thinking_budget,
+        )
+    except Exception as e:
+        if cached_content is not None and _is_cache_lookup_error(e):
+            # Self-heal: retry without cache, using inline system prompt
+            return await client.complete(
+                model=config.STAGE2_MODEL,
+                system=STAGE2_SYSTEM_PROMPT,
+                user=prompt,
+                max_output_tokens=2048,
+                temperature=0.0,
+                json_schema=_RESPONSE_SCHEMA,
+                cached_content=None,
+                is_batch=is_batch,
+                thinking_budget=thinking_budget,
+            )
+        raise
+
+
 async def _score_one(
     role: Role,
     profile_text: str,
@@ -393,15 +474,9 @@ async def _score_one(
             f"ROLE TO SCORE:\n{_role_block(role)}\n"
         )
         try:
-            response = await client.complete(
-                model=config.STAGE2_MODEL,
-                system=None if cached_content else STAGE2_SYSTEM_PROMPT,
-                user=prompt,
-                max_output_tokens=2048,  # generous — JSON + thinking share this budget
-                # Determinism: same role + same profile must produce same score.
-                # Variance is noise on a structured numeric output.
-                temperature=0.0,
-                json_schema=_RESPONSE_SCHEMA,
+            response = await _complete_with_cache_fallback(
+                client=client,
+                prompt=prompt,
                 cached_content=cached_content,
                 is_batch=is_batch,
                 thinking_budget=thinking_budget,
@@ -450,21 +525,30 @@ async def stage2_triage(
     roles: list[Role],
     client: Optional[LLMClient] = None,
     concurrency: int = 8,
-    # v0.3.5: cache ENABLED. STAGE2_SYSTEM_PROMPT is ~3,400 tokens —
-    # well above Flash's 1,024-token cache minimum.
+    # v0.3.5.2: cache RE-ENABLED with two-layer safety net.
     #
-    # Bug history: spawn-session work-in-progress had use_cache=True
-    # AND a wiring bug where the CachedContent object was passed to
-    # GenerateContentConfig.cached_content (Pydantic rejects — needs
-    # the .name string). Fix landed at llm_client.py:257 — extracts
-    # .name when an object is passed.
+    # History: v0.3.5 hit 71% cache failures (`403 PERMISSION_DENIED —
+    # CachedContent not found`). Root cause: Gemini cache propagation lag —
+    # the cache resource is created on one serving node, but parallel calls
+    # within seconds get routed to OTHER nodes that haven't yet seen the
+    # replication. The error wording is misleading; the API key has full
+    # permission, the cache just isn't visible yet on that node.
     #
-    # Live A/B verified on ship night: 5 Stage 2 calls, no cache
-    # $0.00155, with cache $0.00061 = 60% reduction. Scaled to
-    # ~280 roles per run, saves ~$0.05/run on Stage 2 alone.
-    # Cache hit rate ~95% within a single run (every role's system
-    # prompt is identical) and ~75% across consecutive runs in
-    # the 1-hour default TTL window.
+    # v0.3.5.2 fix:
+    #   1. PRE-WARM: after create_cache() returns, fire one sequential
+    #      completion using the cache. This validates the cache is reachable
+    #      AND lets propagation flow before the parallel burst kicks off.
+    #      If pre-warm fails, we disable cache for the run (use inline
+    #      system prompt) — failing safely.
+    #   2. PER-CALL FALLBACK: each Stage 2 call goes through
+    #      _complete_with_cache_fallback, which retries WITHOUT cache on
+    #      `CachedContent not found` errors. Stragglers that miss
+    #      propagation still get a correct LLM score — they just don't
+    #      benefit from the 75% input discount.
+    #
+    # Net effect: cache works for the majority that propagated; the rest
+    # self-heal. Score quality is preserved (no more title-floor garbage
+    # for cache-failed roles). The $0.05-0.21/run savings comes back.
     use_cache: bool = True,
     run_id: Optional[str] = None,
     # Flash supports thinking_budget=0 for cheapest+fastest. Pro requires >=1.
@@ -500,6 +584,35 @@ async def stage2_triage(
             system=STAGE2_SYSTEM_PROMPT,
             ttl_seconds=3600,
         )
+
+        # PRE-WARM (v0.3.5.2): force Gemini to validate + propagate the cache
+        # before the parallel burst hits. Without this, 71% of parallel calls
+        # at production scale failed with "CachedContent not found" because
+        # the cache hadn't propagated to all serving nodes. A single
+        # sequential call up front:
+        #   - Confirms the cache is actually usable on this account
+        #   - Gives Gemini's cache infrastructure a few seconds of "real
+        #     world" propagation time before 280 parallel calls fire
+        #   - If pre-warm itself fails, we know cache is broken for THIS
+        #     run and switch to inline system prompt for safety
+        if cached_content is not None:
+            try:
+                await client.complete(
+                    model=config.STAGE2_MODEL,
+                    system=None,  # cache supplies system instruction
+                    user="ping",
+                    max_output_tokens=8,
+                    temperature=0.0,
+                    cached_content=cached_content,
+                    is_batch=False,
+                    thinking_budget=0,
+                )
+            except Exception:
+                # Pre-warm failed — cache is broken or propagation is way
+                # off. Disable cache for this run; per-call fallback would
+                # still work, but better to skip the whole song-and-dance
+                # and use the inline path that we know works.
+                cached_content = None
 
     semaphore = asyncio.Semaphore(concurrency)
     tasks = [
