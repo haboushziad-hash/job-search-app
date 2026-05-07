@@ -599,3 +599,117 @@ scripts/
 ---
 
 End of audit.
+
+---
+
+## CRITICAL ADDITION: Anchoring bias verified on a SECOND user profile
+
+After publishing this audit doc, a SECOND tester profile's data became
+available. This validates the universality of the anchoring bias finding
+and surfaces a related dashboard UX issue.
+
+### The user
+
+**Profile:** Senior Billing Specialist with Information Systems background.
+- Headline: "Senior Billing Specialist with an Information Systems background"
+- Target functions: Billing Operations, Business Analysis, Project Management,
+  Account Management, Client Services, Financial Systems Analysis
+- Target industries: Technology, Financial Services, Healthcare, Consulting,
+  Real Estate, Utilities, Insurance
+- Excluded titles: developer, engineer, sales, etc. (all appropriate)
+
+**NOT an AI candidate.** Three runs of data:
+- v0.2.0 (5 days ago): 4 STRONG, 137 qualifying
+- v0.3.6 run 1 (today): 2 STRONG, 233 qualifying
+- v0.3.6 run 2 (today): 5 STRONG, 241 qualifying
+
+### Confirms anchoring bias is universal across profiles
+
+The same Stage 2 → Stage 3 anchoring problem produces a deterministic
+ceiling on this user too, just at a different scale:
+
+```
+                                Ziad (AI Strategy)    Billing Specialist
+Roles entering Stage 3 with s2 >= 78:    23                    5-7
+STRONG conversion rate:                  87%                   ~85%
+Resulting STRONG count:                  20                    4-6
+Total qualifying:                       150-173               137-241
+```
+
+Both profiles hit ceilings determined by the same mechanism: Stage 2
+clusters at anchor scores (58/68/78/81), Stage 3 anchors on Stage 2's
+score and rarely promotes s2=68 roles past s3=84.
+
+For the billing user, 162 roles in MAYBE tier (55-69) suggests a heavy
+anchor cluster at s2=68. v0.3.11's three-fix plan should redistribute
+these and lift STRONG to 12-18 for this profile.
+
+### Dashboard UX issue (separate from scoring)
+
+The admin dashboard's "TOP 5 ROLES" panel for this user shows:
+
+```
+Panel display              | Actual score | Tier
+---------------------------|--------------|------
+AR Specialist @ Snorkel AI |     93       | STRONG
+Mgr Rev Accounting @ Snorkel AI |   63    | MAYBE
+Sr Business Systems @ Snorkel AI |  67    | MAYBE
+Sr Ops Manager Growth @ Snorkel AI | 43   | STRETCH
+Sr Associate Rev Strat @ Mercury |   58   | MAYBE
+```
+
+Of these 5 "top roles," only 1 is actually a STRONG. The other 4 are
+MAYBE/STRETCH tier. The panel is NOT sorting by score.
+
+The actual top 5 by score in this user's run:
+```
+  [94] STRONG  Senior Billing Analyst @ VirtualVocations
+  [93] STRONG  Accounts Receivable Specialist @ Snorkel AI
+  [91] STRONG  Finance Systems Analyst @ Bee Talent Solutions
+  [89] STRONG  Senior Financial Systems Analyst @ Morton
+  [89] STRONG  Business and System Analyst @ TCS
+```
+
+VirtualVocations, Bee Talent, Morton, and TCS are NOT in the dashboard
+"TOP 5 ROLES" panel.
+
+**Hypothesis:** the panel groups by company (Snorkel AI happens to have
+4 qualifying roles for this user — 93, 67, 63, 43), making it appear
+that AI-companies dominate even though they're a small fraction of
+overall qualifying (4 of 241 = 2%).
+
+**Impact:** users and operators see the panel and lose trust ("the tool
+is overweighting AI"). The underlying scoring is correct; the panel
+display is misleading.
+
+### Required v0.3.11+ work for this finding
+
+1. **Audit the admin dashboard's "TOP 5 ROLES" sort logic.** Likely in
+   `admin_dashboard/` directory. Identify the actual sort criterion and
+   either fix to sort by score or relabel to clarify what's being shown
+   (e.g., "Most-Filled Companies" vs "Highest-Scored Roles").
+
+2. **Add billing-specialist as fixture.** Currently fixture #02 is
+   "billing_specialist" but no actual production data has been compared
+   against fixture predictions. Add this user's 241-qualifying run as
+   the validation baseline for fixture #02.
+
+3. **v0.3.11 anchoring fix benefits this user too.** The 162 MAYBE-tier
+   roles should redistribute when Stage 3 stops anchoring on s2=68.
+   Predicted: STRONG goes from 5 → 12-18 for this profile.
+
+### New question for peer review
+
+**Q9: Should we ship the dashboard panel fix in v0.3.11 alongside the
+scoring fixes, or sequence them?**
+
+Pros of bundling: fixes the user-trust optics at the same time as the
+scoring improvement. Both findings come from the same data review.
+
+Pros of sequencing: scoring fix is the higher-priority quality lever.
+Dashboard fix is cosmetic. Don't bundle a UI change with a calibration
+change when one might mask the other.
+
+My recommendation: sequence. v0.3.11 = scoring only. v0.3.11.1 (or
+v0.3.12) = dashboard panel fix once we have a clean v0.3.11 baseline.
+
