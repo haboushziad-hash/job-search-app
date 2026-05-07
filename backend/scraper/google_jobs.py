@@ -182,7 +182,14 @@ class GoogleJobsScraper(BaseScraper):
 
         task_ids = await asyncio.gather(*[_submit(kw) for kw in keywords])
         keyword_to_task = {kw: tid for kw, tid in zip(keywords, task_ids) if tid}
-        self.cost_estimate += len(keyword_to_task) * DFSE_COST_PER_QUERY
+        # v0.3.9.1 BUGFIX: BaseScraper doesn't expose cost_estimate, so the
+        # `self.cost_estimate += ...` line crashed in production with
+        # AttributeError, silently swallowed by the orchestrator's per-source
+        # try/except. That's why GoogleJobs returned 0 raw in v0.3.9.
+        # Tracking cost locally as a safe attribute initialized lazily.
+        if not hasattr(self, "_dfseo_cost_estimate"):
+            self._dfseo_cost_estimate = 0.0
+        self._dfseo_cost_estimate += len(keyword_to_task) * DFSE_COST_PER_QUERY
 
         if not keyword_to_task:
             return []
