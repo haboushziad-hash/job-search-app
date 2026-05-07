@@ -1,0 +1,1920 @@
+{
+  "summary": {
+    "started_at": "2026-05-07T22:07:25.781633+00:00",
+    "finished_at": "2026-05-07T22:16:45.665231+00:00",
+    "duration_seconds": 559.9,
+    "serper_queries_run": 1,
+    "dataforseo_queries_run": 21,
+    "candidates_found": 176,
+    "candidates_validated": 41,
+    "candidates_failed": 135,
+    "duplicates_skipped": 19,
+    "queries_per_industry": {
+      "pharma": 10,
+      "industrial": 7,
+      "defense": 5
+    },
+    "candidates_per_industry": {
+      "pharma": 79,
+      "industrial": 72,
+      "defense": 25
+    },
+    "cost_estimate_usd": 0.0252,
+    "by_industry": {
+      "Healthcare/Pharma": 15,
+      "Unclassified (pharma)": 5,
+      "Unclassified (industrial)": 11,
+      "Insurance": 1,
+      "Industrial/Manufacturing": 2,
+      "Tech": 2,
+      "Unclassified (defense)": 2,
+      "Government Contracting": 1,
+      "Retail/CPG": 1,
+      "Finance": 1
+    },
+    "validated_workday": 41,
+    "validated_icims": 0,
+    "total_validated": 41
+  },
+  "workday_new": [
+    {
+      "ats": "workday",
+      "tenant_id": "pae",
+      "display_name": "Pae",
+      "careers_url": "https://pae.wd1.myworkdayjobs.com/Amentum_Careers",
+      "cxs_url": "https://pae.wd1.myworkdayjobs.com/wday/cxs/pae/Amentum_Careers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 2916,
+      "industry": "Unclassified (defense)",
+      "industry_hint": "defense",
+      "sample_titles": [
+        "IT/Cyber - Intern",
+        "Mechanical Designer Jr.",
+        "Aircraft Worker"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T22:15:57.938411+00:00",
+      "elapsed_seconds": 0.45,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "micron",
+      "display_name": "Micron",
+      "careers_url": "https://micron.wd1.myworkdayjobs.com/External",
+      "cxs_url": "https://micron.wd1.myworkdayjobs.com/wday/cxs/micron/External/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 2905,
+      "industry": "Unclassified (industrial)",
+      "industry_hint": "industrial",
+      "sample_titles": [
+        "Sr. DRAM Cloud Systems Enablement Engineer",
+        "\u534a\u5c0e\u4f53\u88fd\u9020 EUV\u30d5\u30a9\u30c8\u30de\u30b9\u30af\u691c\u67fb\u30fb\u7ba1\u7406\u30b9\u30bf\u30c3\u30d5\uff08\u6280\u8853\u8077\uff09",
+        "New College Grad - Engineer, Surface Lab"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T22:11:27.970812+00:00",
+      "elapsed_seconds": 0.6,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "target",
+      "display_name": "Target",
+      "careers_url": "https://target.wd5.myworkdayjobs.com/targetcareers",
+      "cxs_url": "https://target.wd5.myworkdayjobs.com/wday/cxs/target/targetcareers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 2000,
+      "industry": "Retail/CPG",
+      "industry_hint": "defense",
+      "sample_titles": [
+        "General Merchandise Team Leader",
+        "Seasonal Target Security Specialist - Sortation Center - Austin, TX",
+        "Senior Admin Assistant - Home Merchandising"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T22:16:35.477955+00:00",
+      "elapsed_seconds": 1.88,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "amat",
+      "display_name": "Amat",
+      "careers_url": "https://amat.wd1.myworkdayjobs.com/External",
+      "cxs_url": "https://amat.wd1.myworkdayjobs.com/wday/cxs/amat/External/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 1893,
+      "industry": "Unclassified (industrial)",
+      "industry_hint": "industrial",
+      "sample_titles": [
+        "Customer Engineer - (ITCE)",
+        "HR Partner",
+        "MFG ENG"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T22:13:29.197853+00:00",
+      "elapsed_seconds": 1.28,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "danaher",
+      "display_name": "Danaher",
+      "careers_url": "https://danaher.wd1.myworkdayjobs.com/DanaherJobs",
+      "cxs_url": "https://danaher.wd1.myworkdayjobs.com/wday/cxs/danaher/DanaherJobs/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 1385,
+      "industry": "Unclassified (pharma)",
+      "industry_hint": "pharma",
+      "sample_titles": [
+        "Director Finance - Global BU Partner",
+        "Sr. Project Manager, Value & Access (Health Economics, Diagnostics)",
+        "Associate Field Service Engineer (Territory: New England States)"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T22:08:24.137296+00:00",
+      "elapsed_seconds": 0.85,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "bhs",
+      "display_name": "Bhs",
+      "careers_url": "https://bhs.wd1.myworkdayjobs.com/Careers",
+      "cxs_url": "https://bhs.wd1.myworkdayjobs.com/wday/cxs/bhs/Careers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 1142,
+      "industry": "Healthcare/Pharma",
+      "industry_hint": "pharma",
+      "sample_titles": [
+        "Pharmacy Tech - Medication History",
+        "Clinical Coordinator",
+        "Medical Assistant"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T22:10:33.506686+00:00",
+      "elapsed_seconds": 0.62,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "bannerhealth",
+      "display_name": "Bannerhealth",
+      "careers_url": "https://bannerhealth.wd108.myworkdayjobs.com/Careers",
+      "cxs_url": "https://bannerhealth.wd108.myworkdayjobs.com/wday/cxs/bannerhealth/Careers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 1086,
+      "industry": "Healthcare/Pharma",
+      "industry_hint": "pharma",
+      "sample_titles": [
+        "Senior Service Center Representative",
+        "Registered Nurse RN Patient Navigator Neuroscience Stroke",
+        "Medical Assistant Cardiology Clinic"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T22:10:42.969432+00:00",
+      "elapsed_seconds": 1.2,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "analogdevices",
+      "display_name": "Analogdevices",
+      "careers_url": "https://analogdevices.wd1.myworkdayjobs.com/External",
+      "cxs_url": "https://analogdevices.wd1.myworkdayjobs.com/wday/cxs/analogdevices/External/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 928,
+      "industry": "Unclassified (industrial)",
+      "industry_hint": "industrial",
+      "sample_titles": [
+        "Staff Engineer, Mechanical Engineering",
+        "Senior Engineer, Mechanical Engineering",
+        "Product Operations Manager II"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T22:11:05.609408+00:00",
+      "elapsed_seconds": 1.03,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "motorolasolutions",
+      "display_name": "Motorolasolutions",
+      "careers_url": "https://motorolasolutions.wd5.myworkdayjobs.com/Careers",
+      "cxs_url": "https://motorolasolutions.wd5.myworkdayjobs.com/wday/cxs/motorolasolutions/Careers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 868,
+      "industry": "Unclassified (industrial)",
+      "industry_hint": "industrial",
+      "sample_titles": [
+        "Compensation Analyst",
+        "Business Analyst - SaaS",
+        "Accounting Analyst"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T22:13:38.073613+00:00",
+      "elapsed_seconds": 3.96,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "zeissgroup",
+      "display_name": "Zeissgroup",
+      "careers_url": "https://zeissgroup.wd3.myworkdayjobs.com/External",
+      "cxs_url": "https://zeissgroup.wd3.myworkdayjobs.com/wday/cxs/zeissgroup/External/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 727,
+      "industry": "Unclassified (industrial)",
+      "industry_hint": "industrial",
+      "sample_titles": [
+        "Account Manager - Surgical Ophthalmology",
+        "Specialist, Technical Sales and Education",
+        "L3 SOC Internal Analyst"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T22:14:40.433660+00:00",
+      "elapsed_seconds": 1.24,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "allina",
+      "display_name": "Allina",
+      "careers_url": "https://allina.wd5.myworkdayjobs.com/External",
+      "cxs_url": "https://allina.wd5.myworkdayjobs.com/wday/cxs/allina/External/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 582,
+      "industry": "Healthcare/Pharma",
+      "industry_hint": "industrial",
+      "sample_titles": [
+        "RN New Graduate",
+        "Medical Assistant Mental Health",
+        "Physician Assistant or Nurse Practitioner- Hepatobiliary (HPB) Program"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T22:11:57.288137+00:00",
+      "elapsed_seconds": 1.62,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "globalfoundries",
+      "display_name": "Globalfoundries",
+      "careers_url": "https://globalfoundries.wd1.myworkdayjobs.com/External",
+      "cxs_url": "https://globalfoundries.wd1.myworkdayjobs.com/wday/cxs/globalfoundries/External/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 528,
+      "industry": "Unclassified (industrial)",
+      "industry_hint": "industrial",
+      "sample_titles": [
+        "Intern - Fab Engineering\u00a0(AE)",
+        "Principal Engineer Application Engineering",
+        "Lead Field Application Engineering"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T22:13:34.116978+00:00",
+      "elapsed_seconds": 0.95,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "northeastern",
+      "display_name": "Northeastern",
+      "careers_url": "https://northeastern.wd1.myworkdayjobs.com/Careers",
+      "cxs_url": "https://northeastern.wd1.myworkdayjobs.com/wday/cxs/northeastern/Careers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 388,
+      "industry": "Healthcare/Pharma",
+      "industry_hint": "pharma",
+      "sample_titles": [
+        "MIE Part-time Lecturer- Aerospace Program (Seattle)",
+        "Associate or Full Clinical Professor and Medical Director - Department of Medical Sciences",
+        "Associate or Full Clinical Professor and Program Director - Department of Medical Sciences"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T22:08:21.070324+00:00",
+      "elapsed_seconds": 1.43,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "uchicago",
+      "display_name": "Uchicago",
+      "careers_url": "https://uchicago.wd5.myworkdayjobs.com/External",
+      "cxs_url": "https://uchicago.wd5.myworkdayjobs.com/wday/cxs/uchicago/External/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 377,
+      "industry": "Healthcare/Pharma",
+      "industry_hint": "pharma",
+      "sample_titles": [
+        "Clinical Research Coverage Analyst",
+        "Physician Hub Operations Lead",
+        "Research Analyst"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T22:09:16.570947+00:00",
+      "elapsed_seconds": 2.3,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "graybar",
+      "display_name": "Graybar",
+      "careers_url": "https://graybar.wd1.myworkdayjobs.com/Careers",
+      "cxs_url": "https://graybar.wd1.myworkdayjobs.com/wday/cxs/graybar/Careers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 352,
+      "industry": "Unclassified (industrial)",
+      "industry_hint": "industrial",
+      "sample_titles": [
+        "Outside Sales Representative - Security",
+        "Customer Service Representative",
+        "Delivery Driver"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T22:11:22.380696+00:00",
+      "elapsed_seconds": 1.13,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "nwis",
+      "display_name": "Nwis",
+      "careers_url": "https://nwis.wd12.myworkdayjobs.com/nw",
+      "cxs_url": "https://nwis.wd12.myworkdayjobs.com/wday/cxs/nwis/nw/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 294,
+      "industry": "Tech",
+      "industry_hint": "defense",
+      "sample_titles": [
+        "Systems Administrator/ AWS Cloud Engineer/ Linux Engineer - Expert",
+        "Systems Administrator 3",
+        "Systems Administrator 2"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T22:16:43.229746+00:00",
+      "elapsed_seconds": 0.78,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "cranecompany",
+      "display_name": "Cranecompany",
+      "careers_url": "https://cranecompany.wd5.myworkdayjobs.com/Careers",
+      "cxs_url": "https://cranecompany.wd5.myworkdayjobs.com/wday/cxs/cranecompany/Careers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 279,
+      "industry": "Unclassified (defense)",
+      "industry_hint": "defense",
+      "sample_titles": [
+        "Electronics Technician",
+        "MIG Welder- 1st Shift",
+        "MIG Welder- 2nd Shift"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T22:15:13.425023+00:00",
+      "elapsed_seconds": 1.11,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "viatris",
+      "display_name": "Viatris",
+      "careers_url": "https://viatris.wd5.myworkdayjobs.com/External",
+      "cxs_url": "https://viatris.wd5.myworkdayjobs.com/wday/cxs/viatris/External/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 243,
+      "industry": "Healthcare/Pharma",
+      "industry_hint": "pharma",
+      "sample_titles": [
+        "Associate Director, Medical Science Liaison \u2013 Women\u2019s Health, US",
+        "Senior Clinical Project Scientist (m/f/d)",
+        "Sales Representative, Women's Health - Cleveland, OH"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T22:10:18.835815+00:00",
+      "elapsed_seconds": 1.23,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "vrtx",
+      "display_name": "Vrtx",
+      "careers_url": "https://vrtx.wd501.myworkdayjobs.com/Vertex_Careers",
+      "cxs_url": "https://vrtx.wd501.myworkdayjobs.com/wday/cxs/vrtx/Vertex_Careers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 235,
+      "industry": "Healthcare/Pharma",
+      "industry_hint": "pharma",
+      "sample_titles": [
+        "Executive Director, DMPK",
+        "Global Trade Compliance Process Owner Associate Director",
+        "Senior Director, Supply Chain Financial Planning & Analysis"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T22:08:05.043460+00:00",
+      "elapsed_seconds": 0.66,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "pru",
+      "display_name": "Pru",
+      "careers_url": "https://pru.wd5.myworkdayjobs.com/Careers",
+      "cxs_url": "https://pru.wd5.myworkdayjobs.com/wday/cxs/pru/Careers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 170,
+      "industry": "Finance",
+      "industry_hint": "defense",
+      "sample_titles": [
+        "EST\u00c1GIO JUR\u00cdDICO",
+        "PGIM Global Wealth - External Wholesaler (Wire Channel - MO, KS, IA, and NE)",
+        "PGIM | Investment Analyst (all genders) Based in Frankfurt"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T22:16:42.445098+00:00",
+      "elapsed_seconds": 1.47,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "ciena",
+      "display_name": "Ciena",
+      "careers_url": "https://ciena.wd5.myworkdayjobs.com/Careers",
+      "cxs_url": "https://ciena.wd5.myworkdayjobs.com/wday/cxs/ciena/Careers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 169,
+      "industry": "Unclassified (industrial)",
+      "industry_hint": "industrial",
+      "sample_titles": [
+        "Product Line Manager",
+        "Senior/Lead- AI Application Developer",
+        "Senior Software Development Manager"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T22:12:09.622879+00:00",
+      "elapsed_seconds": 1.74,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "modernatx",
+      "display_name": "Modernatx",
+      "careers_url": "https://modernatx.wd1.myworkdayjobs.com/M_tx",
+      "cxs_url": "https://modernatx.wd1.myworkdayjobs.com/wday/cxs/modernatx/M_tx/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 164,
+      "industry": "Unclassified (pharma)",
+      "industry_hint": "pharma",
+      "sample_titles": [
+        "Research Associate, Analytical Technical Operations",
+        "Technician II, Process Maintenance",
+        "Technician II, Process Maintenance"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T22:10:07.548760+00:00",
+      "elapsed_seconds": 0.78,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "exactsciences",
+      "display_name": "Exactsciences",
+      "careers_url": "https://exactsciences.wd1.myworkdayjobs.com/Exact_Sciences",
+      "cxs_url": "https://exactsciences.wd1.myworkdayjobs.com/wday/cxs/exactsciences/Exact_Sciences/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 146,
+      "industry": "Unclassified (pharma)",
+      "industry_hint": "pharma",
+      "sample_titles": [
+        "Provider Support Specialist - Mon-Fri 8am - 4:30pm",
+        "Line Cook",
+        "Dishwasher - 2nd Shift"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T22:10:41.767489+00:00",
+      "elapsed_seconds": 0.82,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "aoncology",
+      "display_name": "Aoncology",
+      "careers_url": "https://aoncology.wd12.myworkdayjobs.com/Aoncology_Careers",
+      "cxs_url": "https://aoncology.wd12.myworkdayjobs.com/wday/cxs/aoncology/Aoncology_Careers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 142,
+      "industry": "Healthcare/Pharma",
+      "industry_hint": "pharma",
+      "sample_titles": [
+        "Coder II- Central Georgia Cancer Care",
+        "Medical Assistant",
+        "Marketing Communication Specialist"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T22:10:35.687689+00:00",
+      "elapsed_seconds": 0.59,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "collectorsuniverse",
+      "display_name": "Collectorsuniverse",
+      "careers_url": "https://collectorsuniverse.wd1.myworkdayjobs.com/collectors",
+      "cxs_url": "https://collectorsuniverse.wd1.myworkdayjobs.com/wday/cxs/collectorsuniverse/collectors/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 131,
+      "industry": "Insurance",
+      "industry_hint": "industrial",
+      "sample_titles": [
+        "Senior Accountant",
+        "Customer Care Manager, Vault",
+        "Senior Customer Care Training Lead, PSA"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T22:11:59.582160+00:00",
+      "elapsed_seconds": 0.64,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "roquette",
+      "display_name": "Roquette",
+      "careers_url": "https://roquette.wd3.myworkdayjobs.com/External",
+      "cxs_url": "https://roquette.wd3.myworkdayjobs.com/wday/cxs/roquette/External/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 127,
+      "industry": "Unclassified (industrial)",
+      "industry_hint": "industrial",
+      "sample_titles": [
+        "Senior Financial Controller",
+        "M\u00e9canicien - Tuyauteur H/F",
+        "Finished Product Warehouse Keeper"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T22:12:33.032817+00:00",
+      "elapsed_seconds": 1.25,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "jm",
+      "display_name": "Jm",
+      "careers_url": "https://jm.wd103.myworkdayjobs.com/External",
+      "cxs_url": "https://jm.wd103.myworkdayjobs.com/wday/cxs/jm/External/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 109,
+      "industry": "Industrial/Manufacturing",
+      "industry_hint": "industrial",
+      "sample_titles": [
+        "Plant Manager",
+        "Production Attendant",
+        "Senior Process Manufacturing Engineer"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T22:12:28.144369+00:00",
+      "elapsed_seconds": 0.97,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "zekelman",
+      "display_name": "Zekelman",
+      "careers_url": "https://zekelman.wd12.myworkdayjobs.com/Careers",
+      "cxs_url": "https://zekelman.wd12.myworkdayjobs.com/wday/cxs/zekelman/Careers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 109,
+      "industry": "Unclassified (industrial)",
+      "industry_hint": "industrial",
+      "sample_titles": [
+        "Leasing Associate - Phoenix, AZ",
+        "Production Manager",
+        "Modular Installation Specialist - Flooring"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T22:12:48.140777+00:00",
+      "elapsed_seconds": 0.96,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "inizio",
+      "display_name": "Inizio",
+      "careers_url": "https://inizio.wd3.myworkdayjobs.com/CSO",
+      "cxs_url": "https://inizio.wd3.myworkdayjobs.com/wday/cxs/inizio/CSO/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 103,
+      "industry": "Healthcare/Pharma",
+      "industry_hint": "pharma",
+      "sample_titles": [
+        "Field Sales Operations Manager",
+        "Pharmaceutical Sales Representative",
+        "Pharmaceutical Field Sales Representative"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T22:07:28.675992+00:00",
+      "elapsed_seconds": 0.74,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "starfish",
+      "display_name": "Starfish",
+      "careers_url": "https://starfish.wd501.myworkdayjobs.com/Careers",
+      "cxs_url": "https://starfish.wd501.myworkdayjobs.com/wday/cxs/starfish/Careers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 103,
+      "industry": "Tech",
+      "industry_hint": "defense",
+      "sample_titles": [
+        "Dashboard Development (Azure DevOps)",
+        "Senior Cloud Architect/Systems Administrator",
+        "DevOps & Power Platform Engineer (Azure, ADO, Chatbots)"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T22:15:12.315413+00:00",
+      "elapsed_seconds": 0.87,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "organon",
+      "display_name": "Organon",
+      "careers_url": "https://organon.wd5.myworkdayjobs.com/SearchJobs",
+      "cxs_url": "https://organon.wd5.myworkdayjobs.com/wday/cxs/organon/SearchJobs/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 85,
+      "industry": "Healthcare/Pharma",
+      "industry_hint": "pharma",
+      "sample_titles": [
+        "Medical Science Liaison - Chicago",
+        "Medical Science Liaison",
+        "Asso. Pharmaceutical Information Manager"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T22:09:40.972915+00:00",
+      "elapsed_seconds": 1.11,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "brandeis",
+      "display_name": "Brandeis",
+      "careers_url": "https://brandeis.wd5.myworkdayjobs.com/Jobs",
+      "cxs_url": "https://brandeis.wd5.myworkdayjobs.com/wday/cxs/brandeis/Jobs/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 78,
+      "industry": "Unclassified (pharma)",
+      "industry_hint": "pharma",
+      "sample_titles": [
+        "Assistant Director, Community Living",
+        "Director, Leadership Annual Giving",
+        "Temporary Research Assistants"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T22:07:51.864901+00:00",
+      "elapsed_seconds": 1.74,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "cni",
+      "display_name": "Cni",
+      "careers_url": "https://cni.wd503.myworkdayjobs.com/CNI",
+      "cxs_url": "https://cni.wd503.myworkdayjobs.com/wday/cxs/cni/CNI/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 61,
+      "industry": "Government Contracting",
+      "industry_hint": "defense",
+      "sample_titles": [
+        "Computer Systems Analyst",
+        "Senior Installation Technician - TS/SCI",
+        "Security Specialist II"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T22:16:08.937744+00:00",
+      "elapsed_seconds": 0.44,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "jsrglobal",
+      "display_name": "Jsrglobal",
+      "careers_url": "https://jsrglobal.wd1.myworkdayjobs.com/kbi_biopharma",
+      "cxs_url": "https://jsrglobal.wd1.myworkdayjobs.com/wday/cxs/jsrglobal/kbi_biopharma/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 47,
+      "industry": "Industrial/Manufacturing",
+      "industry_hint": "industrial",
+      "sample_titles": [
+        "HVAC & Utilities Maintenance Technician II/III (Night Shift)",
+        "Senior Manufacturing Associate I/II",
+        "Manufacturing Associate I /II"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T22:13:30.905003+00:00",
+      "elapsed_seconds": 0.39,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "crinetics",
+      "display_name": "Crinetics",
+      "careers_url": "https://crinetics.wd12.myworkdayjobs.com/CrineticsCareers",
+      "cxs_url": "https://crinetics.wd12.myworkdayjobs.com/wday/cxs/crinetics/CrineticsCareers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 32,
+      "industry": "Healthcare/Pharma",
+      "industry_hint": "pharma",
+      "sample_titles": [
+        "Scientist 1, In Vitro Pharmacology",
+        "Director, Quality Systems, Project Management, QRM, RS",
+        "Manager, Clinical Business Operations"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T22:07:29.384796+00:00",
+      "elapsed_seconds": 0.71,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "agilent",
+      "display_name": "Agilent",
+      "careers_url": "https://agilent.wd5.myworkdayjobs.com/Agilent_Student_Careers",
+      "cxs_url": "https://agilent.wd5.myworkdayjobs.com/wday/cxs/agilent/Agilent_Student_Careers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 30,
+      "industry": "Unclassified (pharma)",
+      "industry_hint": "pharma",
+      "sample_titles": [
+        "Ing\u00e9nieur(e) de Service Junior \u2013 Chromatographie \u2013 Vall\u00e9e de la Seine",
+        "EMEA Marketing Communications & Content Intern (12-month internship)",
+        "Internship in Marketing Automation"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T22:08:22.024872+00:00",
+      "elapsed_seconds": 0.95,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "accuray",
+      "display_name": "Accuray",
+      "careers_url": "https://accuray.wd5.myworkdayjobs.com/External",
+      "cxs_url": "https://accuray.wd5.myworkdayjobs.com/wday/cxs/accuray/External/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 28,
+      "industry": "Unclassified (industrial)",
+      "industry_hint": "industrial",
+      "sample_titles": [
+        "Test Technician",
+        "Install Base Sales Manager - West",
+        "Install Base Sales Manager - East"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T22:14:35.844562+00:00",
+      "elapsed_seconds": 0.82,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "sumitomopharma",
+      "display_name": "Sumitomopharma",
+      "careers_url": "https://sumitomopharma.wd5.myworkdayjobs.com/SMPA",
+      "cxs_url": "https://sumitomopharma.wd5.myworkdayjobs.com/wday/cxs/sumitomopharma/SMPA/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 24,
+      "industry": "Healthcare/Pharma",
+      "industry_hint": "pharma",
+      "sample_titles": [
+        "Human Resources Operations Associate",
+        "HANDS ON - IT LEAD WITH COUPA EXPERTISE",
+        "New Product Planning Director, Biopharma"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T22:07:27.274916+00:00",
+      "elapsed_seconds": 0.45,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "ptcbio",
+      "display_name": "Ptcbio",
+      "careers_url": "https://ptcbio.wd5.myworkdayjobs.com/PTC_Careers",
+      "cxs_url": "https://ptcbio.wd5.myworkdayjobs.com/wday/cxs/ptcbio/PTC_Careers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 22,
+      "industry": "Healthcare/Pharma",
+      "industry_hint": "pharma",
+      "sample_titles": [
+        "Director, Cloud Infrastructure & Monitoring",
+        "Sr. Machine Learning Engineer",
+        "Sr. Manager, Global Tax"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T22:10:17.603413+00:00",
+      "elapsed_seconds": 0.85,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "zealandpharma",
+      "display_name": "Zealandpharma",
+      "careers_url": "https://zealandpharma.wd3.myworkdayjobs.com/External",
+      "cxs_url": "https://zealandpharma.wd3.myworkdayjobs.com/wday/cxs/zealandpharma/External/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 16,
+      "industry": "Healthcare/Pharma",
+      "industry_hint": "pharma",
+      "sample_titles": [
+        "Senior Director, Head of DMPK/ADME",
+        "Senior Cyber Security Architect",
+        "Associate Director, External Engagement"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T22:08:44.393114+00:00",
+      "elapsed_seconds": 0.78,
+      "notes": ""
+    },
+    {
+      "ats": "workday",
+      "tenant_id": "crisprtx",
+      "display_name": "Crisprtx",
+      "careers_url": "https://crisprtx.wd12.myworkdayjobs.com/Careers",
+      "cxs_url": "https://crisprtx.wd12.myworkdayjobs.com/wday/cxs/crisprtx/Careers/jobs",
+      "cxs_method": "POST",
+      "cxs_request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+      "cxs_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "active_role_count": 9,
+      "industry": "Healthcare/Pharma",
+      "industry_hint": "pharma",
+      "sample_titles": [
+        "Manufacturing Associate, LNP",
+        "Clinical Trial Associate (6-Month Contract)",
+        "Senior Manager, Alliance Management"
+      ],
+      "discovered_via": "bing-via-serper",
+      "discovered_at": "2026-05-07T22:10:15.419054+00:00",
+      "elapsed_seconds": 0.74,
+      "notes": ""
+    }
+  ],
+  "icims_new": [],
+  "failed": [
+    {
+      "ats": "workday",
+      "tenant": "vhr-otsuka",
+      "url": "https://vhr-otsuka.wd1.myworkdayjobs.com/External",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "tempus",
+      "url": "https://tempus.wd5.myworkdayjobs.com/en-US/Tempus_Careers/job/Area-Vice-President--Biotech_JR202600352",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "troweprice",
+      "url": "https://troweprice.wd5.myworkdayjobs.com/en-US/TRowePrice/job/Large-Cap-Pharma-and-Biotech-Analyst_79641",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "beigene",
+      "url": "https://beigene.wd5.myworkdayjobs.com/en-US/BeiGene/job/Senior-Director--Portfolio-and-Program-Management--Biotech-Unit_R34234-1",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "highpoint",
+      "url": "https://highpoint.wd503.myworkdayjobs.com/en-US/HighPoint_Student/job/Chemistry---Summer-Research-Assistant--NC-Biotech-_R0008617",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "raymondjames",
+      "url": "https://raymondjames.wd1.myworkdayjobs.com/en-US/RaymondJamesCareers/job/Equity-Sr-Research-Associate---Biotech_R-0009535",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "ameriprise",
+      "url": "https://ameriprise.wd5.myworkdayjobs.com/en-US/Ameriprise/job/Equity-Analyst--Seligman-Investments_R26_1243-2",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "clarioclinical",
+      "url": "https://clarioclinical.wd1.myworkdayjobs.com/en-US/clarioclinical_careers/job/Director--Biotech-Portfolio-Sales_R16894",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "db",
+      "url": "https://db.wd3.myworkdayjobs.com/en-US/dbwebsite/job/New-York-1-Columbus-Circle/US-Biotech-Pharma---Associate_R0413965/apply/useMyLastApplication",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "azenta",
+      "url": "https://azenta.wd1.myworkdayjobs.com/en-US/AzentaJobs/job/Spring-2026-Grads--Biotech-Life-Sciences-Sciences-Majors-_R20260231",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "relx",
+      "url": "https://relx.wd3.myworkdayjobs.com/en-US/ElsevierJobs/job/Commercial-Director---Pharma-Biotech-Segment_R108959-1",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "franklintempleton",
+      "url": "https://franklintempleton.wd5.myworkdayjobs.com/en-US/Primary-External-1/job/Ft-Lauderdale-Florida-United-States-of-America/Equity-Research-Analyst---Biotech-Pharmaceutical---Ft-Lauderdale_866902/apply",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "unimelb",
+      "url": "https://unimelb.wd105.myworkdayjobs.com/en-US/UoM_External_Career/job/Lecturer-or-Senior-Lecturer-in-Microbial-Biotechnology_JR-011418-1",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "marylandconnect",
+      "url": "https://marylandconnect.wd1.myworkdayjobs.com/en-US/BSU_Careers/job/Adjunct-Faculty-in-Biotechnology_JR101446",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "pipersandler",
+      "url": "https://pipersandler.wd501.myworkdayjobs.com/en-US/Piper_Sandler_Careers/job/Equity-Research-Intern---Biotechnology_R-100113",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "guggenheim",
+      "url": "https://guggenheim.wd1.myworkdayjobs.com/en-US/Guggenheim_Careers/job/Experienced-Associate---Equity-Research--Biotechnology_14598",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "theclaremontcolleges",
+      "url": "https://theclaremontcolleges.wd1.myworkdayjobs.com/en-US/KGI_Careers/job/Biotechnology-Entrepreneurship---Adjunct-Pool---Henry-E-Riggs-School-of-Applied-Life-Sciences_REQ-6944",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "exelixis",
+      "url": "https://exelixis.wd1.myworkdayjobs.com/en-US/Exel/job/Clinical-Trials-Manager--Biotechnology--Oncology-_JR6756-1",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "stjude",
+      "url": "https://stjude.wd1.myworkdayjobs.com/en-US/stjude/job/Director-of-the-Hartwell-Center-for-Biotechnology-Shared-Resource_JR6512-1",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "nutreco",
+      "url": "https://nutreco.wd3.myworkdayjobs.com/en-US/SHV_Internal_Job_Board/job/Specialist-Biotechnology_VAC27845-2",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "lilly",
+      "url": "https://lilly.wd5.myworkdayjobs.com/en-US/LLY/job/Lead-Chemist---RNAi-Drug-Discovery_R-103950-1",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "roche",
+      "url": "https://roche.wd3.myworkdayjobs.com/en-US/ROG-A2O-GENE/job/Software-Development-Engineer--AI-for-Drug-Discovery_202605-111391",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "musc",
+      "url": "https://musc.wd1.myworkdayjobs.com/en-US/MUSC/job/UNIV---Department-Chair---Drug-Discovery---Biomedical-Sciences_R-0000060939",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "neurocrine",
+      "url": "https://neurocrine.wd5.myworkdayjobs.com/en-US/Neurocrinecareers/job/Sr-Data-Scientist-AI-ML-Drug-Discovery---Onsite-San-Diego-HQ_R6761",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "nvidia",
+      "url": "https://nvidia.wd5.myworkdayjobs.com/en-US/NVIDIAExternalCareerSite/job/UK-Remote/Solutions-Architect---AI-for-Drug-Discovery_JR2017335",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "bristolmyerssquibb",
+      "url": "https://bristolmyerssquibb.wd5.myworkdayjobs.com/en-US/BMS/job/Clinical-Trial-Physician_R1601964",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "kumc",
+      "url": "https://kumc.wd5.myworkdayjobs.com/en-US/kumc-jobs/job/Clinical-Trials-Office-Trainer---Cancer-Center_JR009745",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "immatics",
+      "url": "https://immatics.wd3.myworkdayjobs.com/en-US/immatics_us/job/Clinical-Trial-Manager_JR100623",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "massgeneralbrigham",
+      "url": "https://massgeneralbrigham.wd1.myworkdayjobs.com/en-US/MGBExternal/job/Clinical-Trial-Project-Manager_RQ4055642",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "denverhealth",
+      "url": "https://denverhealth.wd1.myworkdayjobs.com/en-US/DHHA-Main/job/Manager--Clinical-Trials_R14648-1",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "jeffersonhealth",
+      "url": "https://jeffersonhealth.wd5.myworkdayjobs.com/en-US/ThomasJeffersonExternal/job/Clinical-Research-Lead_REQ-0026228-1",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "madrigalpharma",
+      "url": "https://madrigalpharma.wd501.myworkdayjobs.com/en-US/Madrigal/job/Clinical-Trial-Specialist_JR_000579-1",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "oneoncology",
+      "url": "https://oneoncology.wd1.myworkdayjobs.com/en-US/TNONC/job/TNO---GHCR-Admin--Nashville-TN/Clinical-Trial-Specialist_R-0000021752",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "iqvia",
+      "url": "https://iqvia.wd1.myworkdayjobs.com/en-US/IQVIA/job/Clinical-Trial-Educator---National_R1473610",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "ipsen",
+      "url": "https://ipsen.wd103.myworkdayjobs.com/en-US/Ipsen_Careers/job/Clinical-Trial-Administrator_R-20817",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "nant",
+      "url": "https://nant.wd5.myworkdayjobs.com/en-US/ImmunityBio/job/Clinical-Research-Associate--In-House_R2890-1",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "jj",
+      "url": "https://jj.wd5.myworkdayjobs.com/en-US/JJ/job/Medical-Device-Sales-Representative_R-069067-2",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "novanta",
+      "url": "https://novanta.wd5.myworkdayjobs.com/en-US/Novanta-Careers/job/Product-Manager-Medical-Devices--m-f-d-_R008780",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "medtronic",
+      "url": "https://medtronic.wd1.myworkdayjobs.com/en-US/MedtronicCareers/job/Sr-Quality-Program-Manager--Cardiac-Electrophysiology-_R58326-1",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "gilead",
+      "url": "https://gilead.wd1.myworkdayjobs.com/es/gileadcareers/job/Senior-Manager--Quality---Combination-Products--Compliance_R0041876-1",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "tandemdiabetes",
+      "url": "https://tandemdiabetes.wd12.myworkdayjobs.com/fr-CA/tandemdiabetes/job/Sr-Product-Manager--Medical-Device_JR100964-1",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "csl",
+      "url": "https://csl.wd1.myworkdayjobs.com/en-US/CSL_External/job/Packaging-Medical-Device-Quality-Specialist--x2-_R-275260-1",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "gn",
+      "url": "https://gn.wd3.myworkdayjobs.com/en-US/GN-Careers/job/Design-Controller-Medical-Devices_R27677-1",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "namsa",
+      "url": "https://namsa.wd5.myworkdayjobs.com/es/NAMSA/job/Medical-Monitor--Medical-Device-CRO_R5208",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "wisconsin",
+      "url": "https://wisconsin.wd1.myworkdayjobs.com/es/UW_Comprehensives/job/Senior-Medical-Device-Technician_JR10009422",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "bsigroup",
+      "url": "https://bsigroup.wd3.myworkdayjobs.com/en-US/BSI_Careers/job/Medical-Device-Software-Specialist_JR0019104",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "dexcom",
+      "url": "https://dexcom.wd1.myworkdayjobs.com/en-US/Dexcom/job/Manager-of-Medical-Device-Engineering---Failure-Analysis_JR117937-1",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "pfizer",
+      "url": "https://pfizer.wd1.myworkdayjobs.com/en-US/PfizerCareers/job/Associate-Scientist---Viral-Vaccines_4955535-1",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "gatesfoundation",
+      "url": "https://gatesfoundation.wd1.myworkdayjobs.com/en-US/Gates/job/Seattle-WA/Program-Officer--Vaccine-Impact-Optimization-and-Surveillance---12-Month-LTE-_B021511-1?source=gatesfoundation.org",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "sanofi",
+      "url": "https://sanofi.wd3.myworkdayjobs.com/en-US/SanofiCareers/job/Vaccine-Activation-Manager_R2854435",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "gsk",
+      "url": "https://gsk.wd5.myworkdayjobs.com/en-US/GSKCareers/job/Vaccine-Account-Manager---St-Louis--MO_435120-1",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "osu",
+      "url": "https://osu.wd1.myworkdayjobs.com/en-US/OSUCareers/job/Director-of-Antibody-Therapeutics--Professor-_R116321-1",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "primetherapeutics",
+      "url": "https://primetherapeutics.wd1.myworkdayjobs.com/en-US/PrimeTherapeuticsCareers/job/Strategic-Initiatives-VP---Remote_R-16090-1",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "hmfp",
+      "url": "https://hmfp.wd5.myworkdayjobs.com/en-US/HMFP/job/Hematology-and-Oncology-Nurse-Practitioner_R0816",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "nshs",
+      "url": "https://nshs.wd1.myworkdayjobs.com/en-US/ns-eeh/job/Hematology-Oncology--Physician--NCH-5-1_R33680",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "montefiore",
+      "url": "https://montefiore.wd12.myworkdayjobs.com/en-US/MMC/job/Medical-Oncologist_JR226746",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "multicare",
+      "url": "https://multicare.wd1.myworkdayjobs.com/en-US/multicare/job/APP--Medical-Oncology_JR61948",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "seh",
+      "url": "https://seh.wd503.myworkdayjobs.com/en-US/SoutheastHealth/job/Hematology-Oncology-Physician_JR12842",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "oumedicine",
+      "url": "https://oumedicine.wd5.myworkdayjobs.com/en-US/OUHealthCareers/job/Manager---Cancer-Registry_R0061677",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "illumina",
+      "url": "https://illumina.wd1.myworkdayjobs.com/en-US/illumina-careers/job/Executive-Oncology-Specialist---Eastern-US_41675-JOB-1",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "blueorigin",
+      "url": "https://blueorigin.wd5.myworkdayjobs.com/en-US/BlueOrigin/job/Manager---Manufacturing-Operations---Assembly_R63118",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "3m",
+      "url": "https://3m.wd1.myworkdayjobs.com/en-US/Search/job/Manufacturing-Operations-Manager_R01164595",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "elanco",
+      "url": "https://elanco.wd5.myworkdayjobs.com/en-US/External_Career/job/Leader---Manufacturing-Operations_R0025702-1",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "entegris",
+      "url": "https://entegris.wd1.myworkdayjobs.com/en-US/EntegrisCareers/job/Manager--Manufacturing-Operations-Management_REQ-11501",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "freseniusglobal",
+      "url": "https://freseniusglobal.wd3.myworkdayjobs.com/en-US/FK_Careers/job/Director--Manufacturing-Operations_R-10006782",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "utaustin",
+      "url": "https://utaustin.wd1.myworkdayjobs.com/en-US/UTstaff/job/Manufacturing-Technicians--Trainee-to-Levels-I--II--or-III--Texas-Institute-for-Electronics_R_00040136",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "clarios",
+      "url": "https://clarios.wd5.myworkdayjobs.com/en-US/clarioscareers/job/United-States-Oregon-Canby/Training-Coordinator_WD43394-1?locationRegionStateProvince=6fcc4198762c4a7c807486c849fe94dd",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "assurant",
+      "url": "https://assurant.wd1.myworkdayjobs.com/en-US/Assurant_Careers/job/Automation-Engineer-1_R-113645",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "stryker",
+      "url": "https://stryker.wd1.myworkdayjobs.com/en-US/StrykerCareers/job/Staff-Industrial-Automation-Process-Engineer_R562570",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "cesco",
+      "url": "https://cesco.wd501.myworkdayjobs.com/en-US/CESCOCareers/job/Industrial-Automation-Engineer_R7357-1",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "marmon",
+      "url": "https://marmon.wd501.myworkdayjobs.com/en-US/Marmon_Careers_SWE/job/Intern---Industrial-IoT---Automation_JR0000037621-1",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "amcor",
+      "url": "https://amcor.wd5.myworkdayjobs.com/en-US/Amcor_External_Career_Site/job/Industrial-Automation-Specialist_REQ_88553/apply",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "toyota",
+      "url": "https://toyota.wd503.myworkdayjobs.com/en-US/TMNA/job/Maintenance-Team-Member--Industrial-Automation-or-Facilities_10297716",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "rockwellautomation",
+      "url": "https://rockwellautomation.wd1.myworkdayjobs.com/en-GB/External_Rockwell_Automation/job/Project-Manager--Industrial-Automation-_R26-1229/apply/autofillWithResume",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "collin",
+      "url": "https://collin.wd1.myworkdayjobs.com/en-US/ExternalFacultyCareerSite/job/Adjunct-Professor--Industrial-Automation--Applicant-Pool-2025-2026-_R-6681",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "ferring",
+      "url": "https://ferring.wd3.myworkdayjobs.com/en-US/Ferring/job/Associate-Engineer--Industrial-Automation_R0036704/apply/useMyLastApplication",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "oshkoshcorporation",
+      "url": "https://oshkoshcorporation.wd5.myworkdayjobs.com/en-us/oshkosh/job/industrial-automation-technician---3rd-shift_r45042/apply",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "atmosenergy",
+      "url": "https://atmosenergy.wd5.myworkdayjobs.com/en-US/External_Career_Site/job/Manager-of-Supply-Chain-Operations_JR13472",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "vumc",
+      "url": "https://vumc.wd1.myworkdayjobs.com/en-US/vumccareers/job/Learning---Development-Specialist---Supply-Chain-Operations---Hybrid-in-Nashville-TN_R-57737-1/apply",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "saintlukes",
+      "url": "https://saintlukes.wd1.myworkdayjobs.com/en-US/saintlukeshealthcareers/job/Manager-Supply-Chain-Operations-II_JobReq0057332",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "dyson",
+      "url": "https://dyson.wd3.myworkdayjobs.com/en-US/dyson_careers/job/Supply-Chain-Operations-Manager_JR35166",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "gafsgi",
+      "url": "https://gafsgi.wd5.myworkdayjobs.com/en-US/GAF_Careers/job/Gainesville-TX/Supply-Chain-Manager_25617",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "worldvision",
+      "url": "https://worldvision.wd1.myworkdayjobs.com/en-US/WorldVisionInternational/job/Emergency-Response-Roster---Supply-Chain-Manager_JR36662",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "pultegroup",
+      "url": "https://pultegroup.wd1.myworkdayjobs.com/en-US/PGI/job/Plant-Manager_JR9009",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "heidelbergmaterials",
+      "url": "https://heidelbergmaterials.wd3.myworkdayjobs.com/en-US/Global_HM_Career_Site/job/Burnet-TX/Plant-Manager_JR10015403?locationCountry=bc33aa3152ec42d4995f4791a106ed09",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "copeland",
+      "url": "https://copeland.wd5.myworkdayjobs.com/en-US/Copeland_External_Careers_Page/job/Plant-Manager_JR114597",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "airliquidehr",
+      "url": "https://airliquidehr.wd3.myworkdayjobs.com/en-US/AirgasExternalCareer/job/Plant-Manager_R10068761",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "portlandgeneral",
+      "url": "https://portlandgeneral.wd5.myworkdayjobs.com/en-US/pgn/job/Senior-Plant-Manager_R8199-1",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "mitsubishichemicalgroup",
+      "url": "https://mitsubishichemicalgroup.wd3.myworkdayjobs.com/en-US/MCCGroupCareers/job/Covington-Georgia/Plant-Manager_JR_0000686/apply/autofillWithResume",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "treehouse",
+      "url": "https://treehouse.wd1.myworkdayjobs.com/en-US/TreeHouseCareers/job/Plant-Manager_R30040",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "iberdrola",
+      "url": "https://iberdrola.wd3.myworkdayjobs.com/en-US/Iberdrola/job/Plant-Manager---Wind_R-28137",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "sbdinc",
+      "url": "https://sbdinc.wd1.myworkdayjobs.com/en-US/Stanley_Black_Decker_Career_Site/job/Plant-Manager_REQ-1000046965",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "brambles",
+      "url": "https://brambles.wd5.myworkdayjobs.com/en-US/CHEP_Plant_Careers/job/Plant-Manager_JR23649",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "goodyear",
+      "url": "https://goodyear.wd1.myworkdayjobs.com/en-US/GoodyearCareers/job/Process-Engineer_JR-40108288-1",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "kimberlyclark",
+      "url": "https://kimberlyclark.wd1.myworkdayjobs.com/ru-RU/GLOBAL/job/Process-Engineer_885041-2",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "hexcel",
+      "url": "https://hexcel.wd5.myworkdayjobs.com/en-US/HexcelCareers/job/Process-Engineer-I_R019304",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "zepinc",
+      "url": "https://zepinc.wd503.myworkdayjobs.com/en-US/zepinccareers/job/Process-Engineer_J108301",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "connect",
+      "url": "https://connect.wd1.myworkdayjobs.com/en-US/ztsystemscareers/job/Staff-MFG-Process-Engineer--Process-Owner-_R-104502",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "millerknoll",
+      "url": "https://millerknoll.wd1.myworkdayjobs.com/en-US/MillerKnoll/job/Process-Engineer_JR107425-1",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "dtna",
+      "url": "https://dtna.wd5.myworkdayjobs.com/en-US/DTNA_external/job/Logistics-Operations-Specialist-II_DT-17534",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "synnex",
+      "url": "https://synnex.wd5.myworkdayjobs.com/fr-FR/tdsynnexcareers/job/Supervisor--Logistics-Operations_R48299",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "ag",
+      "url": "https://ag.wd3.myworkdayjobs.com/en-US/Airbus/job/Logistics-Operations-Specialist--LOS--St-Eloi_JR10400668-1",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "albanymed",
+      "url": "https://albanymed.wd5.myworkdayjobs.com/en-US/Albany_Med/job/Logistics-Center-Operations-Supervisor_67903",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "jd",
+      "url": "https://jd.wd103.myworkdayjobs.com/en-US/Careers_at_JD/job/Logistics-Operations-Support--Duke-_JR100972-1",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "orthoclinical",
+      "url": "https://orthoclinical.wd1.myworkdayjobs.com/en-US/Search/job/SAP-Logistics-and-Operations-Lead_R0015200",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "cochlear",
+      "url": "https://cochlear.wd3.myworkdayjobs.com/en-US/Cochlear_Careers/job/Logistics-Operations-Coordinator_R-619599-2",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "eosenergystorage",
+      "url": "https://eosenergystorage.wd1.myworkdayjobs.com/en-US/EoS/job/Field-Service-Site-Supervisor_R4905",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "silgancontainers",
+      "url": "https://silgancontainers.wd1.myworkdayjobs.com/en-US/silgan/job/Field-Service-Engineer_R6355",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "zieglercat",
+      "url": "https://zieglercat.wd1.myworkdayjobs.com/en-US/zieglercat/job/Field-Service-Supervisor_2026-1251",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "faithtechnologies",
+      "url": "https://faithtechnologies.wd1.myworkdayjobs.com/en-US/FTI/job/Field-Service-Engineer_R6118-1",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "formfactor",
+      "url": "https://formfactor.wd1.myworkdayjobs.com/de-DE/FFI-Careers/job/Field-Service-Engineer--M-F-D-_2368-1",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "invenergyllc",
+      "url": "https://invenergyllc.wd1.myworkdayjobs.com/en-US/invenergycareers/job/Field-Service-Technician---100--Travel--Rotational-Position-4-weeks-traveling--1-week-off-_R10271-1",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "alcon",
+      "url": "https://alcon.wd5.myworkdayjobs.com/en-US/careers_alcon/job/Field-Service-Engineer_R-2026-46207-1",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "barrywehmiller",
+      "url": "https://barrywehmiller.wd1.myworkdayjobs.com/en-US/BWConfidential/job/Field-Service-Technician-Engineer_R020202-2",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "coreandmain",
+      "url": "https://coreandmain.wd1.myworkdayjobs.com/en-US/coreandmain/job/Field-Service-Technician-I_45403",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "trumpf",
+      "url": "https://trumpf.wd3.myworkdayjobs.com/en-US/trumpf_graduates_and_professionals/job/Reno-NV/Field-Service-Engineer_R00039814",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "championx",
+      "url": "https://championx.wd1.myworkdayjobs.com/es/ChampionX_External/job/USA---Texas---Odessa/Field-Service-Technician-I_R00135667",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "altera",
+      "url": "https://altera.wd1.myworkdayjobs.com/en-US/Altera/job/Functional-Safety-Manager---Aerospace--Defense---Government_R02441",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "cree",
+      "url": "https://cree.wd108.myworkdayjobs.com/en-US/EXT/job/Applications-Engineer-for-Aerospace--Defense--Government-and-High-Voltage_26-254/apply/useMyLastApplication",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "nvent",
+      "url": "https://nvent.wd5.myworkdayjobs.com/en-US/nVent/job/Global-Strategic-Growth-Leader---Aerospace---Defense_R19653-1",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "dlapiper",
+      "url": "https://dlapiper.wd1.myworkdayjobs.com/en-US/dlapiper/job/Government-Contracts-Associate--Aerospace--Defense---Next-Generation-Energy-_R2025-1831/apply?utm_source=ziprecruiter",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "horvath",
+      "url": "https://horvath.wd3.myworkdayjobs.com/en-US/Horvath_Careers/job/Senior-Consultant--w-m-d--Aerospace---Defence_R005743/apply/useMyLastApplication",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "globalhr",
+      "url": "https://globalhr.wd5.myworkdayjobs.com/en-GB/REC_RTX_Ext_Gateway",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "aptiv",
+      "url": "https://aptiv.wd5.myworkdayjobs.com/en-US/aptiv_careers/job/senior-industry-marketing-manager---aerospace--defense--government_j000694365/apply/useMyLastApplication",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "huntsman",
+      "url": "https://huntsman.wd1.myworkdayjobs.com/en-US/Huntsman/job/Office-Sales-Specialist---Aerospace---Defense_J-019737/apply",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "hpe",
+      "url": "https://hpe.wd5.myworkdayjobs.com/en-US/WFMathpe/job/National-Security-Strategist_1200409-1",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "bnl",
+      "url": "https://bnl.wd1.myworkdayjobs.com/en-US/Externa/job/National-Security-Program-Manager--2-year-Term-_JR102389/apply",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "gdit",
+      "url": "https://gdit.wd5.myworkdayjobs.com/en-US/External_Career_Site/job/Intelligence-Trainer--Senior_RQ219561-1",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "maxar",
+      "url": "https://maxar.wd1.myworkdayjobs.com/en-US/Vantor/job/DevSecOps-Engineer_R23787-1",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "kyndryl",
+      "url": "https://kyndryl.wd5.myworkdayjobs.com/en-US/KyndrylProfessionalCareers/job/Lead-II--Cybersecurity-Defense_R-59531",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "gartner",
+      "url": "https://gartner.wd5.myworkdayjobs.com/en-US/EXT/job/Cyber-Security---National-Defense-Expert--Sr-Director-Analyst--Fully-Remote-US-_107539",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "sonyglobal",
+      "url": "https://sonyglobal.wd1.myworkdayjobs.com/en-US/SonyGlobalCareers/job/Senior-Director--Cyber-Defense_JR-118851-1",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "zelis",
+      "url": "https://zelis.wd1.myworkdayjobs.com/en-US/ZelisCareers/job/Security-Threat-Analyst_JR110489",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "humana",
+      "url": "https://humana.wd5.myworkdayjobs.com/en-US/Humana_External_Career_Site/job/CyberSecurity-Defense-Operations-Analyst_R-401693/apply/autofillWithResume",
+      "reason": "no_cxs_match_or_no_jobs"
+    },
+    {
+      "ats": "workday",
+      "tenant": "pwc",
+      "url": "https://pwc.wd3.myworkdayjobs.com/en-US/Global_Experienced_Careers/job/Consulting-Director---Cyber-Defense_718376WD",
+      "reason": "no_cxs_match_or_no_jobs"
+    }
+  ]
+}

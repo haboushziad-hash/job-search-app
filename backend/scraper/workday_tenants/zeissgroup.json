@@ -1,0 +1,24 @@
+{
+  "display_name": "Zeissgroup",
+  "careers_url": "https://zeissgroup.wd3.myworkdayjobs.com/External",
+  "status": "OK",
+  "reason": "",
+  "elapsed": 1.24,
+  "captured": {
+    "url": "https://zeissgroup.wd3.myworkdayjobs.com/wday/cxs/zeissgroup/External/jobs",
+    "method": "POST",
+    "request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+    "headers": {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+      "Accept": "application/json",
+      "Content-Type": "application/json"
+    },
+    "input_selector_used": ""
+  },
+  "_grinder_meta": {
+    "discovered_at": "2026-05-07T22:14:40.433660+00:00",
+    "industry_hint": "industrial",
+    "active_role_count_at_discovery": 727,
+    "discovered_via": "bing-via-serper"
+  }
+}

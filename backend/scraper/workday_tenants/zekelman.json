@@ -1,0 +1,24 @@
+{
+  "display_name": "Zekelman",
+  "careers_url": "https://zekelman.wd12.myworkdayjobs.com/Careers",
+  "status": "OK",
+  "reason": "",
+  "elapsed": 0.96,
+  "captured": {
+    "url": "https://zekelman.wd12.myworkdayjobs.com/wday/cxs/zekelman/Careers/jobs",
+    "method": "POST",
+    "request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+    "headers": {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+      "Accept": "application/json",
+      "Content-Type": "application/json"
+    },
+    "input_selector_used": ""
+  },
+  "_grinder_meta": {
+    "discovered_at": "2026-05-07T22:12:48.140777+00:00",
+    "industry_hint": "industrial",
+    "active_role_count_at_discovery": 109,
+    "discovered_via": "bing-via-serper"
+  }
+}

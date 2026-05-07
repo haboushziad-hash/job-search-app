@@ -1,0 +1,24 @@
+{
+  "display_name": "Modernatx",
+  "careers_url": "https://modernatx.wd1.myworkdayjobs.com/M_tx",
+  "status": "OK",
+  "reason": "",
+  "elapsed": 0.78,
+  "captured": {
+    "url": "https://modernatx.wd1.myworkdayjobs.com/wday/cxs/modernatx/M_tx/jobs",
+    "method": "POST",
+    "request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+    "headers": {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+      "Accept": "application/json",
+      "Content-Type": "application/json"
+    },
+    "input_selector_used": ""
+  },
+  "_grinder_meta": {
+    "discovered_at": "2026-05-07T22:10:07.548760+00:00",
+    "industry_hint": "pharma",
+    "active_role_count_at_discovery": 164,
+    "discovered_via": "bing-via-serper"
+  }
+}

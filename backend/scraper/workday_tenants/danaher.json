@@ -1,0 +1,24 @@
+{
+  "display_name": "Danaher",
+  "careers_url": "https://danaher.wd1.myworkdayjobs.com/DanaherJobs",
+  "status": "OK",
+  "reason": "",
+  "elapsed": 0.85,
+  "captured": {
+    "url": "https://danaher.wd1.myworkdayjobs.com/wday/cxs/danaher/DanaherJobs/jobs",
+    "method": "POST",
+    "request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+    "headers": {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+      "Accept": "application/json",
+      "Content-Type": "application/json"
+    },
+    "input_selector_used": ""
+  },
+  "_grinder_meta": {
+    "discovered_at": "2026-05-07T22:08:24.137296+00:00",
+    "industry_hint": "pharma",
+    "active_role_count_at_discovery": 1385,
+    "discovered_via": "bing-via-serper"
+  }
+}

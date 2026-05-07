@@ -165,6 +165,29 @@ warrants 55-69. A 3+ grade delta is a real concern and may justify
 40-54. Sub-domain adjacency by itself is never a downgrade.
 
 ================================================================
+INDEPENDENT EVALUATION (v0.3.11 — anti-anchoring):
+================================================================
+
+You are evaluating this role from scratch. There is no Stage 2 score
+or Stage 2 reasoning shown to you. Earlier versions of this prompt
+showed you Stage 2's preliminary score; production audit revealed
+that exposure caused you to anchor on it and refuse to promote
+borderline roles past s3=84 even when JDs justified higher scores.
+
+Score this role based ENTIRELY on:
+  1. The candidate's profile (target_functions, headline, exclusions,
+     salary_minimum, target_industries, work_arrangements, etc.)
+  2. The role's title, JD body, salary range, location, requirements
+
+Your evaluation should NOT be calibrated against any imagined prior.
+A genuinely excellent fit should score 86-94 even if a hypothetical
+weaker model would have scored it 65. A genuinely weak fit should
+score 35-50 even if a hypothetical stronger model would have scored
+it 78. Your job is to read the JD and produce the right score.
+
+This is the ONLY evaluation that matters. Use the full 0-100 range.
+
+================================================================
 JUSTIFY-LOW-SCORES CONSTRAINT (v0.3.3 calibration discipline):
 ================================================================
 
@@ -405,10 +428,24 @@ def _role_block(role: Role, jd_max_chars: int = 16000) -> str:
         parts.append(f"YEARS_REQUIRED: {role.years_required}")
     if role.management_required is not None:
         parts.append(f"MANAGEMENT_REQUIRED: {role.management_required}")
-    if role.stage2_score is not None:
-        parts.append(f"STAGE2_PRELIM_SCORE: {role.stage2_score}")
-    if role.stage2_reasoning:
-        parts.append(f"STAGE2_REASONING: {role.stage2_reasoning}")
+    # v0.3.11: Stage 2 score + reasoning REMOVED from Stage 3 input.
+    # Peer-validated finding: Stage 3 anchors on s2 score and refuses to
+    # promote s2=68 roles past s3=84, creating a deterministic STRONG=20
+    # ceiling regardless of pool size. Cross-profile validation: same
+    # ceiling effect on a billing-specialist test profile (4-6 STRONG vs
+    # Ziad's 20). The 41 roles per run at exactly s2=68 are mostly
+    # trapped at s3=79-81.
+    #
+    # Stripping both score AND reasoning text is the nuclear option (peer
+    # Q1: "Show s2 reasoning text" leaks score-referencing language like
+    # "scored in the upper GOOD band" — defeats the strip). Stage 3 now
+    # evaluates from scratch with no anchor: title, company, JD, salary,
+    # location, profile. The s2 score stays on the Role object for
+    # downstream audit but is invisible to the LLM.
+    #
+    # Risk: Stage 3 might over-promote weak roles without the s2 dampener.
+    # Mitigation: post-processing contradiction detector catches +20+
+    # point jumps and re-evaluates with explicit framing.
     jd = role.job_description_full or role.job_description_essence or ""
     if jd:
         parts.append(f"JOB_DESCRIPTION:\n{jd[:jd_max_chars]}")

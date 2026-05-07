@@ -1,0 +1,24 @@
+{
+  "display_name": "Nwis",
+  "careers_url": "https://nwis.wd12.myworkdayjobs.com/nw",
+  "status": "OK",
+  "reason": "",
+  "elapsed": 0.78,
+  "captured": {
+    "url": "https://nwis.wd12.myworkdayjobs.com/wday/cxs/nwis/nw/jobs",
+    "method": "POST",
+    "request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+    "headers": {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+      "Accept": "application/json",
+      "Content-Type": "application/json"
+    },
+    "input_selector_used": ""
+  },
+  "_grinder_meta": {
+    "discovered_at": "2026-05-07T22:16:43.229746+00:00",
+    "industry_hint": "defense",
+    "active_role_count_at_discovery": 294,
+    "discovered_via": "bing-via-serper"
+  }
+}

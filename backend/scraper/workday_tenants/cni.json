@@ -1,0 +1,24 @@
+{
+  "display_name": "Cni",
+  "careers_url": "https://cni.wd503.myworkdayjobs.com/CNI",
+  "status": "OK",
+  "reason": "",
+  "elapsed": 0.44,
+  "captured": {
+    "url": "https://cni.wd503.myworkdayjobs.com/wday/cxs/cni/CNI/jobs",
+    "method": "POST",
+    "request_body": "{\"appliedFacets\":{},\"limit\":20,\"offset\":0,\"searchText\":\"\"}",
+    "headers": {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+      "Accept": "application/json",
+      "Content-Type": "application/json"
+    },
+    "input_selector_used": ""
+  },
+  "_grinder_meta": {
+    "discovered_at": "2026-05-07T22:16:08.937744+00:00",
+    "industry_hint": "defense",
+    "active_role_count_at_discovery": 61,
+    "discovered_via": "bing-via-serper"
+  }
+}
