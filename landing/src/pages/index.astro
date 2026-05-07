@@ -23,24 +23,48 @@ const APP_SIZE = "107 MB";
          updated by the script at the bottom of this file. Falls back to
          hidden when JS is off. -->
     <div id="hero-spotlight" class="cursor-spotlight" aria-hidden="true"></div>
-    <!-- Top nav -->
-    <nav class="max-w-6xl mx-auto px-6 pt-8 flex items-center justify-between">
-      <div class="flex items-center gap-2.5">
+
+    <!-- Trust strip — sits above the nav at the very top of the page.
+         Communicates that the macOS build is properly code-signed and
+         Apple-notarized (no Gatekeeper warnings on install). Intentionally
+         small + low-contrast so it reads as a quiet credential, not a
+         marketing claim. The Apple-leaf SVG below is a generic shape, not
+         the protected Apple logo. -->
+    <div class="max-w-6xl mx-auto px-6 pt-3 flex justify-center">
+      <div class="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.18em] text-base-500">
+        <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+        </svg>
+        <span>Signed &amp; notarized by Apple Developer ID</span>
+      </div>
+    </div>
+
+    <!-- Top nav.
+         Three flex columns where the side columns flex-1 (consume equal
+         space) and the middle column auto-centers its content. This keeps
+         How it Works / Features / Privacy at exactly the viewport center
+         regardless of how much wider the "findmesomedamnjobz" wordmark is
+         than the Download button. Previous justify-between layout drifted
+         the link group to the left because the side widths were asymmetric. -->
+    <nav class="max-w-6xl mx-auto px-6 pt-8 flex items-center">
+      <div class="flex-1 flex items-center gap-2.5">
         <!-- Z mark — cleaned PNG (real transparency, auto-cropped to its
              alpha bbox so the logo fills the canvas without dead padding). -->
         <img src="/z-mark.png" alt="findmesomedamnjobz" width="32" height="32" />
         <span class="font-semibold tracking-tight text-base-100 text-sm">findmesomedamnjobz</span>
       </div>
       <div class="hidden sm:flex items-center gap-1">
-        <a href="#how-it-works" data-nav-target="how-it-works" class="nav-link px-3 py-1.5 text-sm text-base-300 hover:text-base-100">How it works</a>
+        <a href="#how-it-works" data-nav-target="how-it-works" class="nav-link px-3 py-1.5 text-sm text-base-300 hover:text-base-100">How it Works</a>
         <a href="#features" data-nav-target="features" class="nav-link px-3 py-1.5 text-sm text-base-300 hover:text-base-100">Features</a>
         <a href="#privacy" data-nav-target="privacy" class="nav-link px-3 py-1.5 text-sm text-base-300 hover:text-base-100">Privacy</a>
       </div>
-      <a href="#" onclick="window.scrollTo({top: 0, behavior: 'smooth'}); return false;"
-         class="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-md bg-white/[0.06] border border-white/[0.08] text-sm text-base-100 hover:bg-white/[0.10] transition-colors">
-        Download
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
-      </a>
+      <div class="flex-1 flex justify-end">
+        <a href="#" onclick="window.scrollTo({top: 0, behavior: 'smooth'}); return false;"
+           class="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-md bg-white/[0.06] border border-white/[0.08] text-sm text-base-100 hover:bg-white/[0.10] transition-colors">
+          Download
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </a>
+      </div>
     </nav>
 
     <!-- Built-by credit (animated gradient) — placed just below the nav,
@@ -482,7 +506,7 @@ const APP_SIZE = "107 MB";
   <section id="how-it-works" class="section relative">
     <div class="max-w-5xl mx-auto">
       <div class="reveal text-center mb-8">
-        <div class="text-[22px] uppercase tracking-widest text-accent-400 mb-4 font-semibold">How it works</div>
+        <div class="text-[22px] uppercase tracking-widest text-accent-400 mb-4 font-semibold">How it Works</div>
         <h2 class="text-4xl sm:text-5xl font-semibold tracking-tight">Three steps. No spam-applying.</h2>
       </div>
       <div class="reveal-stagger grid md:grid-cols-3 gap-5">
