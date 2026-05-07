@@ -306,16 +306,38 @@ class SearchEngine:
 
 
 class SerperBingEngine(SearchEngine):
-    """Site-restricted searches via Serper.dev /search?engine=bing."""
+    """Site-restricted searches via Serper.dev /search?engine=bing.
+
+    Tracks exhaustion via sticky flag: once Serper returns 402 (free tier
+    exhausted) or credits drop to 0, we set self.exhausted=True and stop
+    trying. The chained client (ChainedSearchEngine below) routes
+    subsequent calls to DataForSEO automatically.
+    """
     name = "bing-via-serper"
     url = "https://google.serper.dev/search"
 
-    def __init__(self, api_key: str):
+    def __init__(self, api_key: str, min_credits_reserve: int = 0):
         self.api_key = api_key
         self.queries_run = 0
+        self.exhausted = False
+        self.last_credits_remaining: Optional[int] = None
+        # Reserve buffer: never let queries drop below this remaining-credits
+        # count. Useful to preserve budget for tester searches when run
+        # via the desktop app. Default 0 = use everything available.
+        self.min_credits_reserve = min_credits_reserve
+
+    @property
+    def has_quota(self) -> bool:
+        """Cheap check before issuing a call. Returns False if known
+        exhausted or below reserve threshold."""
+        if self.exhausted:
+            return False
+        if self.last_credits_remaining is not None:
+            return self.last_credits_remaining > self.min_credits_reserve
+        return True  # unknown — try optimistically
 
     async def search(self, query: str, num: int = 20) -> list[str]:
-        if not self.api_key:
+        if not self.api_key or self.exhausted:
             return []
         self.queries_run += 1
         try:
@@ -325,9 +347,21 @@ class SerperBingEngine(SearchEngine):
                     headers={"X-API-KEY": self.api_key, "Content-Type": "application/json"},
                     json={"q": query, "engine": "bing", "num": min(num, 30)},
                 )
+            # 402 = free tier exhausted, 429 = rate limit, 401/403 = bad key
+            if r.status_code in (402, 429, 401, 403):
+                self.exhausted = True
+                print(f"[serper] EXHAUSTED ({r.status_code}) — falling back to DataForSEO for remainder of run")
+                return []
             if r.status_code != 200:
                 return []
             data = r.json()
+            # Capture credits remaining for next-call quota gate
+            credits = data.get("credits")
+            if isinstance(credits, int):
+                self.last_credits_remaining = credits
+                if credits <= self.min_credits_reserve:
+                    self.exhausted = True
+                    print(f"[serper] reserve hit (credits={credits}, reserve={self.min_credits_reserve}) — falling back to DataForSEO")
             urls = []
             for item in (data.get("organic") or [])[:num]:
                 link = (item.get("link") or "").strip()
@@ -389,6 +423,53 @@ class DataForSEOGoogleEngine(SearchEngine):
                 return []
         except Exception:
             return []
+
+
+class ChainedSearchEngine(SearchEngine):
+    """Quota-aware multi-provider search.
+
+    Tries providers in order. If the primary is known-exhausted (Serper
+    returned 402 or hit reserve threshold), skip it entirely and go
+    directly to the secondary. This avoids per-call retry overhead.
+
+    Use case: free Serper tier first (saves money), DataForSEO as paid
+    fallback when Serper's monthly cap is reached. The grinder won't
+    "break" mid-run when Serper exhausts — it just transparently routes
+    remaining calls through DataForSEO.
+
+    Robustness:
+      - Sticky exhaustion: once Serper marks itself exhausted, all
+        subsequent ChainedSearchEngine.search() calls go to DataForSEO
+        directly without trying Serper again
+      - Both providers can return [] (e.g. genuinely no results); the
+        chain doesn't second-guess that — only routes when a provider
+        is unavailable
+      - Pre-flight: if Serper.has_quota is False at construction time,
+        we never even try Serper for this run
+    """
+    name = "chained"
+
+    def __init__(self, primary: SearchEngine, secondary: SearchEngine):
+        self.primary = primary
+        self.secondary = secondary
+
+    @property
+    def queries_run(self) -> int:
+        # For caller-facing stats: report combined query count
+        return getattr(self.primary, "queries_run", 0) + getattr(self.secondary, "queries_run", 0)
+
+    async def search(self, query: str, num: int = 20) -> list[str]:
+        # Try primary if it has quota
+        if getattr(self.primary, "has_quota", True):
+            urls = await self.primary.search(query, num=num)
+            if urls:
+                return urls
+            # Primary returned nothing. Two cases:
+            # 1. Primary genuinely has no results for this query → secondary may succeed
+            # 2. Primary exhausted mid-call (sticky flag now set) → skip primary going forward
+            # Either way, try secondary now.
+        # Primary unavailable or returned empty — fall through to secondary
+        return await self.secondary.search(query, num=num)
 
 
 # ---------------------------------------------------------------------------
@@ -642,17 +723,28 @@ async def run_industry_pack(
         if not has_budget(state):
             return hits
         query = f"site:{site_filter} {kw}"
-        urls = await state.serper.search(query, num=20)
+
+        # v0.3.9.1: chained search — try Serper first (free tier), fall
+        # through to DataForSEO if Serper exhausts or returns no results.
+        # Sticky-exhaustion: once Serper marks itself exhausted, all
+        # subsequent calls in this run go directly to DataForSEO without
+        # retrying Serper. Prevents mid-run Serper failures from breaking
+        # the grinder.
+        if getattr(state.serper, "has_quota", True):
+            urls = await state.serper.search(query, num=20)
+        else:
+            urls = []
         state.stats.serper_queries_run = state.serper.queries_run
         state.stats.queries_per_industry[industry] = (
             state.stats.queries_per_industry.get(industry, 0) + 1
         )
 
-        # Fallback to DataForSEO if Serper returned nothing
+        # Fall through to DataForSEO if Serper returned nothing
+        # (either genuine no-results OR sticky-exhausted)
         if not urls and state.dataforseo and has_budget(state):
             urls = await state.dataforseo.search(query, num=20)
             state.stats.dataforseo_queries_run = state.dataforseo.queries_run
-            state.cost_estimate += 0.0006
+            state.cost_estimate += 0.0012  # priority=2 cost
 
         for url in urls:
             if ats == "workday":
@@ -774,7 +866,10 @@ async def grind(args: argparse.Namespace) -> None:
     if not SERPER_KEY:
         print("ERROR: SERPER_API_KEY not set in .env. Cannot run.")
         sys.exit(1)
-    serper = SerperBingEngine(SERPER_KEY)
+    serper = SerperBingEngine(
+        SERPER_KEY,
+        min_credits_reserve=getattr(args, "serper_reserve", 0),
+    )
     dataforseo = (
         DataForSEOGoogleEngine(DATAFORSEO_LOGIN, DATAFORSEO_PASSWORD)
         if (DATAFORSEO_LOGIN and DATAFORSEO_PASSWORD)
@@ -940,6 +1035,13 @@ def main() -> None:
     p.add_argument(
         "--max-serper-queries", type=int, default=400,
         help="Cap on Serper.dev queries (free tier 2,500/mo, default 400).",
+    )
+    p.add_argument(
+        "--serper-reserve", type=int, default=0,
+        help="Reserve N Serper queries for non-grinder use (e.g. tester "
+             "searches or v0.3.10 backfill). Default 0. Recommended 100 "
+             "if you want to ensure tester searches don't hit a depleted "
+             "Serper free tier.",
     )
     p.add_argument(
         "--max-dataforseo-queries", type=int, default=2000,
