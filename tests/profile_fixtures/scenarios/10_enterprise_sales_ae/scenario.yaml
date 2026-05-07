@@ -1,0 +1,76 @@
+# SCENARIO 10: Enterprise Sales AE (v0.3.8 — sales-targeting regression check)
+#
+# A genuine sales-career candidate. 9 years of enterprise SaaS sales,
+# carrying multi-million-dollar quotas, demonstrably wants more sales
+# work. This fixture exists specifically to verify that the v0.3.8
+# Principle 6.6 (pure-sales prompt rule) does NOT crush this candidate's
+# results.
+#
+# The rule is conditional: "if candidate's target_functions or headline
+# indicates sales intent → score normally". This candidate's headline is
+# "Senior Account Executive" and freeform context explicitly says
+# "Targeting Senior AE / Strategic AE / Enterprise AE roles". Both should
+# be unambiguous signals to Stage 2 that AE / Senior AE / Enterprise AE
+# titles are TARGET roles, not roles to demote.
+#
+# Pass criteria:
+#   - target_functions includes sales-related entries
+#   - excluded_title_patterns does NOT contain "account executive",
+#     "BDR", "SDR", "sales", or any sales-blocking pattern
+#   - keywords (tier 1) include AE / Senior AE / Enterprise Sales-style terms
+#
+# Fail criteria (any of these = regression):
+#   - excluded_title_patterns contains sales terms (would block target roles)
+#   - target_functions list omits sales/AE entirely
+#   - Profile builder labels them as a non-sales candidate
+
+description: "Enterprise Sales AE — sales-targeting (v0.3.8 regression check for Principle 6.6)"
+
+user_preferences:
+  salary_minimum: 180000  # Total target comp for Senior Enterprise AE
+  acceptable_locations:
+    - Boston MA
+    - New York NY
+    - San Francisco CA
+    - Remote
+  work_arrangements:
+    - remote
+    - hybrid
+  freeform_context: "Targeting Senior AE / Strategic AE / Enterprise AE roles at growth-stage SaaS companies. 9 years of enterprise SaaS sales experience, carrying multi-million-dollar quotas, consistent 110-140% of plan. Looking to move from current role into a larger quota or strategic-account role at a Series C-D or pre-IPO SaaS company. Vertical interest in cloud infrastructure, security, and developer tools. NOT interested in management roles — happy as a senior IC closing deals."
+
+expected:
+  # MUST CONTAIN — this candidate genuinely targets sales roles
+  must_contain_in_target_functions_themes:
+    - sales
+  must_contain_in_keywords_t1_themes:
+    - Account Executive
+
+  # CRITICAL: do NOT block sales roles via title exclusion
+  # (this is the v0.3.8 Principle 6.6 regression test)
+  must_not_contain_in_excluded_title_patterns:
+    - account executive
+    - senior account executive
+    - enterprise account executive
+    - bdr
+    - sdr
+    - business development representative
+    - sales development representative
+    - sales
+
+  # MUST NOT include functions outside their actual background
+  must_not_contain_in_target_functions:
+    - Software Engineering
+    - Data Science
+    - Machine Learning Engineering
+    - Clinical Research
+  must_not_contain_in_keywords_t1:
+    - Software Engineer
+    - ML Engineer
+    - Data Scientist
+
+  # Headline should reflect their actual role
+  headline_must_contain_one_of:
+    - Account Executive
+    - Sales
+    - Enterprise
+    - AE

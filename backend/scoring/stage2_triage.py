@@ -119,6 +119,44 @@ PRINCIPLE 6: NEGATIVE SIGNALS (from candidate profile)
   interested in pure technical"), apply a -15 to -25 penalty when the role
   matches that signal — even if the title would otherwise score well.
 
+PRINCIPLE 6.6: PURE-SALES TITLES (v0.3.8 — universal anti-pattern):
+  For roles whose title is unambiguously a quota-carrying sales position:
+    - "Account Executive", "Senior Account Executive", "Enterprise AE"
+    - "Sales Development Representative", "SDR"
+    - "Business Development Representative", "BDR"
+    - "Inside Sales", "Outside Sales"
+    - "Sales Engineer" (despite "Engineer" — quota-carrying revenue role)
+    - "Pre-sales Engineer" / "Presales Engineer"
+
+  Apply this conditional logic:
+
+  IF the candidate's TARGET_FUNCTIONS or HEADLINE explicitly indicates
+     they WANT sales work (contains "sales", "account executive",
+     "business development", "quota", "revenue", "pipeline", "closing
+     deals", or similar sales-specific signals):
+     → Score normally (60-90 if company/JD fit). Sales-targeting candidate.
+
+  ELSE (candidate's profile has NO sales-intent signals):
+     → Score 20-35. These roles carry individual quota responsibility
+       that is fundamentally different work from non-sales functions.
+       The title-floor (Principle 8) does NOT apply — even a strong
+       title-headline overlap on words like "manager" or "consultant"
+       does not rescue a pure-sales role for a non-sales candidate.
+
+  GTM-adjacent titles ("GTM Strategy", "GTM Operations", "Go-to-Market",
+  "Solutions Consultant", "Customer Success Manager") are SOFTER:
+     - If candidate targets GTM/customer success → score normally
+     - Otherwise → apply -10 to score (not a hard cap; just a tilt)
+     These titles can be legitimate enablement/operations work depending
+     on JD; the soft penalty respects that ambiguity.
+
+  Why this rule exists: v0.3.6 audit had Snowflake "Account Executive,
+  Public Sector" qualifying at 55 MAYBE because the title-floor caught
+  the word "federal" in overlap. Stage 2 reasoning had explicitly said
+  "significant mismatch, sales role" — but the floor overrode it. This
+  rule + the v0.3.8 title-floor strict mode together kill that pattern:
+  sales titles for non-sales candidates score 20-35 and stay there.
+
 PRINCIPLE 7: ROLE FUNCTION OVER COMPANY AFFINITY
   A role's FUNCTION (what the person actually does day-to-day) matters more
   than the COMPANY (employer brand, domain). A role at a perfect-fit company
@@ -409,6 +447,7 @@ def _salvage_partial_json(text: str) -> dict:
 async def _complete_with_cache_fallback(
     *,
     client: LLMClient,
+    system_prompt: str,
     prompt: str,
     cached_content: Optional[object],
     is_batch: bool,
@@ -416,6 +455,12 @@ async def _complete_with_cache_fallback(
 ):
     """Run a Stage 2 completion, falling back to inline system prompt on
     cache-lookup failure.
+
+    v0.3.8 takes `system_prompt` as a parameter (instead of hardcoded
+    STAGE2_SYSTEM_PROMPT) so the per-run dynamic prompt with user-specific
+    hard exclusions injected at the top is used in BOTH the cached and
+    fallback paths. Without this, a cache 403 retry would lose the user's
+    excluded_title_patterns and negative_signals injection.
 
     Why this exists (v0.3.5.1): production audit showed 71% of parallel
     Stage 2 calls hit `CachedContent not found` due to Gemini cache
@@ -433,7 +478,7 @@ async def _complete_with_cache_fallback(
     try:
         return await client.complete(
             model=config.STAGE2_MODEL,
-            system=None if cached_content else STAGE2_SYSTEM_PROMPT,
+            system=None if cached_content else system_prompt,
             user=prompt,
             max_output_tokens=2048,
             temperature=0.0,
@@ -444,10 +489,10 @@ async def _complete_with_cache_fallback(
         )
     except Exception as e:
         if cached_content is not None and _is_cache_lookup_error(e):
-            # Self-heal: retry without cache, using inline system prompt
+            # Self-heal: retry without cache, using the SAME dynamic system prompt
             return await client.complete(
                 model=config.STAGE2_MODEL,
-                system=STAGE2_SYSTEM_PROMPT,
+                system=system_prompt,
                 user=prompt,
                 max_output_tokens=2048,
                 temperature=0.0,
@@ -467,6 +512,7 @@ async def _score_one(
     cached_content: Optional[object] = None,
     is_batch: bool = False,
     thinking_budget: Optional[int] = None,
+    system_prompt: str = STAGE2_SYSTEM_PROMPT,
 ) -> Role:
     async with semaphore:
         prompt = (
@@ -476,6 +522,7 @@ async def _score_one(
         try:
             response = await _complete_with_cache_fallback(
                 client=client,
+                system_prompt=system_prompt,
                 prompt=prompt,
                 cached_content=cached_content,
                 is_batch=is_batch,
@@ -517,6 +564,80 @@ async def _score_one(
             role.stage2_reasoning = f"stage2_error: {type(e).__name__}: {str(e)[:200]}"
             role.stage2_confidence = 0.0
     return role
+
+
+def build_dynamic_stage2_prompt(profile: CandidateProfile) -> str:
+    """Build the per-run Stage 2 system prompt by injecting user-specific
+    hard rules at the top of the static base prompt.
+
+    v0.3.8 — addresses the audit finding that the user's freetext exclusions
+    (negative_signals + excluded_title_patterns) were too soft when only
+    delivered as profile DATA in the user message. The model would interpret
+    them inconsistently — sometimes as hard rules, sometimes as soft hints
+    that other principles could override.
+
+    By injecting the same exclusions at the TOP of the SYSTEM prompt as
+    explicit `[HARD]` rules with score caps, the model treats them as
+    architectural constraints rather than data-to-interpret. The clearance
+    rescore test confirmed: switching from soft "Avoids clearance roles"
+    profile data to explicit "[HARD] cap at 30" prompt rule moved 6 of
+    15 clearance-mentioning roles from STRONG/MAYBE down 11-29 points.
+
+    Universality: works for ANY user. The candidate's own
+    excluded_title_patterns (LLM-generated by the profile builder from
+    their resume + freetext) drive the title cap. The candidate's own
+    negative_signals drive the JD-content cap. A tax accountant's list
+    looks different from an AI strategy candidate's list, but the same
+    prompt logic applies to both.
+    """
+    base = STAGE2_SYSTEM_PROMPT
+
+    # Excluded title patterns — title-level cap at 35
+    if profile.excluded_title_patterns:
+        base += "\n\n" + "=" * 60 + "\n"
+        base += "USER-SPECIFIED EXCLUDED TITLE PATTERNS (HARD CAP AT 35)\n"
+        base += "=" * 60 + "\n"
+        base += (
+            "If the role title contains ANY of these patterns "
+            "(case-insensitive substring match), cap the score at 35. "
+            "The candidate has explicitly indicated they do NOT want "
+            "titles matching these patterns:\n\n"
+        )
+        for pat in profile.excluded_title_patterns:
+            base += f"  - {pat}\n"
+        base += (
+            "\nThis cap OVERRIDES Principle 8 (title-headline overlap floor) "
+            "and any company-affinity boost. Even if the company is a "
+            "perfect fit, the title exclusion takes precedence — the "
+            "candidate has already told us they don't want this category.\n"
+        )
+
+    # Negative signals — content-level cap at 30
+    if profile.negative_signals:
+        base += "\n\n" + "=" * 60 + "\n"
+        base += "USER-SPECIFIED HARD EXCLUSIONS (CAP AT 30)\n"
+        base += "=" * 60 + "\n"
+        base += (
+            "Apply these BEFORE any other principle. When a role triggers "
+            "any of these conditions AS A REQUIREMENT (not as 'nice to have' "
+            "or incidental mention), cap the final score at 30.\n\n"
+        )
+        for sig in profile.negative_signals:
+            base += f"  - {sig}\n"
+        base += (
+            "\nIMPORTANT — DO NOT over-apply. The cap fires only when the "
+            "JD or title makes the excluded condition a REQUIREMENT. Examples:\n"
+            "  TRIGGER (cap at 30):  'Active TS/SCI clearance required'\n"
+            "  TRIGGER (cap at 30):  'Must hold Secret clearance'\n"
+            "  DO NOT trigger:       'Cleared facilities benefits available'\n"
+            "  DO NOT trigger:       'Some team members may need clearance'\n"
+            "  DO NOT trigger:       'Federal contracting experience helpful'\n"
+            "\nWhen capped, your reasoning MUST cite the specific user "
+            "exclusion that triggered it (e.g., \"matches negative_signal: "
+            "TS/SCI clearance required for this role\").\n"
+        )
+
+    return base
 
 
 async def stage2_triage(
@@ -576,12 +697,20 @@ async def stage2_triage(
 
     profile_text = _profile_block(profile)
 
+    # v0.3.8: build the per-run dynamic system prompt with user-specific
+    # hard exclusions injected at the top. See build_dynamic_stage2_prompt
+    # docstring. The cache is keyed on this prompt, so different profiles
+    # get different cache entries — but cache is per-run anyway (fresh
+    # CachedContent created per call to this function), so cache hit rate
+    # is unaffected.
+    system_prompt = build_dynamic_stage2_prompt(profile)
+
     cached_content = None
     if use_cache:
         # Try to create a context cache; fall back to inline system prompt
         cached_content = await client.create_cache(
             model=config.STAGE2_MODEL,
-            system=STAGE2_SYSTEM_PROMPT,
+            system=system_prompt,
             ttl_seconds=3600,
         )
 
@@ -621,30 +750,86 @@ async def stage2_triage(
             cached_content=cached_content,
             is_batch=False,
             thinking_budget=thinking_budget,
+            system_prompt=system_prompt,  # v0.3.8 dynamic prompt
         )
         for r in roles
     ]
     scored = await asyncio.gather(*tasks)
 
-    # Code-level title floor enforcement (v0.3.4) — belt-and-suspenders for
-    # PRINCIPLE 8 in the prompt. If the LLM scored a role below the floor
-    # despite a strong title-headline overlap, raise the score to the floor
-    # and tag the reasoning. This catches occasional violations the prompt
-    # rule alone misses (audit data showed 1-content-word overlaps like
-    # "Marketing Operations Manager" for an Operations candidate landing
-    # at 47, below the 55 floor). The floor only RAISES; never lowers.
+    # Title floor enforcement — v0.3.8 STRICT MODE.
+    #
+    # History: v0.3.4 added a code-level floor that raised any score below
+    # the title-headline overlap threshold. v0.3.6 production audit showed
+    # 41/149 (28%) qualifying roles were floor-determined — the floor was
+    # acting as the PRIMARY scoring mechanism for nearly a third of the
+    # funnel rather than the safety-net it was designed to be.
+    #
+    # v0.3.8 strict mode: floor ONLY fires when Stage 2 returned no usable
+    # evaluation (cache 403, timeout, error, empty reasoning). When Stage 2
+    # successfully scored the role with substantive reasoning, that score
+    # stands — the floor does not override successful Stage 2 calls.
+    #
+    # Failure-mode floor still uses GRADUATED rules (1-word overlap → no
+    # floor, 2-word → 55, 3+ → 60) — even on cache failures, a 1-word
+    # overlap is too weak to merit a 55 floor. This eliminates the
+    # "score=50 fallback → title-floor=55" pattern that polluted v0.3.5's
+    # MAYBE tier with 96 mechanically-floored roles.
+    #
+    # Audit visibility: when floor fires, the tag includes mode used:
+    #   "[title-floor:60,overlap=ai,strategy,mode=graduated]"
+    #
+    # If v0.3.8 production data shows legitimate roles dropping (e.g.
+    # Marketing-Ops-Manager-style 1-word matches that genuinely deserved
+    # a floor), we revisit and consider widening the failure-mode rules.
+    floors_skipped_stage2_ok = 0
+    floors_applied_failure_mode = 0
     for role in scored:
         if role.stage2_score is None:
             continue
+
+        if _stage2_succeeded(role):
+            # Stage 2 evaluated this role — trust its score, no floor
+            floors_skipped_stage2_ok += 1
+            continue
+
+        # Stage 2 failed/missing — apply floor as safety net (graduated mode)
         new_score, tag = apply_floor_to_score(
             score=role.stage2_score,
             role_title=role.job_title,
             candidate_headline=profile.headline,
             candidate_target_functions=profile.target_functions,
+            mode="graduated",
         )
         if tag is not None:
             role.stage2_score = new_score
             role.stage2_tier = score_to_tier(new_score)
             role.stage2_reasoning = f"{tag} {role.stage2_reasoning or ''}".strip()[:1000]
+            floors_applied_failure_mode += 1
 
+    # Quick observability for tuning future runs
+    print(
+        f"[stage2] floor: skipped={floors_skipped_stage2_ok} "
+        f"(Stage 2 ok), applied={floors_applied_failure_mode} (Stage 2 failed)"
+    )
     return scored
+
+
+def _stage2_succeeded(role: Role) -> bool:
+    """Determine whether Stage 2 produced a usable evaluation.
+
+    Strict-mode floor (v0.3.8) only fires when this returns False.
+
+    A 'successful' Stage 2 has:
+      - stage2_score is not None
+      - stage2_reasoning is non-empty and >= 30 chars
+      - stage2_reasoning doesn't start with 'stage2_error' (the cache-
+        fallback error tag from the per-call retry code)
+    """
+    if role.stage2_score is None:
+        return False
+    reasoning = role.stage2_reasoning or ""
+    if not reasoning or len(reasoning) < 30:
+        return False
+    if reasoning.startswith("stage2_error"):
+        return False
+    return True

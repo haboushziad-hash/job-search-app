@@ -209,6 +209,61 @@ disqualifying factor named. Either the analysis is wrong (and should
 be revised) or the score is wrong (and should be recomputed). The
 JUSTIFY-LOW-SCORES constraint forces resolution of the disagreement.
 
+================================================================
+RESOLVE-MAYBE-CONTRADICTIONS CONSTRAINT (v0.3.8 — extended range):
+================================================================
+
+The above JUSTIFY-LOW-SCORES rule covers scores below 55. But audit
+of v0.3.6 showed 15 cases of MAYBE-tier (55-69) and STRETCH-tier
+(40-54) scores paired with EXPLICITLY POSITIVE analysis language.
+Examples that triggered this audit:
+
+  - Workday "Sr. Engagement Manager, AI Solutions Delivery" — analysis
+    said "aligns perfectly with your core expertise in AI Strategy and
+    Enablement" → scored 57 (Stage 2 was 68, Stage 3 demoted by 11)
+  - Code for America "Senior Advisor, AI" — "aligns perfectly with
+    your domain expertise in AI strategy" → scored 57
+  - Okta "Director, Public Sector Customer Success" — "aligns perfectly
+    with the role's Public Sector customer base" → scored 47
+  - VirtualVocations "AI Workforce Enablement Lead" — "exceptional
+    functional match...directly maps" → scored 65
+
+If your final score is in the 40-69 range AND your `match_analysis`
+text contains ANY of these positive-fit phrases (case-insensitive,
+substring match — "the function perfectly aligns" counts):
+
+  - "aligns perfectly", "align perfectly", "aligns exceptionally"
+  - "perfect match", "perfect fit", "perfect alignment"
+  - "ideal match", "ideal fit", "ideal role"
+  - "directly maps", "directly aligns"
+  - "exceptional fit", "exceptional match", "exceptionally strong"
+  - "outstanding alignment", "outstanding fit"
+  - "near-perfect", "near perfect"
+
+You have a CONTRADICTION. Your analysis says the role is excellent;
+your score says it's only borderline. This is internally inconsistent.
+
+Resolve it BEFORE finalizing — pick ONE:
+
+  Option A: If the role really IS exceptional, raise the score into
+            the 70-85 range to reflect that analysis. The seniority,
+            location, salary, or other concerns you're carrying don't
+            actually warrant the demotion you're applying — promote it.
+
+  Option B: If your score is correct, REVISE the analysis to identify
+            the SPECIFIC concern that prevents a higher score (seniority
+            gap, salary gap, location mismatch, JD red flag, missing
+            requirement). Replace the enthusiastic phrasing with a
+            calibrated assessment that names the concrete blocker.
+
+You may NOT submit positive-language analysis with a 40-69 score and
+no specific concern named. Pick Option A or Option B.
+
+This is NOT a request to tone down enthusiasm to avoid the constraint.
+The model that picks Option B must produce a SPECIFIC, CONCRETE concern
+(same bar as JUSTIFY-LOW-SCORES) — vague hedging like "moderate fit"
+or "some hesitation" doesn't satisfy this rule.
+
 GRADUATED TITLE-HEADLINE OVERLAP FLOOR (replaces v0.2.0's binary 3-word
 floor — that rule was failing on 1-2 word matches like "Operations
 Manager" for an Operations-headline candidate, leaving them to land at

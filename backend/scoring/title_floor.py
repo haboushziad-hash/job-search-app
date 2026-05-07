@@ -120,20 +120,51 @@ def apply_floor_to_score(
     role_title: str | None,
     candidate_headline: str | None,
     candidate_target_functions: Iterable[str] | None,
+    mode: str = "graduated",
 ) -> tuple[int, str | None]:
     """Apply title floor to a score. Returns (adjusted_score, reason_tag).
 
+    Modes (v0.3.8):
+      - "legacy": original v0.3.3-v0.3.7 floors (3+→70, 2→65, 1-core→55)
+      - "graduated": reduced floors per peer review (3+→60, 2→55, 1→none).
+        Eliminates the 1-word-overlap floor that produced 28 of the 41
+        floor-determined roles in v0.3.6, while preserving protection for
+        strong 2-3 word title matches.
+      - "off": never apply floor (caller decides based on Stage 2 success)
+
+    The orchestrator picks the mode based on whether Stage 2 produced a
+    successful evaluation. Strict-mode flow:
+      - Stage 2 succeeded → mode="off" (trust Stage 2's score)
+      - Stage 2 failed (cache 403, timeout, error) → mode="graduated"
+        (use floor as safety net, but with reduced 1-word permissiveness)
+      - Audit JSON tags reflect the mode used per role for analysis.
+
     `reason_tag` is None when no adjustment was made, or a short string like
-    "[title-floor:55,overlap=operations]" when the floor was applied. The tag
-    is intended to be prepended to the role's reasoning text so the
-    adjustment is auditable in the dashboard.
+    "[title-floor:60,overlap=ai,strategy,mode=graduated]" when applied. The
+    tag is prepended to role reasoning so the adjustment is auditable.
     """
+    if mode == "off":
+        return score, None
+
     floor, n, overlap = compute_title_floor(
         role_title=role_title,
         candidate_headline=candidate_headline,
         candidate_target_functions=candidate_target_functions,
     )
+
+    if mode == "graduated":
+        # Reduce all floor levels by 5-10pts (peer review v0.3.8): a 1-word
+        # overlap (e.g. "ai" or "consultant") is too weak a signal to merit
+        # a 55 floor — those produced 28 of the 41 floor-determined roles
+        # in v0.3.6 audit. Drop to: 3+→60, 2→55, 1→no floor.
+        if n >= 3:
+            floor = 60
+        elif n == 2:
+            floor = 55
+        else:
+            floor = 0  # No floor for 1-word overlap
+
     if floor > 0 and score < floor:
         overlap_str = ",".join(overlap[:3])
-        return floor, f"[title-floor:{floor},overlap={overlap_str}]"
+        return floor, f"[title-floor:{floor},overlap={overlap_str},mode={mode}]"
     return score, None
