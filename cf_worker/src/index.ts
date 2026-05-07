@@ -902,6 +902,13 @@ interface RunSummary {
   // Will be null for runs from versions before v0.3.3 (no field present);
   // will be 0+ for v0.3.3+ runs.
   anomaly_count: number | null;
+  // v0.3.3 dashboard improvement: keyword fingerprint per run, used
+  // client-side to detect "same keywords as prior run" so the operator
+  // can identify clean A/B comparisons (same inputs, different output =
+  // pure calibration effect). FNV-1a hash of sorted keywords_used +
+  // search_terms; collision rate negligible for our scale.
+  keywords_hash: string | null;
+  keyword_count: number | null;
 }
 
 /** Render the runs HTML dashboard. Lists last ~50 runs newest-first
@@ -936,6 +943,8 @@ async function renderRunsHtml(env: Env): Promise<Response> {
         strong: null, good: null, maybe: null, stretch: null,
         funnel_collapse_pct: null, top_role_titles: [],
         anomaly_count: null,
+        keywords_hash: null,
+        keyword_count: null,
       };
       try {
         const obj = await env.AUDIT_R2.get(o.key);
@@ -959,6 +968,18 @@ async function renderRunsHtml(env: Env): Promise<Response> {
         const calibBlock = audit?.calibration_anomalies;
         const anomalyCount = (calibBlock && typeof calibBlock?.total_anomalies === "number")
           ? calibBlock.total_anomalies : null;
+        // v0.3.3: keyword fingerprint (sorted union of keywords_used +
+        // search_terms, hashed) — used to detect "same keywords as
+        // prior run" so the operator can spot clean A/B comparisons.
+        const kwsUsed = Array.isArray(meta?.keywords_used) ? meta.keywords_used : [];
+        const searchTerms = Array.isArray(profileSnap?.search_terms)
+          ? profileSnap.search_terms : [];
+        const allKwTokens = [...kwsUsed, ...searchTerms]
+          .map((s: any) => String(s || "").trim().toLowerCase())
+          .filter((s: string) => s.length > 0)
+          .sort();
+        const kwHash = allKwTokens.length > 0
+          ? hashStringArray(allKwTokens) : null;
         return {
           ...summaryBase,
           duration_s: numberOrNull(meta?.duration_seconds),
@@ -975,6 +996,8 @@ async function renderRunsHtml(env: Env): Promise<Response> {
           funnel_collapse_pct: collapse,
           top_role_titles: titles,
           anomaly_count: anomalyCount,
+          keywords_hash: kwHash,
+          keyword_count: kwsUsed.length || null,
         };
       } catch {
         return summaryBase;
@@ -1287,6 +1310,23 @@ async function renderRunsHtml(env: Env): Promise<Response> {
     .delta-down { background: rgba(232, 102, 90, 0.15); color: var(--bad); }
     .delta-flat { background: var(--surface-2); color: var(--text-faint); }
 
+    /* v0.3.3: keyword-set indicator chip — distinguishes "same keywords as
+       prior run" (clean A/B comparison) from "keywords changed". Helps the
+       operator interpret tier-count deltas correctly. */
+    .kw-chip {
+      display: inline-block;
+      padding: 1px 6px;
+      font-size: 9.5px;
+      font-weight: 600;
+      border-radius: 3px;
+      vertical-align: middle;
+      margin-top: 2px;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+    .kw-same { background: rgba(78, 199, 146, 0.12); color: var(--good); }
+    .kw-diff { background: rgba(216, 184, 64, 0.12); color: var(--warn); }
+
     .titles { margin: 0; padding-left: 14px; color: var(--text-dim); font-size: 11.5px; }
     .titles li { padding: 1px 0; }
 
@@ -1532,18 +1572,61 @@ async function renderRunsHtml(env: Env): Promise<Response> {
       return rows;
     }
 
-    function deltaChipForStrong(currentRow) {
-      // Find the same tester's previous run by date (older than current)
+    /** Find the SAME tester's most recent prior run (by uploaded date). */
+    function findPriorRun(currentRow) {
       const sameTester = ALL
         .filter(r => r.uuid_full === currentRow.uuid_full && r.uploaded < currentRow.uploaded)
         .sort((a, b) => b.uploaded.localeCompare(a.uploaded));
-      const prev = sameTester[0];
-      if (!prev || prev.strong == null || currentRow.strong == null) return "";
-      const delta = currentRow.strong - prev.strong;
-      if (delta === 0) return '<span class="delta-chip delta-flat">±0</span>';
-      const cls = delta > 0 ? "delta-up" : "delta-down";
+      return sameTester[0] || null;
+    }
+
+    /**
+     * Returns a small chip indicating whether this run used the same
+     * keywords/search-terms as the same tester's previous run. Helps
+     * the operator identify clean A/B comparisons (same input set,
+     * different version = pure calibration effect).
+     */
+    function sameKeywordsChip(currentRow) {
+      const prev = findPriorRun(currentRow);
+      if (!prev || !currentRow.keywords_hash || !prev.keywords_hash) return "";
+      const same = currentRow.keywords_hash === prev.keywords_hash;
+      if (same) {
+        const tooltip = "Same " + (currentRow.keyword_count || "?") + " keywords as prior run on " + (prev.app_version || "?") + " — clean A/B comparison";
+        return '<span class="kw-chip kw-same" title="' + tooltip + '">same kws</span>';
+      } else {
+        const tooltip = "Keywords differ from prior run on " + (prev.app_version || "?");
+        return '<span class="kw-chip kw-diff" title="' + tooltip + '">kws changed</span>';
+      }
+    }
+
+    /**
+     * Returns a per-tester delta chip for any numeric field.
+     *
+     * Compares currentRow's field value to the SAME tester's most recent
+     * prior run (filters by uuid_full first, then takes the chronologically
+     * previous run). For STRONG/GOOD/MAYBE/STRETCH/qualifying counts, this
+     * lets the operator see at-a-glance how each tester's numbers shifted
+     * across versions.
+     *
+     * For "higher is better" fields (strong/good/qualifying), positive
+     * delta = green up-chip. For "lower is better" fields (e.g. anomaly
+     * count, future fields like funnel_collapse_pct), pass invertColors=true
+     * so positive deltas render red.
+     */
+    function deltaChipFor(currentRow, field, invertColors) {
+      invertColors = !!invertColors;
+      const prev = findPriorRun(currentRow);
+      if (!prev || prev[field] == null || currentRow[field] == null) return "";
+      const delta = currentRow[field] - prev[field];
+      if (delta === 0) return '<span class="delta-chip delta-flat" title="same as prior run">±0</span>';
+      // For higher-is-better: positive = good (up arrow, green); negative = bad (down arrow, red)
+      // For lower-is-better (invertColors=true): flip those.
+      const isPositiveGood = (delta > 0) !== invertColors;
+      const cls = isPositiveGood ? "delta-up" : "delta-down";
       const sign = delta > 0 ? "+" : "";
-      return '<span class="delta-chip ' + cls + '" title="vs prior run on ' + prev.app_version + '">' + sign + delta + '</span>';
+      const prevVer = prev.app_version || "(unknown version)";
+      const tooltip = "was " + prev[field] + " on " + prevVer + " (" + sign + delta + ")";
+      return '<span class="delta-chip ' + cls + '" title="' + tooltip + '">' + sign + delta + '</span>';
     }
 
     function rowHtml(s) {
@@ -1570,14 +1653,14 @@ async function renderRunsHtml(env: Env): Promise<Response> {
         + '<td class="checkbox-cell"><input type="checkbox" class="row-check" data-key="' + encodeURIComponent(s.key) + '" ' + checked + '></td>'
         + '<td><span class="uuid-badge" data-uuid="' + escapeHtml(s.uuid_full) + '" title="Click to filter to this tester">' + escapeHtml(s.uuid_prefix) + '</span></td>'
         + '<td class="profile-cell" title="' + escapeHtml(s.profile_headline || "") + '">' + escapeHtml(s.profile_headline || "—") + '</td>'
-        + '<td class="when-cell"><span class="date-main">' + time.date + '</span><span class="relative-time">' + time.relative + '</span></td>'
+        + '<td class="when-cell"><span class="date-main">' + time.date + '</span><span class="relative-time">' + time.relative + '</span> ' + sameKeywordsChip(s) + '</td>'
         + '<td>' + (s.app_version ? '<span class="version-pill">' + escapeHtml(s.app_version) + '</span>' : "—") + '</td>'
         + '<td class="num">' + (s.total_scraped ?? "—") + '</td>'
-        + '<td class="num">' + (s.qualifying ?? "—") + '</td>'
-        + '<td class="num strong-cell">' + (s.strong ?? "—") + deltaChipForStrong(s) + '</td>'
-        + '<td class="num">' + (s.good ?? "—") + '</td>'
-        + '<td class="num">' + (s.maybe ?? "—") + '</td>'
-        + '<td class="num">' + (s.stretch ?? "—") + '</td>'
+        + '<td class="num">' + (s.qualifying ?? "—") + deltaChipFor(s, "qualifying") + '</td>'
+        + '<td class="num strong-cell">' + (s.strong ?? "—") + deltaChipFor(s, "strong") + '</td>'
+        + '<td class="num">' + (s.good ?? "—") + deltaChipFor(s, "good") + '</td>'
+        + '<td class="num">' + (s.maybe ?? "—") + deltaChipFor(s, "maybe") + '</td>'
+        + '<td class="num">' + (s.stretch ?? "—") + deltaChipFor(s, "stretch") + '</td>'
         + '<td class="num">' + anomalyDisplay + '</td>'
         + '<td class="num">' + (s.cost_usd != null ? "$" + s.cost_usd.toFixed(2) : "—") + '</td>'
         + '<td class="num">' + (s.duration_s != null ? Math.round(s.duration_s) + "s" : "—") + '</td>'
@@ -1777,6 +1860,23 @@ function escapeHtml(s: string): string {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+
+/**
+ * Hash an array of strings (already sorted) into a short fingerprint.
+ * Uses FNV-1a 32-bit. Used for the keywords-set fingerprint that lets
+ * the dashboard detect "same keywords as prior run" for clean A/B
+ * comparisons. Collision rate is irrelevant at our scale (< 1000 runs)
+ * — we only care that identical inputs produce identical hashes.
+ */
+function hashStringArray(arr: string[]): string {
+  const text = arr.join("\x1f");  // unit-separator delimiter
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < text.length; i++) {
+    hash ^= text.charCodeAt(i);
+    hash = (hash * 0x01000193) >>> 0;
+  }
+  return hash.toString(16).padStart(8, "0");
 }
 
 // ============================================================================
