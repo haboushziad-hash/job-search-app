@@ -24,10 +24,71 @@ from backend.scoring.stage2_triage import stage2_triage
 from backend.scoring.stage3_deep_eval import stage3_deep_eval
 
 
-def _finalize_score(role: Role) -> None:
+def _apply_salary_realism_penalty(
+    role: Role, profile_min: Optional[int]
+) -> None:
+    """Penalize bottom-heavy salary ranges where the actual offer is
+    statistically likely to land below the candidate's minimum.
+
+    v0.3.7 — added in response to Hitachi Vantara case from v0.3.5/v0.3.6:
+    role scored 93 STRONG with salary_min $75K against profile minimum
+    $130K. The salary range was $75K-$138K — the bottom is 42% below
+    minimum and the top barely clears it. Hiring manager negotiations
+    typically anchor on the midpoint, which puts the likely offer at
+    $90-110K — well below the user's threshold. Score 93 is misleading.
+
+    Trigger conditions (BOTH must be true):
+        salary_min < profile_min * 0.70    (bottom is well below floor)
+        salary_max < profile_min * 1.50    (top doesn't compensate)
+
+    Why both — this avoids penalizing roles like $90K-$200K (max above
+    floor + 50% suggests genuine top-end potential) while catching
+    Hitachi-style bottom-heavy ranges.
+
+    Penalty: -15 to the final score, capped at floor 0. Tagged in
+    stage3_analysis (or stage2_reasoning if no Stage 3) for audit.
+
+    Universal: thresholds are RELATIVE percentages, scaling correctly to
+    any salary_minimum from $50K nurses to $300K execs.
+    """
+    if not profile_min:
+        return
+    if role.salary_min is None or role.salary_max is None:
+        return
+    if role.final_score is None or role.final_score <= 0:
+        return
+
+    min_threshold = profile_min * 0.70
+    max_threshold = profile_min * 1.50
+    if not (role.salary_min < min_threshold and role.salary_max < max_threshold):
+        return
+
+    # Trigger penalty
+    old_score = role.final_score
+    new_score = max(old_score - 15, 0)
+    tag = (
+        f"[salary-penalty:-15 — ${role.salary_min // 1000}K-"
+        f"${role.salary_max // 1000}K vs ${profile_min // 1000}K floor]"
+    )
+    role.final_score = new_score
+    role.final_tier = score_to_tier(new_score)
+
+    # Tag in whichever reasoning field is populated, prefer stage3 since
+    # it's the user-visible application_strategy text downstream
+    if role.stage3_analysis:
+        role.stage3_analysis = f"{tag} {role.stage3_analysis}"[:2000]
+    if role.stage2_reasoning:
+        role.stage2_reasoning = f"{tag} {role.stage2_reasoning}"[:1000]
+
+
+def _finalize_score(role: Role, profile: Optional[CandidateProfile] = None) -> None:
     """Pick the final score + tier for a role.
 
     Stage 3 wins if it ran; otherwise Stage 2 stands.
+
+    v0.3.7: after picking the base final score, apply the salary realism
+    penalty if the candidate's profile_min exists and the role's range
+    is bottom-heavy.
     """
     if role.stage3_score is not None:
         role.final_score = role.stage3_score
@@ -38,6 +99,10 @@ def _finalize_score(role: Role) -> None:
     else:
         role.final_score = 0
         role.final_tier = Tier.SKIP
+
+    # Salary realism penalty (v0.3.7)
+    if profile is not None:
+        _apply_salary_realism_penalty(role, profile.salary_minimum)
 
 
 def _backpop_salary_from_reasoning(role: Role) -> None:
@@ -81,7 +146,7 @@ async def score_roles(
     embed_keep_fraction: float = 0.40,
     embed_max_roles: int = 500,
     stage3_skip_above: int = 101,
-    stage3_skip_below: int = 58,
+    stage3_skip_below: int = 55,
     stage3_max_roles: int = 100,
     log: bool = True,
     progress: Optional[Callable[[int, str, int], None]] = None,
@@ -153,12 +218,21 @@ async def score_roles(
         print(f"[orchestrator] after Stage 2: {len(scored)} scored, {len(s2_qualifying)} qualifying (>=55)")
 
     # ---- 4. Stage 3 deep eval (in-band roles only) ----
-    # v0.3.5: skip_below bumped 55 → 58 (kills the bottom STRETCH/MAYBE
-    # sliver where Pro rarely flips a verdict — saves ~$0.03-0.05/run).
-    # max_roles=100 caps the worst-case Stage 3 spend on big-pool runs:
-    # at 250-300 qualifying scale we've seen up to 180 roles enter Stage 3,
-    # most of which read identically to the Stage 3 LLM. Top-100 by stage2
-    # score is the sweet spot.
+    # v0.3.7: skip_below reverted 58 → 55. v0.3.5 had bumped this to 58
+    # for cost savings ($0.03-0.05/run), but production audit of the v0.3.6
+    # run revealed 21 roles stuck at exactly 55 because Stage 2's score +
+    # title-floor put them at 55, and the 58 cutoff prevented Stage 3 from
+    # promoting any of them. Stage 3's average uplift is +8.6 points; a
+    # role at 55 typically lands at ~63-64 with Pro evaluation, occasionally
+    # higher for genuinely strong matches. The five roles we lost most
+    # visibly to the 58 cutoff (NVIDIA AI Strategist, Leidos AI Lead,
+    # VirtualVocations AI Transformation, monō ai Pod Lead) are exactly
+    # the kind of roles Stage 3 should evaluate.
+    #
+    # Cost trade: ~+$0.05-0.10/run (15-25 more roles entering Pro). Worth
+    # it for recovering legit GOOD/STRONG candidates wrongly capped at 55.
+    #
+    # max_roles=100 caps the worst-case Stage 3 spend on big-pool runs.
     #
     # Note: s2_in_band is the subset entering Pro deep-eval (stage2_score
     # in [skip_below, skip_above)). It is NOT the final qualifying count —
@@ -202,10 +276,12 @@ async def score_roles(
     if log:
         print(f"[orchestrator] after Stage 3: {s3_count} deep-evaluated")
 
-    # ---- 5. Finalize scores + backfill salary from LLM reasoning ----
+    # ---- 5. Finalize scores + backfill salary + apply realism penalty ----
+    # We backpop salary FIRST so the realism penalty in _finalize_score sees
+    # any LLM-extracted salary that wasn't in the structured fields.
     for r in scored:
-        _finalize_score(r)
         _backpop_salary_from_reasoning(r)
+        _finalize_score(r, profile=profile)
 
     qualifying = [r for r in scored if (r.final_score or 0) >= 40]
     qualifying.sort(key=lambda r: r.final_score or 0, reverse=True)

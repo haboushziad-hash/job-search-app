@@ -57,7 +57,25 @@ permissions:
   contents: read
 
 jobs:
+  # Pre-flight version validator (v0.3.7+) — runs in 5 seconds before the
+  # 10-minute Mac/Windows build matrix. Catches the "0.3.5.2 invalid SemVer"
+  # class of bugs locally OR in CI before they burn a whole build cycle.
+  # If any version string in package.json / tauri.conf.json / Cargo.toml /
+  # backend/__init__.py is not valid SemVer 2.0.0, this fails fast and
+  # the build matrix doesn't even start.
+  check-versions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Validate version strings (SemVer 2.0.0)
+        run: python scripts/check_versions.py
+
   build:
+    needs: check-versions
     strategy:
       fail-fast: false
       matrix:

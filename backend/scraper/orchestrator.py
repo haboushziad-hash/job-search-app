@@ -33,7 +33,12 @@ from backend.scraper.hn_hiring import HNHiringScraper
 from backend.scraper.findwork import FindworkScraper
 from backend.scraper.jsearch import JSearchScraper
 from backend.scraper.google_jobs import GoogleJobsScraper
-from backend.scraper.bing_jobs import BingJobsScraper
+# BingJobsScraper removed in v0.3.7 — Serper.dev has no Bing Jobs API
+# (the /jobs endpoint returns 404, and engine=bing on /search returns
+# regular web results, not job listings). Production audit showed this
+# scraper returned 0 raw roles in every run. v0.3.8 may reintroduce a
+# Bing-aware scraper if a real API path is identified.
+# from backend.scraper.bing_jobs import BingJobsScraper
 from backend.scraper.remoteok import RemoteOKScraper
 from backend.scraper.weworkremotely import WeWorkRemotelyScraper
 from backend.scraper.working_nomads import WorkingNomadsScraper
@@ -106,12 +111,16 @@ SCRAPER_REGISTRY: dict[str, type[BaseScraper]] = {
     # ($50/mo Hobby tier — the actual home of Google Jobs aggregation).
     # See ~/.claude/projects/.../memory/project_v036_scraper_queue.md.
     # "GoogleJobs": GoogleJobsScraper,
-    # v0.3.5: Bing Jobs via Serper.dev /search with engine=bing. Same key
-    # as GoogleJobs; complements Google's index (Bing surfaces government /
-    # non-profit / enterprise listings that Google's "popular" bias buries).
-    # Counts against the same 2,500-call free tier — combined ~2,688 calls/mo
-    # is a $0.20/mo overage at paid pricing.
-    "BingJobs":   BingJobsScraper,
+    #
+    # v0.3.7: BingJobs DELETED from registry. Serper.dev does not expose
+    # a Bing Jobs API. The /jobs endpoint 404s. /search?engine=bing
+    # returns regular Bing web results (Indeed/LinkedIn category pages,
+    # not job listings). v0.3.5 + v0.3.6 production audits confirmed
+    # 0 raw roles per run. v0.3.9 will reintroduce real Google Jobs via
+    # DataForSEO (which DOES have /serp/google/jobs/task_post). No Bing
+    # Jobs alternative exists at any commercial provider we have access
+    # to — DataForSEO's /serp/bing/jobs/* also returns "Invalid Path".
+    # "BingJobs":   BingJobsScraper,
     # v0.3.5: Remote OK — free public JSON of all active remote roles.
     # No auth, attribution required (surfaced via .attribution → audit JSON).
     # Broader than Remotive in product / management / ops verticals.
