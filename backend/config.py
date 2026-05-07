@@ -172,10 +172,21 @@ class Config:
         "gemini-embedding-001": {"input": 0.0001, "output": 0.0},   # per 1K chars
         "gemini-embedding-2":   {"input": 0.0001, "output": 0.0},
         # Anthropic Claude
-        "claude-opus-4-5":          {"input": 15.00, "output": 75.00},
+        # v0.3.3: corrected Opus 4.5+ pricing. Anthropic dropped the price
+        # of Opus 4.5/4.6/4.7 to $5/$25 per MTok (verified against
+        # platform.claude.com/docs pricing 2026-05-06). Opus 4.1 and
+        # earlier remain at the original $15/$75. Our cost tracker had
+        # been overstating Opus 4.5 spend by 3x since profile build was
+        # introduced.
+        "claude-opus-4-7":          {"input":  5.00, "output": 25.00},
+        "claude-opus-4-6":          {"input":  5.00, "output": 25.00},
+        "claude-opus-4-5":          {"input":  5.00, "output": 25.00},
         "claude-opus-4-1":          {"input": 15.00, "output": 75.00},
+        "claude-opus-4-0":          {"input": 15.00, "output": 75.00},
+        "claude-sonnet-4-6":        {"input": 3.00,  "output": 15.00},
         "claude-sonnet-4-5":        {"input": 3.00,  "output": 15.00},
         "claude-3-5-sonnet-latest": {"input": 3.00,  "output": 15.00},
+        "claude-haiku-4-5":         {"input": 1.00,  "output":  5.00},
     }
 
     # Paths

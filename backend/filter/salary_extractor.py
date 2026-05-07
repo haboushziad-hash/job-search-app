@@ -36,16 +36,57 @@ _HTML_ENTITIES = {
     "&quot;": '"', "&#39;": "'", "&#x27;": "'",
 }
 
+# v0.3.3: CSS class names that semantically signal a salary/pay block.
+# When the HTML stripper sees a tag with one of these class names, it
+# injects "salary " into the text BEFORE stripping the tag so that the
+# downstream PROXIMITY pattern can detect the salary context. Without
+# this, layouts like Pinterest's `<div class="pay-range"><span>$X</span>
+# <span>—</span><span>$Y USD</span></div>` lose the salary semantic
+# entirely (the visible text after strip is just "$X — $Y USD" with no
+# nearby salary/pay/comp word, so PROXIMITY won't match).
+_SALARY_CLASS_HINTS = re.compile(
+    r'class\s*=\s*["\'][^"\']*?'
+    r'(pay-range|salary-range|salary_range|compensation-range|comp-range|'
+    r'pay_range|pay-band|salary-band|pay-info|salary-info|comp-info|'
+    r'compensation|salary|pay-rate|wage)'
+    r'[^"\']*?["\']',
+    re.IGNORECASE,
+)
+# Tag opener that has a salary-class hint anywhere in its attributes.
+# We use this to find the START of a salary container so we can prepend
+# a context word into the text stream before tag-stripping happens.
+_TAG_WITH_SALARY_CLASS = re.compile(
+    r'<[a-zA-Z][^>]*class\s*=\s*["\'][^"\']*?'
+    r'(?:pay-range|salary-range|salary_range|compensation-range|comp-range|'
+    r'pay_range|pay-band|salary-band|pay-info|salary-info|comp-info|'
+    r'compensation|salary|pay-rate|wage)'
+    r'[^"\']*?["\'][^>]*>',
+    re.IGNORECASE,
+)
+
 
 def _strip_html_preserving_text(html: str) -> str:
     """Strip HTML tags and decode common entities so $ amounts that were
-    nested in separate spans are now adjacent text."""
+    nested in separate spans are now adjacent text.
+
+    v0.3.3: also detects CSS class names that semantically mark a
+    salary/pay container (e.g. <div class="pay-range">) and injects the
+    word "salary" into the text stream just before that container, so
+    the downstream PROXIMITY regex can find the salary context word
+    even when the visible text after strip lacks it. This fixes the
+    Pinterest-style case where the salary semantic lives in the HTML
+    class attribute but evaporates when tags are stripped.
+    """
     if not html:
         return ""
-    # First decode entities (em-dashes between spans are common)
     text = html
+    # First decode entities (em-dashes between spans are common)
     for entity, char in _HTML_ENTITIES.items():
         text = text.replace(entity, char)
+    # v0.3.3: inject "salary" before any tag whose class signals a
+    # salary container. Replacement is " salary " (padded with spaces)
+    # so it doesn't run into adjacent text after tag-stripping.
+    text = _TAG_WITH_SALARY_CLASS.sub(lambda m: " salary " + m.group(0), text)
     # Strip tags but insert spaces so <span>X</span><span>Y</span> -> "X Y"
     text = _HTML_TAG.sub(" ", text)
     # Collapse runs of whitespace
@@ -67,7 +108,12 @@ PATTERN_RANGE = re.compile(
     r"\$?\s*(" + _AMOUNT + r")"
 )
 
-# Labeled range — broadest possible label set
+# Labeled range — broadest possible label set.
+# v0.3.3: added OTE / on-target-earnings labels for sales/account roles
+# (e.g., Marqeta "OTE range for this position is: National: $143,000 -
+# $178,800" — without these labels, the unlabeled PATTERN_RANGE fallback
+# was bypassing this case because the text "OTE range" didn't match any
+# salary-context word).
 PATTERN_LABELED_RANGE = re.compile(
     r"(?:pay\s*range|salary\s*range|compensation\s*range|comp\s*range|"
     r"base\s*pay\s*range|base\s*salary\s*range|target\s*compensation|"
@@ -78,7 +124,11 @@ PATTERN_LABELED_RANGE = re.compile(
     r"base\s*pay|base\s*salary|"
     r"us\s*base\s*pay\s*range|usa\s*base\s*pay|"
     r"new\s*hire\s*base\s*salary|new\s*hire\s*pay|"
-    r"target\s*base\s*salary)"
+    r"target\s*base\s*salary|"
+    # v0.3.3: OTE = On-Target Earnings (sales/account roles)
+    r"ote\s*range|ote|on[\s\-]target\s*earnings|on[\s\-]target\s*compensation|"
+    r"target\s*earnings|earnings\s*range|earnings\s*target|"
+    r"new\s*hire\s*ote|annual\s*ote)"
     r"[^$]{0,80}?"  # allow up to 80 chars between label and first $
     r"\$\s*(" + _AMOUNT + r")\s*"
     r"(?:to|-|–|—)\s*"

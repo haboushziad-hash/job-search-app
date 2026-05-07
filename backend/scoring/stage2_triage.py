@@ -137,25 +137,46 @@ PRINCIPLE 7: ROLE FUNCTION OVER COMPANY AFFINITY
   no resume evidence of that function, cap the score at 55 regardless of
   how strong the company/domain alignment looks.
 
-PRINCIPLE 8: TITLE-HEADLINE OVERLAP FLOOR
-  When the role's title contains 3 or more meaningful content words that also
-  appear in the candidate's headline OR target_functions list, the base score
-  FLOORS at 70. Domain or seniority concerns can reduce by 5-10 points from
-  there, but the floor is 70 for strong title alignment.
+PRINCIPLE 8: TITLE-HEADLINE OVERLAP FLOOR (graduated, v0.3.3)
+  Count CONTENT words from the role title that also appear in the candidate's
+  headline OR target_functions list. Filler words don't count: ignore
+  "and", "or", "of", "the", "for", "a", "an", "to", "with", "in", "on",
+  "at", "by", "as", "manager", "lead", "senior", "junior", "associate",
+  "II", "III", "IV", "principal", "staff" and other standalone seniority
+  modifiers. Look for substantive function/domain nouns ("Operations",
+  "Strategy", "Marketing", "Program", "Engineering", "AI", "Enablement",
+  "Governance", "Federal", "Clinical", "Product", "Design", "Sales",
+  "Finance", etc.).
 
-  Why: this catches cases where a role with near-exact title match gets
-  unfairly penalized for a peripheral concern. Example: candidate headline
-  "AI Strategy and Enablement Consultant" vs role "AI Strategy Consultant"
-  shares 3+ content words — score should not drop below 70 for "the company
-  is in marketing not consulting" or similar domain quibbles.
+  Apply the floor based on overlap count:
 
-  Stopwords to ignore when counting: "and", "or", "of", "the", "for", "a",
-  "an", "to", "with", "in", "on", "at", "by", "as".
+    3+ content words match → base score FLOORS at 70 (was 70, unchanged)
+    2 content words match  → base score FLOORS at 65 (NEW in v0.3.3)
+    1 content word matches the candidate's CORE function noun (the
+                             function explicitly named in their headline
+                             or top target_function) → FLOORS at 55
+                             (NEW in v0.3.3)
 
-  This rule still respects PRINCIPLE 1 (title fits, JD disagrees) — if the
-  JD describes meaningfully different work, the floor doesn't apply. But
-  DOMAIN concerns alone (industry mismatch, sector preference) shouldn't
-  push a strong title-headline match below 70.
+  Why graduated (v0.3.3): the prior binary 3-word floor failed on legitimate
+  1-2 word overlaps like "Operations Manager" (1 content word after stopword
+  removal) for an Operations-headline candidate. Audit data showed roles
+  like "Marketing Operations Manager" landing at 47-58 because the binary
+  floor didn't trigger. The graduated floor protects partial title matches
+  proportional to overlap strength.
+
+  Domain or seniority concerns can reduce by 5-10 points from the floor,
+  but the floor itself holds. This rule still respects PRINCIPLE 1 (title
+  fits, JD disagrees) — if the JD describes meaningfully different work,
+  the floor doesn't apply. But DOMAIN concerns alone (industry mismatch,
+  sector preference) shouldn't push a strong title-headline match below
+  the applicable floor.
+
+  Example: candidate headline "AI Strategy and Enablement Consultant" vs
+  role "AI Strategy Consultant" shares 3+ content words → floor at 70.
+  Candidate headline "Operations and Strategic Support Leader" vs role
+  "Marketing Operations Manager" shares 1 core-function word ("Operations")
+  → floor at 55, even though "Marketing" is a sub-domain modifier the
+  candidate doesn't share.
 
 PRINCIPLE 9: TITLE PATTERNS REQUIRING CAREFUL JD READING
   Some title patterns reliably mislead. Read the JD carefully before scoring

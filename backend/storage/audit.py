@@ -287,6 +287,144 @@ def _keyword_coverage_scoring(keywords: list[str], roles: list) -> list[dict]:
     return sorted(out, key=lambda x: -x["distinct_companies"])
 
 
+def _calibration_anomalies(
+    scored_roles: list,
+    embedding_top_pct: float = 0.30,
+    s2_strong_threshold: int = 65,
+    s3_low_threshold: int = 55,
+) -> dict:
+    """v0.3.3: detect calibration disagreements suggesting Stage 3 is
+    over-rejecting roles that other independent signals flag as strong fits.
+
+    Two independent signals are checked, either of which flags an anomaly:
+
+      1. Embedding signal (auditor's recommendation, percentile-based):
+         A role with embedding similarity in the TOP 30% of THIS RUN's
+         distribution but with stage3_score < 55. The embedding model's
+         view is an independent, non-LLM measure — when it ranks a role
+         high but Stage 3 ranks it low, that's a calibration disagreement
+         worth flagging. (Implementation note: original spec used a fixed
+         absolute threshold of 0.80, but real audit data showed embedding
+         similarity values cluster much lower per-tester — e.g. Mac
+         Operations tester's qualifying pool spans only 0.58-0.68.
+         Percentile-based threshold is tester-agnostic and catches the
+         right outliers regardless of the underlying distribution.)
+
+      2. Stage 2 → Stage 3 drop signal:
+         A role where Stage 2 scored 65+ (strong-match band) but Stage 3
+         dropped it below 55 (STRETCH band). This is a direct signal that
+         the deeper Stage 3 evaluation undercut the triage decision in a
+         way worth reviewing. The Twin Health Director of Conversion
+         Operations role exhibited exactly this pattern: Stage 2 = 68,
+         Stage 3 = 47.
+
+    Both signals together give belt-and-suspenders coverage — the
+    embedding signal catches model-independent outliers, the Stage 2→3
+    signal catches within-cascade disagreements. Either flag is enough
+    to surface a role for review.
+
+    A clean run has 0 anomalies. Persistent non-zero counts across runs
+    indicate the Stage 2/3 prompts need further calibration tuning.
+
+    Returns:
+        {
+          "total_anomalies": int,
+          "embedding_top_pct": float,           # config used
+          "s2_strong_threshold": int,           # config used
+          "s3_low_threshold": int,              # config used
+          "embedding_pctile_cutoff": float,     # absolute embedding sim
+                                                #  at the chosen percentile
+                                                #  for THIS run
+          "roles": [
+            {
+              "title": str,
+              "company": str,
+              "embedding_similarity": float,
+              "stage2_score": int | None,
+              "stage3_score": int,
+              "trigger": str,  # "embedding" | "stage2_drop" | "both"
+              "stage3_analysis_excerpt": str,  # first 300 chars
+              "url": str,
+            },
+            ...
+          ]
+        }
+
+    Empty roles list = clean run, no calibration disagreement detected.
+    """
+    # Compute the embedding-similarity percentile cutoff for THIS run.
+    # Roles with embedding_similarity at or above this value are in the
+    # top embedding_top_pct fraction.
+    sims = [getattr(r, "embedding_similarity", None) for r in scored_roles]
+    sims = [s for s in sims if s is not None]
+    embedding_cutoff: float = 1.0  # default: nothing qualifies if no sims
+    if sims:
+        sims_sorted = sorted(sims, reverse=True)
+        cut_idx = max(0, int(len(sims_sorted) * embedding_top_pct) - 1)
+        cut_idx = min(cut_idx, len(sims_sorted) - 1)
+        embedding_cutoff = sims_sorted[cut_idx]
+
+    anomalies = []
+    for r in scored_roles:
+        s3 = getattr(r, "stage3_score", None)
+        # Stage 3 may have skipped roles outside its entry band; those are
+        # NOT anomalies, they're correctly bypassed by the cascade.
+        if s3 is None:
+            continue
+        if s3 >= s3_low_threshold:
+            continue
+
+        emb_sim = getattr(r, "embedding_similarity", None)
+        s2 = getattr(r, "stage2_score", None)
+
+        emb_flag = (emb_sim is not None) and (emb_sim >= embedding_cutoff)
+        s2_flag = (s2 is not None) and (s2 >= s2_strong_threshold)
+
+        if not (emb_flag or s2_flag):
+            continue
+
+        if emb_flag and s2_flag:
+            trigger = "both"
+        elif emb_flag:
+            trigger = "embedding"
+        else:
+            trigger = "stage2_drop"
+
+        analysis = getattr(r, "stage3_analysis", "") or ""
+        anomalies.append({
+            "title": (getattr(r, "job_title", "") or "")[:120],
+            "company": (getattr(r, "company", "") or "")[:80],
+            "embedding_similarity": (
+                round(float(emb_sim), 4) if emb_sim is not None else None
+            ),
+            "stage2_score": int(s2) if s2 is not None else None,
+            "stage3_score": int(s3),
+            "trigger": trigger,
+            "stage3_analysis_excerpt": analysis[:300],
+            "url": getattr(r, "job_url", "") or "",
+        })
+
+    # Sort worst disagreements first: "both" triggers > Stage 2 drop size >
+    # then lowest Stage 3 score. Most actionable rows surface at the top.
+    def _sort_key(x):
+        trigger_priority = {"both": 0, "stage2_drop": 1, "embedding": 2}.get(
+            x["trigger"], 3
+        )
+        s2_drop = (x["stage2_score"] or 0) - x["stage3_score"]
+        return (trigger_priority, -s2_drop, x["stage3_score"])
+
+    anomalies.sort(key=_sort_key)
+
+    return {
+        "total_anomalies": len(anomalies),
+        "embedding_top_pct": embedding_top_pct,
+        "s2_strong_threshold": s2_strong_threshold,
+        "s3_low_threshold": s3_low_threshold,
+        "embedding_pctile_cutoff": round(embedding_cutoff, 4),
+        "roles": anomalies,
+    }
+
+
 def _build_diff(prior: dict, current: dict) -> dict:
     """Compare two audit dicts. Returns summary of new/disappeared/score-changed roles."""
     def _key(r):
@@ -423,6 +561,12 @@ def write_audit_files(
         # represented in our scraper pool? Surfaces honest "this version of
         # the tool doesn't cover your sector well" signal to testers.
         "coverage_gap_analysis": _coverage_gap_analysis(qualifying, profile),
+        # v0.3.3 calibration anomaly detector — flags roles where embedding
+        # similarity says "high fit" but Stage 3 scored "low fit". A clean
+        # run has 0 entries here. Persistent non-zero counts across runs
+        # indicate the Stage 2/3 prompts need further calibration tuning.
+        # See _calibration_anomalies() docstring for full rationale.
+        "calibration_anomalies": _calibration_anomalies(scored_roles),
         "tester_feedback": None,  # Filled in if user submits feedback
     }
 

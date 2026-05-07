@@ -229,14 +229,23 @@ class JSearchScraper(BaseScraper):
         # v0.2.1: num_pages 3 → 5. Pages 1-3 are high relevance (already
         # capturing the bulk of qualifying yield). Pages 4-5 are moderate
         # relevance and add ~15-25 raw roles per keyword that score as
-        # MAYBE/GOOD. Pages 6-10 are diminishing returns — capped at 5
-        # to avoid burning scoring budget on STRETCH/SKIP noise. Env-var
-        # JSEARCH_NUM_PAGES overrides; default 5.
-        # Math at num_pages=5: 11 search_terms × 1 request/keyword =
+        # MAYBE/GOOD.
+        #
+        # v0.3.3: 5 → 10. Audit data showed JSearch is the highest-yield
+        # source for non-tech testers (Mac Operations: 1247 raw roles;
+        # Billing: 1293 raw roles). Pages 6-10 add another ~50-100 raw
+        # roles per keyword. Cost is purely downstream (RapidAPI counts
+        # per call not per page, so quota-wise it's free). The downstream
+        # Stage 1/2 cost is small (~$0.001/role at Gemini Flash). Watch
+        # the next 3-5 runs: if pages 6-10 mostly produce STRETCH/SKIP
+        # noise that wastes Stage 3 budget, revert to 7-8 in v0.3.4.
+        # Env-var JSEARCH_NUM_PAGES overrides; default 10.
+        # Math at num_pages=10: 11 search_terms × 1 request/keyword =
         # 11 calls/search (RapidAPI counts each call as 1 regardless of
         # num_pages). Pro tier 10K/month: 32 searches/mo × 11 calls =
-        # 352 calls = 3.5% of Pro quota. Plenty of headroom.
-        num_pages = str(getattr(config, "JSEARCH_NUM_PAGES", None) or 5)
+        # 352 calls = 3.5% of Pro quota. Even at 100 searches/mo (1100
+        # calls = 11% of quota), there's massive headroom.
+        num_pages = str(getattr(config, "JSEARCH_NUM_PAGES", None) or 10)
         params = {
             "query": keyword,
             "page": "1",

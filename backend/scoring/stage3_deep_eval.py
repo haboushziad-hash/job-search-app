@@ -68,29 +68,172 @@ and why.
 Score from 0 to 100. Use the FULL range — pick the specific score that
 matches your read of the role (47, 63, 81, etc.). Avoid clustering at round
 numbers (45, 55, 68, 78, 88, 92) — those are stale tier-band midpoints, not
-signals. Tier labels are assigned downstream from your raw score; you do not
-need to think about them.
+signals.
 
-TITLE-HEADLINE OVERLAP FLOOR (mirrors Stage 2 PRINCIPLE 8):
-When the role's title contains 3 or more meaningful content words that also
-appear in the candidate's headline OR target_functions list, the score FLOORS
-at 55. Domain, seniority, or comp concerns can reduce from there, but you
-must NOT score below 55 for strong title alignment.
+SCORE ANCHORS — what each band MEANS in concrete terms (v0.3.3, added
+because audit data showed Gemini Pro writing glowing positive analysis
+text and then assigning a contradictory STRETCH-band score of 47, e.g.
+"Marketing Operations Manager" for an Operations & Strategic Support
+Leader: reasoning said "align perfectly with your demonstrated skills /
+fits your 3+ years precisely" but score landed at 47, putting it in
+STRETCH alongside roles that genuinely don't fit. Use these anchors to
+resolve the disconnect between your analysis text and your numeric
+score):
 
-Why: Stage 2 already floored these cases at 70 — your job here is deeper
-analysis, NOT to undo that signal. A v0.2.0 audit found cases where Stage 2
-floored a role like "AI Enablement Manager" at 70 (matching candidate
-headline "AI Strategy and Enablement Consultant") only for Stage 3 to demote
-it to 37 based on JD nuance. That's wrong — title alignment is the strongest
-match signal we have. If the title genuinely doesn't match the role's actual
-function (sales role disguised as enablement), score in the 55-65 band so
-the candidate can read your concerns and decide. Don't bury it below 55
-where the dashboard hides it entirely.
+  85-100  EXCEPTIONAL MATCH. Title is precisely the candidate's stated
+          work; JD content is what the candidate has done; no reframing
+          needed; seniority lines up. These should be rare.
 
-Filler words don't count as content overlap: ignore "of", "the", "and",
-"manager", "lead", "senior", "junior", "II", "III" when checking the
-3-word minimum. Look for substantive nouns/adjectives unique to the
-function (e.g., "AI", "Strategy", "Enablement", "Governance", "Federal").
+  70-84   STRONG MATCH WITH ADJACENT FRAMING. Same function FAMILY but
+          different sub-domain (Marketing Operations for an Operations
+          candidate, Senior Manager for a Manager-level candidate, Tech
+          Program Manager for a Program Manager). These ARE strong fits;
+          they are NOT stretches. The candidate may need 1-2 sentences
+          of reframing in their cover letter, but the underlying skill
+          set transfers cleanly. Do not punish lateral moves within the
+          same function.
+
+  55-69   REAL POSSIBILITY WITH REAL CONCERNS. Function family overlaps
+          but meaningful gaps exist (e.g., 2-grade seniority delta,
+          domain shift requiring substantive translation, missing one
+          of the JD's listed must-haves). Worth applying if the
+          candidate is open to stretching, but the application requires
+          real tailoring.
+
+  40-54   STRETCH. Substantial fit gaps despite some signal overlap.
+          The skills transfer but the role is reaching across function
+          boundaries (e.g., Operations candidate applying to a Marketing
+          Strategy role, Program Manager applying to a Software Engineer
+          role) or has 3+ grade seniority gaps.
+
+  0-39    POOR FIT. Genuinely wrong function, wrong industry without
+          translation path, or hard requirements the candidate clearly
+          doesn't meet.
+
+CRITICAL RULE — adjacent sub-domains are NOT stretches:
+
+A candidate's CORE FUNCTION (the substantive function noun in their
+headline or top target_function) appearing in the role title is a
+STRONG signal — NOT a stretch.
+
+Core function nouns vary by industry. Recognize ANY substantive function
+identifier the candidate uses. Examples (illustrative, NOT exhaustive —
+the rule applies to ANY substantive function noun in any industry):
+
+  Office/business: Operations, Strategy, Program Management, Project
+                   Management, Consulting, Analytics, Communications
+  Engineering/data: Engineering, Data, ML/AI, DevOps, Platform, Backend,
+                    Frontend, Site Reliability, Security
+  GTM:             Sales, Marketing, Account Management, Customer Success,
+                   Business Development, Partnerships, Growth
+  Finance/legal:   Finance, Accounting, Audit, FP&A, Treasury, Legal,
+                   Compliance, Risk
+  Creative/research: Design, UX, Research, Content, Brand
+  People:          Recruiting, Talent, People Operations, HR, L&D
+  Healthcare:      Clinical, Nursing, Pharmacy, Medical, Patient Care,
+                   Therapy
+  Education:       Teaching, Curriculum, Instructional Design,
+                   Academic Affairs
+  Other industries: Construction, Manufacturing, Retail, Hospitality,
+                    Field Operations, Logistics, Quality, Production
+  Federal/public:  Federal, Public Sector, Civil Service, Acquisition,
+                   Policy
+
+When the role title is [CANDIDATE'S CORE FUNCTION] + a sub-domain
+qualifier — e.g.,
+  Operations candidate → "Marketing Operations" / "Clinical Operations"
+                       / "Revenue Operations" / "Product Operations"
+  Engineer candidate   → "Senior Backend Engineer" / "Platform Engineer"
+                       / "Site Reliability Engineer"
+  Marketing candidate  → "Brand Marketing" / "Growth Marketing" /
+                         "Field Marketing"
+  Nursing candidate    → "ICU RN" / "Operating Room Nurse" / "Travel RN"
+  Finance candidate    → "Senior FP&A Analyst" / "Treasury Manager"
+— score in the 70-84 band as an adjacent fit.
+
+Sub-domain qualifiers (Marketing X / Product X / Senior X / Lead X /
+Technical X / Strategic X / Brand X / Clinical X / etc.) describe a
+SPECIFICATION of the candidate's function, not a different function.
+Score them as strong matches, not stretches.
+
+DISTINGUISH sub-domain qualifiers (lateral, no downgrade) from SENIORITY
+qualifiers (Senior / Lead / Principal / Director / VP / Manager). A
+seniority delta of 1 grade (e.g., Senior Manager-level role for a
+Manager-level candidate) is acceptable — score in the 70-84 band. A
+seniority delta of 2 grades (e.g., Director role for an IC candidate)
+warrants 55-69. A 3+ grade delta is a real concern and may justify
+40-54. Sub-domain adjacency by itself is never a downgrade.
+
+================================================================
+JUSTIFY-LOW-SCORES CONSTRAINT (v0.3.3 calibration discipline):
+================================================================
+
+If your final `score` is below 55, your `concerns` field MUST contain
+at least one entry that explicitly names a SPECIFIC, CONCRETE
+disqualifying factor. Acceptable concerns include:
+
+  - Hard requirement candidate clearly lacks: "Requires PhD in
+    Computer Science; candidate's resume shows a Bachelor's in
+    Marketing only."
+  - Years/seniority gap quantified: "Requires 10+ years of
+    leadership experience; candidate has 3."
+  - Geography mismatch: "On-site in Seattle; candidate's
+    acceptable_locations list does not include Seattle and no
+    relocation signal in their freeform context."
+  - Compensation gap with specific numbers: "Listed range $70K-$90K
+    is below candidate's stated $120K minimum."
+  - Function mismatch with title evidence: "Title is 'Software
+    Engineer' but candidate's resume shows no software engineering
+    experience or evidence of coding skills."
+
+NOT acceptable as a low-score justification:
+  - Vague language: "moderate fit," "some overlap exists," "different
+    sub-domain," "less than ideal alignment."
+  - Sub-domain framing: "this is Marketing Operations not general
+    Operations" (sub-domain adjacency is NOT a disqualifier).
+  - Hedged adjective: "the role might be slightly above the
+    candidate's experience level" (quantify or drop it).
+
+A score below 55 paired with a `match_analysis` that uses positive
+language ("aligns perfectly," "direct match," "strong foundation,"
+"fits precisely") AND no concrete disqualifying factor in `concerns`
+is an internal inconsistency — recompute the score upward into the
+55-84 range based on the positive analysis. Do NOT degrade the
+analysis text to fit a low score; that would be evaluator dishonesty.
+
+This constraint exists because audit data showed evaluations writing
+glowing match_analysis text (e.g., "align perfectly with your
+demonstrated skills, fits your 3+ years precisely") and then assigning
+contradictory STRETCH-band scores like 47, with no concrete
+disqualifying factor named. Either the analysis is wrong (and should
+be revised) or the score is wrong (and should be recomputed). The
+JUSTIFY-LOW-SCORES constraint forces resolution of the disagreement.
+
+GRADUATED TITLE-HEADLINE OVERLAP FLOOR (replaces v0.2.0's binary 3-word
+floor — that rule was failing on 1-2 word matches like "Operations
+Manager" for an Operations-headline candidate, leaving them to land at
+47 with no protection):
+
+Count CONTENT words from the role title that also appear in the
+candidate's headline OR target_functions list. Filler words don't count:
+ignore "of", "the", "and", "for", "manager", "lead", "senior", "junior",
+"associate", "II", "III", "IV", "principal", "staff", and standalone
+seniority modifiers. Look for substantive function/domain nouns
+("Operations", "Strategy", "Marketing", "Program", "Engineering", "AI",
+"Enablement", "Governance", "Federal", "Clinical", "Product", etc.).
+
+Then apply the floor based on overlap count:
+
+  3+ content words match → score FLOORS at 70 (was 55)
+  2 content words match  → score FLOORS at 65
+  1 content word matches the candidate's CORE function noun (the
+                           function explicitly named in their headline
+                           or top target_function) → score FLOORS at 55
+
+Domain, seniority, or comp concerns can reduce from there, but you must
+NOT score below the applicable floor. The floor protects the candidate
+from being demoted out of MAYBE/GOOD on a partial title match when the
+underlying function family is correct.
 
 SALARY EXTRACTION:
 If structured salary fields (salary_min/salary_max) are missing or null, scan the
