@@ -1,0 +1,48 @@
+# SCENARIO 06: Software Engineer who BUILDS features that USE AI APIs
+#
+# He uses LLM APIs in production (OpenAI, Anthropic) for a customer-support
+# assistant feature. But his core craft is distributed systems / backend
+# reliability / developer productivity. He is NOT an AI strategist or AI
+# program manager — he's a senior engineer who happens to call LLM APIs.
+#
+# v0.3.4 should generate Senior SWE / Staff SWE / Backend Engineer / SRE
+# T1 keywords, NOT "AI Strategy Consultant" or "AI Adoption Lead."
+# AI-engineering keywords like "AI/ML Engineer" or "LLM Engineer" are
+# acceptable in T1 IF freeform context names them.
+
+description: "Senior SWE building features that USE AI — engineer, not AI strategist"
+
+user_preferences:
+  salary_minimum: 220000
+  acceptable_locations:
+    - San Francisco CA
+    - Remote
+  freeform_context: "Targeting Senior or Staff Software Engineer roles in distributed systems, backend, infra, or developer-platform work. Open to LLM/AI engineering roles where the work is genuinely engineering (eval harnesses, retrieval, latency, cost) — not AI strategy, not AI program management, not consulting."
+
+expected:
+  # MUST NOT — strategist/program-mgr titles do NOT fit a SWE
+  must_not_contain_in_target_functions:
+    - AI Strategy
+    - AI Adoption
+    - AI Governance
+    - AI Program Management
+    - AI Operations Management
+  must_not_contain_in_keywords_t1:
+    - AI Strategy Consultant
+    - AI Strategist
+    - AI Adoption Manager
+    - AI Governance Manager
+    - AI Program Manager
+    - Generative AI Consultant
+
+  # MUST CONTAIN — engineer keywords central
+  must_contain_in_keywords_t1_themes:
+    - Engineer
+
+  must_contain_in_target_functions_themes:
+    - Engineer
+
+  headline_must_contain_one_of:
+    - Engineer
+    - Software
+    - Systems

@@ -1282,6 +1282,23 @@ async function renderRunsHtml(env: Env): Promise<Response> {
     tr.collapse-warn td { background: rgba(216, 184, 64, 0.05); }
     tr.collapse-bad  td { background: rgba(232, 102, 90, 0.07); }
     tr.calibration-anomaly td { box-shadow: inset 3px 0 0 var(--warn); }
+    /* Low-match warning (v0.3.4) — operator sees runs with weak quality
+       pool so we can investigate the underlying profile / keywords. */
+    tr.low-match td { box-shadow: inset 3px 0 0 var(--bad); }
+    tr.low-match.calibration-anomaly td { box-shadow: inset 3px 0 0 var(--bad), inset 6px 0 0 var(--warn); }
+    .low-match-chip {
+      display: inline-block;
+      margin-left: 4px;
+      padding: 1px 5px;
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--bad);
+      background: rgba(232, 102, 90, 0.1);
+      border: 1px solid rgba(232, 102, 90, 0.3);
+      border-radius: 3px;
+      vertical-align: middle;
+      cursor: help;
+    }
 
     .anomaly-good { color: var(--good); }
     .anomaly-warn { color: var(--warn); }
@@ -1644,12 +1661,40 @@ async function renderRunsHtml(env: Env): Promise<Response> {
             : (s.anomaly_count <= 5
                 ? '<span class="anomaly-warn">' + s.anomaly_count + '</span>'
                 : '<span class="anomaly-bad">' + s.anomaly_count + '</span>'));
+      // Low-match warning (v0.3.4): operator-visible signal that this run
+      // produced very few quality matches. Replaces the dropped
+      // minimum-STRONG safety floor — instead of artificially bumping roles
+      // into STRONG (which would mislead the user), we surface the run on
+      // the operator dashboard so we can investigate the profile / keywords.
+      // Triggers:
+      //   - STRONG = 0 (no top-tier matches at all)
+      //   - STRONG + GOOD < 5 (weak overall qualifying pool)
+      //   - qualifying_final < 20 (very narrow funnel)
+      // Only fires when the run completed (qualifying != null).
+      const strongVal = s.strong ?? null;
+      const goodVal = s.good ?? null;
+      const qualVal = s.qualifying ?? null;
+      let lowMatchChip = "";
+      let lowMatchClass = "";
+      if (qualVal != null) {
+        const sgSum = (strongVal ?? 0) + (goodVal ?? 0);
+        if (strongVal === 0) {
+          lowMatchChip = ' <span class="low-match-chip" title="No STRONG matches in this run — possibly wrong profile or keywords">no STRONG</span>';
+          lowMatchClass = " low-match";
+        } else if (sgSum < 5) {
+          lowMatchChip = ' <span class="low-match-chip" title="Fewer than 5 STRONG+GOOD matches — weak quality pool">weak pool</span>';
+          lowMatchClass = " low-match";
+        } else if (qualVal < 20) {
+          lowMatchChip = ' <span class="low-match-chip" title="Fewer than 20 qualifying roles — narrow funnel">narrow</span>';
+          lowMatchClass = " low-match";
+        }
+      }
       const titles = (s.top_role_titles || []).length
         ? '<ul class="titles">' + s.top_role_titles.map(t => '<li>' + escapeHtml(t) + '</li>').join("") + '</ul>'
         : '<span style="color: var(--text-faint);">—</span>';
       const rawHref = '/v1/admin/run?k=' + encodeURIComponent(s.key) + '&token=' + encodeURIComponent(TOKEN);
       const checked = state.selected.has(s.key) ? "checked" : "";
-      return '<tr class="' + collapseClass + anomalyClass + '">'
+      return '<tr class="' + collapseClass + anomalyClass + lowMatchClass + '">'
         + '<td class="checkbox-cell"><input type="checkbox" class="row-check" data-key="' + encodeURIComponent(s.key) + '" ' + checked + '></td>'
         + '<td><span class="uuid-badge" data-uuid="' + escapeHtml(s.uuid_full) + '" title="Click to filter to this tester">' + escapeHtml(s.uuid_prefix) + '</span></td>'
         + '<td class="profile-cell" title="' + escapeHtml(s.profile_headline || "") + '">' + escapeHtml(s.profile_headline || "—") + '</td>'
@@ -1657,7 +1702,7 @@ async function renderRunsHtml(env: Env): Promise<Response> {
         + '<td>' + (s.app_version ? '<span class="version-pill">' + escapeHtml(s.app_version) + '</span>' : "—") + '</td>'
         + '<td class="num">' + (s.total_scraped ?? "—") + '</td>'
         + '<td class="num">' + (s.qualifying ?? "—") + deltaChipFor(s, "qualifying") + '</td>'
-        + '<td class="num strong-cell">' + (s.strong ?? "—") + deltaChipFor(s, "strong") + '</td>'
+        + '<td class="num strong-cell">' + (s.strong ?? "—") + deltaChipFor(s, "strong") + lowMatchChip + '</td>'
         + '<td class="num">' + (s.good ?? "—") + deltaChipFor(s, "good") + '</td>'
         + '<td class="num">' + (s.maybe ?? "—") + deltaChipFor(s, "maybe") + '</td>'
         + '<td class="num">' + (s.stretch ?? "—") + deltaChipFor(s, "stretch") + '</td>'

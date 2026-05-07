@@ -107,6 +107,9 @@ backend/dist/
 test_results/
 *.log
 
+# Profile-builder fixture cache (auto-invalidating, regenerated on demand)
+tests/profile_fixtures/.cache/
+
 # Working artifact for cross-Claude-chat handoff (not source)
 Copy and Paste/
 _geocoding_additions.txt

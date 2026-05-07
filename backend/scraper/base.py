@@ -33,6 +33,14 @@ class BaseScraper(ABC):
         # showing 0 roles. Tester transparency.
         self.quota_exhausted: bool = False
         self.quota_exhausted_reason: str = ""
+        # v0.3.4: per-keyword raw-count tracking. Scraper subclasses populate
+        # this dict {keyword: raw_role_count} before applying their own dedup.
+        # Surfaced in the audit JSON so we can diagnose:
+        #   - Which keywords pull the most (potential over-pull, low-quality)
+        #   - Which keywords return 0 (typo, banned by upstream, no matches)
+        #   - Whether num_pages tuning actually translates to more raw roles
+        # Lives on the scraper instance for the lifetime of one search call.
+        self.per_keyword_raw_counts: dict[str, int] = {}
 
     async def __aenter__(self):
         if self._client is None:

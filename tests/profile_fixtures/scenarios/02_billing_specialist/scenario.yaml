@@ -1,0 +1,47 @@
+# SCENARIO 02: Senior Billing Specialist with Copilot mentioned once
+#
+# Billing tester clone — info systems background, healthcare billing focus,
+# uses Copilot for drafting briefs. The previous builder generated AI keywords
+# because of the Copilot + IS-degree combo. v0.3.4 should produce a billing /
+# revenue cycle / operations profile.
+
+description: "Billing tester clone — Senior Billing Specialist using Copilot for briefs (BUCKET A)"
+
+user_preferences:
+  salary_minimum: 95000
+  acceptable_locations:
+    - Charlotte NC
+    - Remote
+  freeform_context: "Senior Billing or Revenue Cycle Manager roles in healthcare or SaaS. Open to billing operations leadership or platform-implementation roles."
+
+expected:
+  must_not_contain_in_target_functions:
+    - AI Strategy
+    - AI Adoption
+    - AI Enablement
+    - AI Governance
+    - AI Program Management
+  must_not_contain_in_target_industries:
+    - Technology
+    - AI
+    - Artificial Intelligence
+  must_not_contain_in_keywords_t1:
+    - AI Strategy
+    - AI Enablement
+    - AI Adoption
+    - AI Governance
+    - Generative AI Consultant
+    - Copilot Lead
+    - AI Program Manager
+
+  must_contain_in_target_functions_themes:
+    - Billing
+  must_contain_in_target_industries_themes:
+    - Healthcare
+  must_contain_in_keywords_t1_themes:
+    - Billing
+  headline_must_not_start_with: "AI"
+  headline_must_contain_one_of:
+    - Billing
+    - Revenue Cycle
+    - Operations

@@ -1,0 +1,53 @@
+# SCENARIO 01: Operations / QA / Lab tech with Copilot in skills section
+#
+# This is the Mac-tester clone. The previous profile builder concluded she was
+# an "AI Adoption / AI Strategy" candidate because her resume mentioned using
+# Microsoft Copilot once for routine drafting (BUCKET A — pure tool usage).
+#
+# v0.3.4's BUCKET A/B/C rule should treat that Copilot mention as tool usage
+# and produce an Operations / QA / Lab profile, NOT an AI profile.
+
+description: "Mac tester clone — QA Lab specialist with Copilot in skills section (BUCKET A)"
+
+user_preferences:
+  salary_minimum: 100000
+  acceptable_locations:
+    - Richmond VA
+  freeform_context: "Looking for the next step in QA, lab operations, or quality systems work. Open to operations or program coordination roles in life sciences. Not looking to pivot careers."
+
+expected:
+  # MUST NOT — Copilot in skills should NOT promote her to an AI specialist
+  must_not_contain_in_target_functions:
+    - AI Strategy
+    - AI Adoption
+    - AI Enablement
+    - AI Governance
+    - AI Program Management
+    - AI Operations
+  must_not_contain_in_target_industries:
+    - Technology
+    - AI
+    - Artificial Intelligence
+  must_not_contain_in_keywords_t1:
+    - AI Strategy
+    - AI Enablement
+    - AI Adoption
+    - AI Governance
+    - Generative AI
+    - Copilot Lead
+    - AI Program Manager
+    - AI Operations Manager
+
+  # MUST CONTAIN — should reflect her actual function and industry
+  must_contain_in_target_functions_themes:
+    - Quality
+  must_contain_in_target_industries_themes:
+    - Life Sciences
+  must_contain_in_keywords_t1_themes:
+    - QA
+  headline_must_not_start_with: "AI"
+  headline_must_contain_one_of:
+    - Quality
+    - Operations
+    - Lab
+    - QA

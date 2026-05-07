@@ -178,6 +178,10 @@ async def scrape_all(
             }
             continue
         by_source[source] = len(result)
+        # v0.3.4: surface per-keyword raw counts when the scraper tracks
+        # them. Currently JSearch is the only scraper with this, but the
+        # field is on BaseScraper so other scrapers can opt-in trivially.
+        per_kw = dict(getattr(scraper_inst, "per_keyword_raw_counts", {}) or {})
         health[source] = {
             "roles": len(result),
             "elapsed_s": round(elapsed, 1),
@@ -185,6 +189,7 @@ async def scrape_all(
             "error": None,
             "quota_exhausted": quota_exhausted,
             "quota_exhausted_reason": quota_reason if quota_exhausted else "",
+            "per_keyword_raw_counts": per_kw,
         }
         if quota_exhausted and log:
             print(f"[scraper] {source} quota exhausted: {quota_reason}")

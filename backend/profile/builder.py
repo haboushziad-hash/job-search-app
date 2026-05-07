@@ -145,6 +145,126 @@ on if the user actually wants it." A data engineer targeting ML Engineer
 roles SHOULD see that keyword in Tier 1; a strategy consultant targeting
 AI advisory roles should NOT.
 
+PRINCIPLE 3.5: "USES AI TOOLS" ≠ "TARGETS AI ROLES" (CRITICAL — v0.3.4)
+This is the most common keyword-pollution failure: a non-AI candidate
+mentions Copilot, ChatGPT, "GenAI", "AI tools", "leveraged AI", or
+similar tooling phrases ONCE OR TWICE in their resume — usually in a
+skills section at the bottom or as a brief bullet ("used Copilot to
+draft client emails"). The LLM then concludes the candidate is
+targeting AI Strategy / AI Adoption / AI Enablement / AI Governance
+roles. THIS IS WRONG. Most professionals now use AI tools at work the
+same way they use Excel — it does NOT make them an AI specialist.
+
+ROLE OF AI MENTIONS — DECISION RULE:
+  Step 1: Count how the resume describes AI/Copilot/GenAI work.
+  Step 2: Classify each mention into one of three buckets:
+
+  BUCKET A — TOOL USAGE (does NOT justify AI keywords):
+    • "Used Copilot to draft emails / summarize meetings / write code"
+    • "Familiar with ChatGPT, Claude, Gemini"
+    • Skills section listing "AI tools" / "Generative AI" / "Copilot"
+    • "Leveraged AI to streamline reporting"
+    • "AI-assisted data analysis" (generic — same as "Excel-assisted")
+    • Any mention where AI is the verb's instrument, not the object
+    • LinkedIn endorsements / certificates in "AI for [non-AI field]"
+
+  BUCKET B — DOMAIN ADJACENT (justifies SECONDARY/TIER 2 AI keywords ONLY,
+  if and only if the candidate's freeform context confirms AI as a target):
+    • "Piloted Copilot rollout for my team of 8"
+    • "Member of internal AI working group"
+    • "Authored AI usage guidelines for my department"
+    • "Trained 5 colleagues on Copilot"
+    • Coursework / certificate in AI strategy / AI ethics / responsible AI
+    • One bullet about an AI-related side project at current job
+
+  BUCKET C — AI AS CORE JOB FUNCTION (justifies PRIMARY/TIER 1 AI keywords):
+    • Title contains "AI" / "Machine Learning" / "Data Science" / "GenAI"
+    • Owned an AI roadmap / strategy / adoption program at a company
+    • Multi-year track record of AI program management or AI consulting
+    • Built or deployed ML models / RAG systems / AI products
+    • Founded / led an AI practice or AI function
+
+KEYWORD GENERATION RULES:
+  - If ALL the candidate's AI evidence is BUCKET A → DO NOT generate
+    "AI Strategy", "AI Adoption", "AI Enablement", "AI Governance",
+    "AI Program Manager", "AI Operations Manager", "Generative AI
+    Consultant", "Copilot Lead", or any AI-domain title in ANY tier.
+    Generate ONLY non-AI keywords matching their actual function.
+  - If BUCKET B evidence + freeform context says they want to pivot
+    INTO AI roles → put 2-3 AI keywords in TIER 2 ONLY (never Tier 1).
+  - If BUCKET C evidence → AI keywords in Tier 1 are appropriate.
+  - WHEN UNCERTAIN, ASSUME BUCKET A. False AI-keyword generation
+    pollutes the entire run and produces 100+ AI roles that the
+    candidate is unqualified for.
+
+PROFILE FIELD RULES (target_functions / target_industries / headline):
+  - target_functions: must reflect the candidate's ACTUAL function +
+    stated freeform target. NEVER add "AI Strategy", "AI Adoption",
+    "AI Governance", "AI Enablement", or "AI Program Management"
+    from BUCKET A evidence alone. A QA lab tech who uses Copilot is
+    a QA lab tech, NOT an "AI Adoption Manager."
+  - target_industries: NEVER add "Technology" or "AI" or "Tech" from
+    BUCKET A evidence alone. Using AI tools at work doesn't make
+    someone target the Tech industry. A billing specialist is in
+    Financial Services / Healthcare / their actual industry, NOT
+    Technology, even if they use Copilot daily.
+  - headline: do NOT lead the headline with "AI" if the candidate's
+    AI evidence is BUCKET A. "Senior Billing Specialist with 7 years
+    of experience" is correct; "AI-Enabled Billing Specialist" is NOT.
+
+WORKED EXAMPLES:
+
+  EXAMPLE 1 — Operations / Lab / QA candidate, 3 yrs, Life Sciences,
+  resume mentions "Copilot for documentation" + "Generative AI" in
+  skills section. NO freeform AI targeting.
+    AI evidence classification: BUCKET A only.
+    target_functions: ["Business Operations", "Lab Operations",
+                       "Quality Assurance", "Process Improvement",
+                       "Project Coordination"]
+                       (NO AI functions — she's not an AI specialist)
+    target_industries: ["Life Sciences", "Biotechnology",
+                       "Pharmaceuticals", "Healthcare", "Medical Devices"]
+                       (NO "Technology" — she's in life sciences)
+    keywords (T1): "Operations Coordinator", "Lab Operations Manager",
+                   "Quality Assurance Specialist", "Project Coordinator",
+                   "Operations Specialist" — NO AI keywords anywhere.
+
+  EXAMPLE 2 — Senior Billing Specialist, 7 yrs Financial Services,
+  resume mentions Copilot once for invoice summarization, no other
+  AI signals, no AI freeform targeting.
+    AI evidence classification: BUCKET A only.
+    target_functions: ["Billing Operations", "Revenue Operations",
+                       "Account Management", "Financial Systems Analysis"]
+                       (NO AI functions)
+    target_industries: ["Financial Services", "Healthcare", "Insurance",
+                       "Real Estate", "Utilities"]
+                       (NO "Technology")
+    keywords (T1): "Senior Billing Specialist", "Billing Operations
+                   Manager", "Revenue Operations Analyst", "Accounts
+                   Receivable Lead" — NO AI keywords anywhere.
+
+  EXAMPLE 3 — Senior Consultant at Booz Allen, 7 yrs, headline says
+  "AI Strategy Consultant," resume has 3 separate AI strategy
+  engagements + GenAI working group membership + freeform context
+  says "targeting AI strategy / enablement / governance roles."
+    AI evidence classification: BUCKET C.
+    target_functions: AI Strategy / Enablement / Governance — correct.
+    keywords (T1): "AI Strategy Consultant", "AI Enablement Lead",
+                   "AI Adoption Manager", "AI Program Manager" — correct.
+
+  EXAMPLE 4 — Marketing Director, 12 yrs CPG, took an AI-for-
+  Marketing certificate, ran one Copilot rollout for her team.
+  Freeform says "open to AI-adjacent marketing roles."
+    AI evidence classification: BUCKET B.
+    target_functions: ["Marketing Operations", "Brand Marketing",
+                       "Demand Generation"]
+                       (her primary function — NOT AI)
+    keywords (T1): standard marketing keywords.
+    keywords (T2): 1-2 entries like "AI Marketing Manager" or
+                   "Marketing AI Adoption Lead" (T2 only — secondary
+                   target).
+
+============================================================
 PRINCIPLE 4: NEGATIVE-SIGNAL GATING
 If the candidate states they want to move AWAY from something (e.g.,
 "moving out of federal", "tired of government work", "want to leave
@@ -1017,6 +1137,36 @@ AUDIT CHECKLIST
    than the candidate is actually pursuing? E.g., a strategy candidate with
    "ML Engineer" in Tier 2, or a data engineer with "Marketing Manager"?
 
+5a. AI-DOMAIN OVER-CLAIM (CRITICAL — v0.3.4).
+   "Uses AI tools" ≠ "targets AI roles." Re-classify the resume's AI
+   evidence into:
+     • BUCKET A — tool usage (Copilot in skills section, "leveraged AI",
+       "familiar with ChatGPT") → STRIP all AI keywords from every tier,
+       strip "AI Strategy" / "AI Adoption" / "AI Governance" /
+       "AI Enablement" / "AI Program Management" from target_functions,
+       strip "AI" / "Technology" from target_industries.
+     • BUCKET B — domain adjacent (piloted Copilot for own team,
+       AI working-group member, authored internal AI usage guidelines)
+       → AI keywords belong in TIER 2 ONLY if freeform context asks for
+       AI roles. Otherwise demote / drop.
+     • BUCKET C — AI as core function (title contains AI/ML, owned an
+       AI roadmap, multi-year AI program work) → AI keywords in Tier 1
+       are correct.
+   When uncertain, assume BUCKET A. False AI promotion produces 100+
+   off-target AI roles for non-AI candidates.
+
+5b. INDUSTRY-OVERREACH (CRITICAL — v0.3.4).
+   Did the draft include target_industries the candidate doesn't
+   actually target? Common over-includes:
+     • "Technology" added because the resume mentions using Copilot,
+       Salesforce, ServiceNow, or any SaaS tool
+     • An industry that appears as a single client / vendor mention
+       (a healthcare consultant with one real estate client should NOT
+       have "Real Estate" in target_industries)
+     • An old internship in an unrelated field
+   Strip industries unless the candidate has multi-year tenure OR
+   freeform context names that industry as a target.
+
 6. TIER ASSIGNMENT.
    - Tier 1 should have 10-15 keywords representing the candidate's
      EXACT target roles
@@ -1212,6 +1362,57 @@ SYNTHESIS PRINCIPLES
    Re-check that all keywords align with the candidate's actual target.
    A strategy candidate shouldn't have "ML Engineer" in Tier 2.
    A data engineer shouldn't have "Marketing Manager" in Tier 2.
+
+6a. AI-DOMAIN GUARD (CRITICAL — v0.3.4)
+    "Uses AI tools" ≠ "targets AI roles." If the resume's only AI evidence
+    is BUCKET A — tool usage like "used Copilot to draft emails," "AI
+    tools" or "Generative AI" in the skills section, "leveraged AI to
+    streamline X" — DO NOT include "AI Strategy", "AI Adoption", "AI
+    Enablement", "AI Governance", "AI Program Manager", "AI Operations
+    Manager", "Generative AI Consultant", "Copilot Lead" in any tier.
+    Also drop "AI" / "Technology" from target_industries when only
+    BUCKET A evidence is present.
+
+    BUCKET A (tool usage — does NOT justify AI keywords):
+      • "Used Copilot / ChatGPT / Claude / Gemini for [X]"
+      • "Familiar with AI tools" / "AI proficiency" / "GenAI" in skills
+      • "AI-assisted [report / analysis / writing]"
+      • Generic AI certificate or short course
+
+    BUCKET B (domain adjacent — Tier 2 ONLY if freeform asks for AI):
+      • Piloted Copilot rollout for own team
+      • Member of internal AI working group
+      • Authored AI usage guidelines for own department
+
+    BUCKET C (AI as core function — Tier 1 AI keywords appropriate):
+      • Title contains "AI" / "ML" / "GenAI" / "Data Science"
+      • Owned AI roadmap / strategy / adoption program at a company
+      • Multi-year AI program management or AI consulting track record
+
+    WHEN UNCERTAIN, ASSUME BUCKET A. False AI promotion produces 100+
+    AI roles a non-AI candidate is unqualified for and pollutes their
+    entire run. The cost of erroneously omitting AI keywords from a
+    true AI candidate (Ziad-style) is much smaller — they re-add via
+    freeform context on next run.
+
+6b. INDUSTRY-OVERREACH GUARD (CRITICAL — v0.3.4)
+    The same caution applies to target_industries. A candidate with
+    ONE client in real estate is NOT targeting real estate. A candidate
+    who used a SaaS tool is NOT targeting Technology. Only include
+    industries the candidate explicitly targets in freeform context OR
+    has multi-engagement / multi-year experience in (not single-client,
+    not tooling).
+
+    Concretely, DO NOT add industries based on:
+      • A single client engagement in that industry
+      • Working with vendors / SaaS tools from that industry
+      • A coursework mention or one-line resume bullet
+      • An internship over 3 years ago in a different field
+
+    DO add industries based on:
+      • Multi-year tenure at a company in that industry
+      • The candidate's freeform context naming the industry
+      • Multiple distinct engagements proving sustained domain expertise
 
 7. TIER COUNTS — PRIMARY vs SECONDARY TARGET DISCIPLINE
    When the candidate names multiple target paths, do NOT spread Tier 1

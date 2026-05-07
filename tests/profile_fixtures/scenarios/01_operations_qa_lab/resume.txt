@@ -1,0 +1,65 @@
+SARAH CHEN
+Richmond, VA · sarah.chen.qa@email.com · (804) 555-0142
+LinkedIn: linkedin.com/in/sarahchen-qa
+
+
+PROFESSIONAL SUMMARY
+Detail-oriented Quality Assurance and Lab Operations professional with 3+ years of
+experience in regulated life sciences environments. Skilled at SOP development,
+batch record review, audit prep, and cross-functional coordination between QA, R&D,
+and Manufacturing. GMP/GLP-trained with a track record of zero critical findings
+across two regulatory inspections.
+
+
+EXPERIENCE
+
+CHARLES RIVER LABORATORIES — Richmond, VA
+Quality Assurance Specialist II                                    Aug 2024 – Present
+- Review and approve batch records, deviations, and CAPAs for biologics samples
+  processed across the Richmond lab (avg. 60 batches/month).
+- Lead investigation of 14 OOS / OOT events in 2025; root-cause analysis closed
+  all within 30-day SLA.
+- Coordinate with R&D scientists and Manufacturing on stability protocol changes
+  and method transfers; authored 11 SOPs and revised 23.
+- Internal audit lead for ISO 17025 program; supported a successful client audit
+  with zero findings.
+
+CHARLES RIVER LABORATORIES — Richmond, VA
+Quality Assurance Associate                                       Jun 2023 – Aug 2024
+- Performed daily document review (logbooks, calibration records, training files)
+  to support compliance with cGMP and 21 CFR Part 11.
+- Maintained QA training matrix for 38 lab personnel; built dashboards in Excel /
+  Power BI to track requalification cycles.
+- Used Microsoft Copilot to assist drafting routine deviation summaries and
+  meeting notes (saved ~3 hours/week).
+- Coordinated weekly cross-functional QA huddles with Manufacturing and R&D leads.
+
+VIRGINIA COMMONWEALTH UNIVERSITY — Richmond, VA
+Undergraduate Research Assistant — Department of Chemistry        Sep 2021 – May 2023
+- Supported NIH-funded research on enzyme kinetics; performed HPLC, UV-Vis assays.
+- Co-authored one peer-reviewed publication (J. Biol. Chem., 2023).
+
+
+EDUCATION
+
+VIRGINIA COMMONWEALTH UNIVERSITY                                              May 2023
+Bachelor of Science in Biology · GPA 3.6 / 4.0
+Minor in Chemistry · Dean's List 4 semesters
+
+
+CERTIFICATIONS
+- ASQ Certified Quality Auditor (CQA) — 2024
+- Lean Six Sigma Yellow Belt — 2024
+- HIPAA Privacy & Security Awareness — 2024
+
+
+SKILLS
+QA / Compliance: GMP, GLP, cGMP, 21 CFR Part 11, ICH guidelines, SOP authoring,
+  CAPA management, deviation investigation, batch record review, audit support
+Lab Techniques: HPLC, UV-Vis spectroscopy, ELISA, Western blot, pH/conductivity,
+  pipetting accuracy, sample chain-of-custody
+Tools: Microsoft Office (Excel, Word, PowerPoint), Power BI, MasterControl,
+  Veeva QualityDocs, LabWare LIMS, Salesforce, SAP (light)
+Productivity: Microsoft Copilot, generative AI assistants for document drafting
+Soft Skills: Cross-functional collaboration, technical writing, attention to detail,
+  audit preparation, stakeholder communication

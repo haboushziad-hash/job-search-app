@@ -1,0 +1,75 @@
+JOSHUA REINER
+Washington, DC · joshua.reiner.ai@email.com · (202) 555-0173
+LinkedIn: linkedin.com/in/joshua-reiner-ai
+
+
+PROFESSIONAL SUMMARY
+AI Strategy and Enablement Consultant with 7 years at Booz Allen Hamilton
+leading AI adoption, governance, and change-management initiatives across
+federal civilian and Department of Defense clients. Expert at translating
+emerging AI capabilities into actionable client roadmaps, training programs,
+and policy frameworks. Currently pursuing M.P.S. at Georgetown School of
+Continuing Studies (Graduate Liberal Studies — concentration in AI Ethics
+and Public Policy).
+
+
+EXPERIENCE
+
+BOOZ ALLEN HAMILTON — Washington, DC
+Senior Consultant — Strategic Innovation Group                    Jan 2023 – Present
+- Lead AI strategy work for a 4-agency federal portfolio (HHS, GSA, USDA,
+  Treasury). Authored 3 enterprise AI roadmaps adopted by client CIO offices.
+- Designed and delivered the firm's "AI Adoption Playbook" — a 5-phase
+  framework now used on 22 client engagements firm-wide.
+- Built an AI-Governance maturity assessment tool aligned with NIST AI RMF and
+  EO 14110; deployed at 9 federal clients.
+- Lead curriculum designer for the firm's "AI Literacy for Federal Leaders"
+  training program (delivered to 600+ federal SES and GS-15 attendees).
+- Co-authored two firm white papers: "Responsible AI in Government" (2024) and
+  "From Pilots to Production: Federal AI Adoption Patterns" (2025).
+- Engagement lead for a $4.8M AI change-management contract; managed delivery
+  team of 7 across 18 months.
+
+BOOZ ALLEN HAMILTON — Washington, DC
+Consultant — Digital Transformation                               Aug 2020 – Jan 2023
+- Supported AI/ML proof-of-concept work for 4 federal clients (computer vision
+  for satellite imagery, NLP for case-management triage).
+- Co-led a $1.2M change-management workstream for an AI-driven case-management
+  rollout at a federal agency (3,200 caseworkers transitioned).
+- Authored adoption-readiness assessments and stakeholder engagement plans.
+
+DELOITTE CONSULTING — Arlington, VA
+Business Analyst — Federal Practice                              Jul 2018 – Aug 2020
+- Supported strategy and operations engagements for DoD and intelligence-community
+  clients; technology modernization, workforce transformation, governance design.
+
+
+EDUCATION
+
+GEORGETOWN UNIVERSITY · School of Continuing Studies              Expected May 2026
+Master of Professional Studies (M.P.S.) — Graduate Liberal Studies
+Concentration: AI Ethics and Public Policy
+
+UNIVERSITY OF VIRGINIA                                                       May 2018
+Bachelor of Arts in Foreign Affairs · GPA 3.7 / 4.0
+Distinguished Major in International Security
+
+
+CERTIFICATIONS
+- AWS Certified AI Practitioner (AIF-C01) — 2024
+- Prosci Certified Change Practitioner (PROSCI ADKAR) — 2023
+- IBM AI Ethics for Practitioners — 2024
+- DAU Acquisition Agile Foundations (CON 1010) — 2022
+
+
+SKILLS
+AI Strategy & Governance: NIST AI RMF, EO 14110, OMB M-24-10, AI maturity
+  assessment, AI use-case prioritization, responsible AI principles,
+  AI policy authoring, AI risk frameworks, model governance
+Change Management: ADKAR, Kotter 8-step, stakeholder engagement, communications
+  planning, training curriculum design, adoption metrics
+Federal Domain: federal acquisition (FAR/DFARS basics), GSA MAS schedules,
+  task-order management, IDIQ delivery, SES briefing experience, PMP basics
+Tools: Microsoft 365 + Copilot, Power BI, Tableau, Mural, Miro, Asana,
+  Salesforce, Smartsheet, JIRA
+Public Speaking: Federal Senior Leader Forum (2024), AFCEA TechNet Cyber (2025)

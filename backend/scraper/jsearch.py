@@ -173,11 +173,16 @@ class JSearchScraper(BaseScraper):
         async def bounded(kw: str) -> list[Role]:
             async with sem:
                 try:
-                    return await asyncio.wait_for(
+                    raw = await asyncio.wait_for(
                         self._search_keyword(kw, limit_per_keyword,
                                              date_filter, api_key, base_url),
                         timeout=25.0,
                     )
+                    # v0.3.4: track raw count per keyword (pre-dedup) so we
+                    # can diagnose num_pages effect + per-keyword quality
+                    # without touching the LLM cost or scrape behavior.
+                    self.per_keyword_raw_counts[kw] = len(raw)
+                    return raw
                 except Exception as e:
                     # v0.2.1: distinguish quota/rate-limit from coding bugs.
                     # Without this, 429s look identical to genuine failures

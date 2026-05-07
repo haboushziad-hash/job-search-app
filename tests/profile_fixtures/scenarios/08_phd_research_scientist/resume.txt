@@ -1,0 +1,78 @@
+DR. RACHEL OKONKWO
+Cambridge, MA · rachel.okonkwo.phd@email.com · (617) 555-0190
+LinkedIn: linkedin.com/in/rachel-okonkwo-phd · Google Scholar: scholar.google.com/citations?user=ROK
+
+
+PROFESSIONAL SUMMARY
+Computational chemist with a Ph.D. from MIT and 3 years of postdoctoral research
+at Pfizer's Worldwide Research & Development organization. Expert at applying
+machine-learning methods to small-molecule drug discovery — molecular property
+prediction, generative chemistry, conformer search. 12 peer-reviewed publications
+(7 first-author). Seeking a Senior Research Scientist or Principal Scientist
+role in computational drug discovery at a biotech, pharma, or AI-for-drug-
+discovery company.
+
+
+PROFESSIONAL EXPERIENCE
+
+PFIZER WORLDWIDE RESEARCH & DEVELOPMENT — Cambridge, MA
+Postdoctoral Research Scientist — Computational Chemistry         Sep 2022 – Present
+- Lead postdoc for a multi-program ML-for-ADMET initiative; deployed property
+  predictors for hERG, hepatotoxicity, and CYP3A4 inhibition into the medchem
+  team's daily workflow.
+- Developed a graph-neural-network model for solubility prediction (R² 0.78
+  on internal test set) — published in J. Chem. Inf. Model., 2024.
+- Co-led a generative-chemistry exploration for a kinase target; designed and
+  experimentally validated 8 novel chemotypes (3 advanced to hit-to-lead).
+- Mentor for 4 senior medicinal chemists on use of computational tools.
+
+MASSACHUSETTS INSTITUTE OF TECHNOLOGY — Cambridge, MA
+Doctoral Researcher — Department of Chemistry                    Sep 2017 – Aug 2022
+- Thesis: "Machine-Learning Approaches to Conformational Sampling of Drug-like
+  Molecules" (Advisor: Prof. Heather Kulik).
+- 7 first-author publications in J. Chem. Theory Comput., J. Chem. Phys.,
+  Chem. Sci., and ACS Catal.
+- Built and open-sourced two computational-chemistry libraries (one with 800+
+  GitHub stars).
+- Teaching assistant for graduate-level Quantum Chemistry (5.61, 5.73).
+
+UNIVERSITY OF LAGOS — Lagos, Nigeria
+Undergraduate Research Assistant — Department of Chemistry        Sep 2014 – May 2017
+- Computational and synthetic work on polymer-supported catalysts for greener
+  C-C coupling reactions (NSF-Africa support).
+
+
+EDUCATION
+
+MASSACHUSETTS INSTITUTE OF TECHNOLOGY                                          Aug 2022
+Ph.D. in Chemistry · Concentration: Computational and Theoretical Chemistry
+
+UNIVERSITY OF LAGOS — Lagos, Nigeria                                          May 2017
+Bachelor of Science (Honors) in Chemistry · First Class Honors
+
+
+SELECTED PUBLICATIONS (12 total — 7 first-author)
+- Okonkwo, R., et al. "Graph Neural Networks for Aqueous Solubility Prediction:
+  An Industrial-Scale Benchmark." J. Chem. Inf. Model. 64, 2024.
+- Okonkwo, R., Kulik, H. J. "Active Learning for Efficient Conformational
+  Sampling." J. Chem. Theory Comput. 18, 2022.
+- (10 more — full list at scholar.google.com/citations?user=ROK)
+
+
+SKILLS
+Computational Chemistry: DFT (Gaussian, Q-Chem, ORCA, NWChem), molecular
+  dynamics (AMBER, GROMACS, OpenMM), free-energy methods (MM-PBSA, FEP),
+  conformational analysis, RDKit, OpenEye toolkits, Schrödinger suite
+Machine Learning: Graph neural networks (PyTorch Geometric, DGL), molecular
+  generative models (variational autoencoders, RL-based), uncertainty
+  quantification, active learning, model interpretability
+Programming: Python (advanced), C++ (intermediate), Julia (intermediate),
+  Fortran (legacy DFT codes), Shell, SLURM HPC environments
+Domain: Small-molecule drug discovery, ADMET prediction, hit-to-lead
+  optimization, structure-based drug design, fragment-based drug discovery
+
+
+HONORS
+- NIH Postdoctoral Fellowship (F32) — 2022-2024
+- ACS Computers in Chemistry Award for Graduate Research — 2022
+- MIT Graduate Fellow (2017-2022)

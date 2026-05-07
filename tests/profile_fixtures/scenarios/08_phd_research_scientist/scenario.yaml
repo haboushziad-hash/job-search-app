@@ -1,0 +1,53 @@
+# SCENARIO 08: PhD computational chemist with ML for drug discovery
+#
+# This candidate genuinely uses ML (graph neural networks, generative chemistry)
+# for her core research. But she's targeting Senior/Principal SCIENTIST roles,
+# not "AI Strategy" or generic "AI" management roles. She's a domain expert
+# applying ML to chemistry.
+#
+# v0.3.4 should generate scientist + computational chemistry + ML-for-science
+# keywords. Should NOT dump generic "AI Strategy Consultant" or "Generative
+# AI Lead" titles that don't fit a researcher.
+
+description: "PhD scientist applying ML to drug discovery — targets Sr/Principal Scientist, NOT AI strategy"
+
+user_preferences:
+  salary_minimum: 165000
+  acceptable_locations:
+    - Cambridge MA
+    - Boston MA
+    - Remote
+  freeform_context: "Targeting Senior Research Scientist, Principal Scientist, or Computational Chemistry Lead roles in biotech, pharma, or AI-for-drug-discovery companies (e.g., Recursion, Insitro, Generate Biomedicines). Not pursuing pure software engineering or strategy consulting roles."
+
+expected:
+  # MUST CONTAIN — scientist roles in pharma/biotech
+  # NOTE: target_functions for a domain specialist like this can legitimately
+  # be specialty-named ("Computational Chemistry", "Machine Learning for Drug
+  # Discovery") rather than generic "Research". So we don't enforce a function
+  # theme — the t1 keyword theme + industry theme is enough signal.
+  must_contain_in_target_industries_themes:
+    - Pharma
+
+  must_contain_in_keywords_t1_themes:
+    - Scientist
+
+  # MUST NOT — strategy consulting / AI program mgmt is wrong direction
+  must_not_contain_in_target_functions:
+    - AI Strategy
+    - AI Program Management
+    - AI Adoption
+    - Strategy Consulting
+
+  must_not_contain_in_keywords_t1:
+    - AI Strategy Consultant
+    - AI Adoption Manager
+    - AI Program Manager
+    - Generative AI Consultant
+    - Solutions Architect
+    - Engagement Manager
+
+  headline_must_contain_one_of:
+    - Scientist
+    - Research
+    - Chemist
+    - Computational

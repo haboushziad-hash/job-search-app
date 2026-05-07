@@ -1,0 +1,78 @@
+DAVID NGUYEN
+San Francisco, CA · david.nguyen.swe@email.com · (415) 555-0102
+LinkedIn: linkedin.com/in/davidnguyen-eng · github.com/dnguyen-dev
+
+
+PROFESSIONAL SUMMARY
+Senior Software Engineer with 5 years of full-stack and backend experience at
+Square and Stripe. Built features that USE LLM APIs (OpenAI, Anthropic) to
+power customer-facing capabilities — but my core craft is distributed systems,
+backend reliability, and developer productivity. M.S. in Computer Science from
+Carnegie Mellon. Comfortable across the stack: Go, Python, TypeScript, gRPC,
+PostgreSQL, Kubernetes.
+
+
+EXPERIENCE
+
+SQUARE (BLOCK, INC.) — San Francisco, CA
+Senior Software Engineer — Seller Platform Reliability           Jan 2023 – Present
+- Lead engineer for the seller-onboarding pipeline (~12K daily new sellers).
+  Reduced p99 onboarding latency from 14s to 3.8s by re-architecting the
+  identity-verification flow.
+- Owned the migration of 4 critical services from monolithic Rails to Go
+  microservices on Kubernetes; cut p50 latency 70% and reduced infra spend
+  $180K/year.
+- Built an LLM-powered customer-support assistant (OpenAI gpt-4o, Anthropic
+  Claude as fallback). Live to 8K agents; deflected 22% of Tier-1 tickets.
+  My role was the engineering: prompt scaffolding, eval harness, latency
+  budget, cost guardrails. (NOT the AI strategy.)
+- Mentor for 2 junior engineers; review ~30 PRs/week.
+- On-call rotation for 4 services in the seller-platform tier.
+
+STRIPE — San Francisco, CA
+Software Engineer — Issuing                                       Jul 2020 – Jan 2023
+- Built and shipped 6 services in the Issuing platform (card-creation,
+  authorization-routing, dispute-management).
+- Designed the dispute-evidence collection workflow now used by 40K+ Issuing
+  customers; reduced dispute-response time from 7 days median to 36 hours.
+- Re-wrote a high-throughput webhook delivery pipeline in Go (was Ruby);
+  improved throughput 14x.
+- Authored a Stripe-internal RFC on idempotency-key conventions adopted across
+  the Issuing API.
+
+UNIVERSITY OF CALIFORNIA, BERKELEY — Berkeley, CA
+Software Engineering Intern — UC Berkeley AMPLab                  May 2019 – Aug 2019
+- Contributed performance optimizations to Apache Spark SQL physical-plan
+  optimizer; one of my changes shipped in 3.0.0 (SPARK-26818).
+
+
+EDUCATION
+
+CARNEGIE MELLON UNIVERSITY                                                    May 2020
+Master of Science in Computer Science · GPA 3.9 / 4.0
+Concentration: Systems
+
+UNIVERSITY OF CALIFORNIA, BERKELEY                                            May 2019
+Bachelor of Arts in Computer Science · GPA 3.8 / 4.0
+Honors thesis on lock-free data structures · Phi Beta Kappa
+
+
+CERTIFICATIONS
+- AWS Certified Solutions Architect — Associate (2024)
+- Certified Kubernetes Administrator (CKA) (2023)
+
+
+SKILLS
+Languages: Go (advanced), Python (advanced), TypeScript / JavaScript (advanced),
+  Rust (intermediate), SQL (advanced), Bash, C++ (academic)
+Backend / Infra: gRPC, REST, GraphQL, Kafka, Redis, PostgreSQL, MySQL, Cassandra,
+  Snowflake, Kubernetes, Docker, Terraform, AWS (EKS, RDS, S3, SQS, SNS),
+  GCP basics, Datadog, Grafana, Sentry
+Distributed Systems: idempotency design, exactly-once semantics, eventual
+  consistency, sharding, leader-election, consensus (Raft basics), capacity
+  planning, performance profiling (pprof, flamegraphs)
+LLM Integration (engineering, not strategy): OpenAI API, Anthropic Claude API,
+  prompt scaffolding, RAG basics, embedding-based retrieval, evaluation
+  harnesses, cost / latency guardrails
+Frontend (light): React, Next.js, Tailwind, basic accessibility
+Tools: Linear, Slack, Notion, Confluence, GitHub, GitHub Actions, Buildkite

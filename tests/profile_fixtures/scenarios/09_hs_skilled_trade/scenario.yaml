@@ -1,0 +1,52 @@
+# SCENARIO 09: HS-educated journeyman electrician seeking foreman/super/estimator
+#
+# This is a stress test for the BROADEST tester base. Most career tools assume
+# white-collar candidates with degrees. The builder needs to:
+#   1. NOT recommend white-collar / corporate roles to a tradesperson
+#   2. Generate trade-appropriate keywords (Foreman, Superintendent, Estimator)
+#   3. Use IBEW + commercial construction industry context
+#   4. Not invent generic "Operations Manager" titles disconnected from trades
+
+description: "HS journeyman electrician — must generate trade-appropriate keywords, not white-collar"
+
+user_preferences:
+  salary_minimum: 95000
+  acceptable_locations:
+    - Silver Spring MD
+    - Washington DC
+    - Bethesda MD
+  freeform_context: "Looking for Electrical Foreman, Project Superintendent, or Electrical Estimator roles with commercial / data-center electrical contractors in the DMV. Want to keep growing in commercial electrical construction — not pivoting careers."
+
+expected:
+  # Must NOT generate white-collar roles
+  must_not_contain_in_target_functions:
+    - AI Strategy
+    - Software Engineering
+    - Marketing
+    - Finance Operations
+    - Consulting
+
+  must_not_contain_in_keywords_t1:
+    - AI Strategist
+    - Software Engineer
+    - Data Analyst
+    - Marketing Manager
+    - Consultant
+    - Senior Manager
+
+  # Must contain trade keywords
+  must_contain_in_keywords_t1_themes:
+    - Foreman
+
+  must_contain_in_target_functions_themes:
+    - Electrical
+
+  must_contain_in_target_industries_themes:
+    - Construction
+
+  headline_must_contain_one_of:
+    - Electrical
+    - Electrician
+    - Foreman
+    - Construction
+    - Trade

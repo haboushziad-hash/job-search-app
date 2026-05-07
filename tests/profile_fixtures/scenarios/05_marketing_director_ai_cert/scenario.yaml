@@ -1,0 +1,69 @@
+# SCENARIO 05: Marketing Director with AI cert + Copilot rollout (BUCKET B)
+#
+# She has REAL but secondary AI exposure: completed a Wharton AI for Marketing
+# certificate, led an internal Copilot rollout for her creative team, authored
+# AI usage guidelines. This is BUCKET B (domain adjacent).
+#
+# Per v0.3.4 rule: AI keywords belong in TIER 2 ONLY if her freeform context
+# asks for AI roles. She does name openness in freeform, so we expect 1-3
+# AI-flavored keywords in T2 — but the PRIMARY profile should remain
+# performance/brand marketing.
+
+description: "Marketing director with AI cert + Copilot rollout (BUCKET B — partial AI)"
+
+user_preferences:
+  salary_minimum: 180000
+  acceptable_locations:
+    - Chicago IL
+    - Remote
+  freeform_context: "Targeting Director or VP of Performance Marketing or Lifecycle Marketing roles at consumer brands. Open to AI-adjacent marketing roles (e.g., AI-enabled marketing leadership) but not pivoting full-time into AI."
+
+expected:
+  # PRIMARY profile must reflect marketing leadership, not AI strategy
+  must_contain_in_target_functions_themes:
+    - Marketing
+  must_contain_in_keywords_t1_themes:
+    - Marketing
+
+  # AI should NOT appear as a standalone qualifier in target_functions.
+  # The BEFORE bug was 'AI-enabled Marketing Leadership' — a BUCKET B
+  # candidate getting AI promoted into her function set. v0.3.4's BUCKET
+  # rule should keep AI-flavored entries out of functions entirely (T2
+  # keywords are fine, since freeform asks for AI-adjacent openness).
+  must_not_contain_in_target_functions:
+    - AI Strategy
+    - AI Adoption
+    - AI Governance
+    - AI Program Management
+    - AI-enabled
+    - AI enabled
+    - AI-Enabled
+    - AI Marketing Leadership
+
+  # T1 keywords should NOT be AI-titled
+  must_not_contain_in_keywords_t1:
+    - AI Strategy Consultant
+    - AI Strategist
+    - AI Enablement Lead
+    - AI Adoption Manager
+    - AI Governance Manager
+
+  # Industry should be CPG/Consumer-flavored. We deliberately DON'T forbid
+  # "Consumer Technology" — for a marketing leader at Vuori (a tech-forward
+  # DTC apparel brand), Consumer Technology is a defensible adjacent target
+  # (Sonos, Bose, smart-home brands all have similar marketing-leadership
+  # roles). The failure mode v0.3.4 was designed to fix is AI-as-industry
+  # for a non-AI candidate, not adjacent consumer-tech crossover.
+  must_not_contain_in_target_industries:
+    - AI
+    - Artificial Intelligence
+    - Software
+
+  must_contain_in_target_industries_themes:
+    - Consumer
+
+  headline_must_contain_one_of:
+    - Marketing
+    - Brand
+    - Performance
+    - Director

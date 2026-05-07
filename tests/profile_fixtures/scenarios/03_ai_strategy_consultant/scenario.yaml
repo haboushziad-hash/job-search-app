@@ -1,0 +1,38 @@
+# SCENARIO 03: True AI Strategy Consultant (BUCKET C — regression check)
+#
+# Ziad-clone. Multi-year AI strategy work, owns AI roadmaps, authored AI
+# governance frameworks, freeform context names AI strategy explicitly.
+# v0.3.4 should still generate a strong AI profile here — this is the
+# regression check making sure we didn't break the legitimate-AI case.
+
+description: "Ziad clone — True AI strategy consultant with multi-year AI work (BUCKET C — regression)"
+
+user_preferences:
+  salary_minimum: 130000
+  acceptable_locations:
+    - Washington DC
+    - Richmond VA
+    - Remote
+  freeform_context: "Targeting AI Strategy, AI Enablement, AI Adoption, AI Governance, or AI Program Manager roles. Federal-friendly background (Booz Allen) but interested in commercial too. Senior IC or consultant level."
+
+expected:
+  # MUST CONTAIN — this candidate genuinely targets AI roles
+  must_contain_in_target_functions_themes:
+    - AI
+  must_contain_in_keywords_t1_themes:
+    - AI Strategy
+
+  # NEGATIVE checks — even Ziad shouldn't get garbage
+  must_not_contain_in_target_functions:
+    - Software Engineering
+    - Data Science
+  must_not_contain_in_keywords_t1:
+    - ML Engineer
+    - Machine Learning Engineer
+    - Data Scientist
+
+  headline_must_contain_one_of:
+    - AI
+    - Strategy
+    - Enablement
+    - Consultant

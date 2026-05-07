@@ -1,0 +1,69 @@
+MARCUS DAVIS
+Charlotte, NC · marcus.davis.bill@email.com · (704) 555-0188
+LinkedIn: linkedin.com/in/marcus-davis-billing
+
+
+PROFESSIONAL SUMMARY
+Senior Billing Specialist with 7 years of experience leading complex billing
+operations for healthcare and SaaS clients. Information Systems background
+enables me to bridge billing and IT — I've led 4 major billing-platform
+migrations, recovered $1.2M in unbilled revenue, and trained 15 junior staff.
+
+
+EXPERIENCE
+
+MEDCO BILLING SERVICES — Charlotte, NC
+Senior Billing Specialist                                          Mar 2022 – Present
+- Lead biller for a portfolio of 11 hospital and ASC clients (avg. 8K invoices/mo,
+  ~$22M monthly billed revenue).
+- Led platform migration from Greenway to Athenahealth for 4 client sites; zero
+  revenue leakage, completed 6 weeks ahead of schedule.
+- Recovered $487K in previously unbilled charges through claim-edit reviews and
+  payer denial root-cause analysis (2024 calendar year).
+- Built monthly KPI dashboards in Power BI tracking days-in-AR, denial rate, and
+  first-pass-clean-claim rate for client steering committees.
+- Used Microsoft Copilot to summarize complex denial patterns into executive
+  briefs for client CFOs.
+- Mentor 4 junior billers; designed onboarding curriculum (now in use across team).
+
+PIVOT FINANCIAL SOLUTIONS — Charlotte, NC
+Billing Operations Analyst                                       Aug 2019 – Mar 2022
+- Owned end-to-end billing for 6 SaaS clients — usage-based and subscription
+  hybrid models, monthly run rates $300K-$4M each.
+- Implemented Zuora → NetSuite revenue-recognition integration; reduced manual
+  journal entries from 80/month to 12/month.
+- Resolved 1,200+ billing disputes with 94% customer-satisfaction score.
+- Developed Excel macros that cut monthly close from 7 to 4 business days.
+
+KEYBANK — Cleveland, OH
+Billing & Receivables Coordinator                                 Jun 2018 – Aug 2019
+- Processed commercial loan billing and payment application for 280 commercial
+  accounts.
+- Reconciled monthly trust-account statements; supported quarterly external audit.
+
+
+EDUCATION
+
+THE OHIO STATE UNIVERSITY                                                     Jun 2018
+Bachelor of Science in Information Systems · GPA 3.4 / 4.0
+Concentration: Business Analytics
+
+
+CERTIFICATIONS
+- Certified Revenue Cycle Specialist (CRCS) — AAHAM, 2023
+- NetSuite Administrator Certified — 2022
+- Microsoft Power BI Data Analyst (PL-300) — 2024
+
+
+SKILLS
+Billing & Revenue: Healthcare RCM (CPT/ICD-10/HCPCS), SaaS subscription
+  billing, usage-based metering, claim-edit logic, payer denial workflow,
+  AR aging analysis, days-in-AR (DIA), unbilled revenue recovery
+Platforms: Athenahealth, Greenway, Epic Resolute (light), Cerner (light),
+  NetSuite, Zuora, Stripe, Salesforce CPQ, QuickBooks Enterprise, SAP (light)
+Analytics: Power BI, Tableau (basic), Excel power user (PivotTables, Power
+  Query, VBA), SQL (intermediate, T-SQL), Snowflake (basic)
+Productivity: Microsoft 365, Microsoft Copilot for document drafting and
+  meeting notes, Slack, Asana
+Soft Skills: Client communication, denial root-cause analysis, mentorship,
+  process documentation, cross-functional facilitation

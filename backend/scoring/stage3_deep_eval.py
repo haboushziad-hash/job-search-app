@@ -235,6 +235,46 @@ NOT score below the applicable floor. The floor protects the candidate
 from being demoted out of MAYBE/GOOD on a partial title match when the
 underlying function family is correct.
 
+INDUSTRY-WEIGHT ADJUSTMENT (PROPORTIONAL — v0.3.4):
+
+After your function/seniority/JD-fit analysis produces a base score, apply
+a PROPORTIONAL adjustment for industry fit. Use the candidate's
+target_industries list and the role's company / industry context:
+
+  SAME industry (role is in candidate's target_industries OR is an obvious
+                 sub-bucket — e.g., fintech ⊂ Financial Services, biotech ⊂
+                 Life Sciences):
+    → No adjustment. Base score already credits fit.
+
+  ADJACENT industry (one step removed but plausible — e.g., healthcare
+                     ↔ pharma ↔ life sciences, financial services ↔
+                     insurance ↔ fintech, consulting ↔ professional
+                     services, SaaS ↔ enterprise software, CPG ↔ retail
+                     ↔ consumer goods):
+    → No adjustment. Legitimate cross-sector pivot.
+
+  OFF-TARGET industry (not in target_industries AND not adjacent):
+    → -10 to base score.
+
+  VERY-OFF-TARGET industry (the candidate's profile + freeform context
+                            gives strong signal they would NOT pursue
+                            this — federal-only candidate vs startup,
+                            healthcare consultant vs construction, non-
+                            AI candidate vs AI research lab, etc.):
+    → -15 to base score.
+
+Industry adjustment is on TOP OF function-based scoring, not a substitute.
+A perfect-function role at an off-target industry should still score in a
+reasonable band (function dominates), but the adjustment correctly reflects
+that the candidate is less likely to apply.
+
+When applying the -10 / -15 adjustment, your `concerns` field MUST cite
+the industry mismatch as one of the named disqualifying factors (this
+satisfies the JUSTIFY-LOW-SCORES constraint above).
+
+Skip this adjustment if target_industries is empty or generic ("Any" /
+"Various" / "Open").
+
 SALARY EXTRACTION:
 If structured salary fields (salary_min/salary_max) are missing or null, scan the
 JD body for compensation language and extract a range. Watch for:
@@ -522,4 +562,24 @@ async def stage3_deep_eval(
         for r in targets
     ]
     await asyncio.gather(*tasks)
+
+    # Code-level title floor enforcement (v0.3.4) — same belt-and-suspenders
+    # as Stage 2. The Stage 3 prompt has the GRADUATED TITLE-HEADLINE OVERLAP
+    # FLOOR rule already; this is the post-LLM safety net.
+    from backend.scoring.title_floor import apply_floor_to_score
+    for role in targets:
+        if role.stage3_score is None:
+            continue
+        new_score, tag = apply_floor_to_score(
+            score=role.stage3_score,
+            role_title=role.job_title,
+            candidate_headline=profile.headline,
+            candidate_target_functions=profile.target_functions,
+        )
+        if tag is not None:
+            role.stage3_score = new_score
+            role.stage3_analysis = (
+                f"{tag} {role.stage3_analysis or ''}".strip()[:2000]
+            )
+
     return roles

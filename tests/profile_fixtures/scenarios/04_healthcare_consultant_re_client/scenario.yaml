@@ -1,0 +1,40 @@
+# SCENARIO 04: Healthcare consultant with one Real Estate client engagement
+#
+# This tests INDUSTRY OVERREACH. The candidate is a healthcare-services
+# consultant. She had ONE 4-month engagement with a healthcare REIT client
+# (real estate). The previous builder might add "Real Estate" to her
+# target_industries because of that single engagement. v0.3.4's industry-
+# overreach guard should NOT add Real Estate from a single client mention.
+
+description: "Healthcare consultant with one REIT client — must NOT add Real Estate industry"
+
+user_preferences:
+  salary_minimum: 130000
+  acceptable_locations:
+    - Boston MA
+    - Remote
+  freeform_context: "Senior healthcare consultant or in-house health-system strategy roles. Open to payer or life-sciences strategy too. Not pursuing real estate."
+
+expected:
+  # MUST NOT — single REIT engagement does NOT make her target Real Estate
+  must_not_contain_in_target_industries:
+    - Real Estate
+    - Commercial Real Estate
+    - REIT
+  must_not_contain_in_keywords_t1:
+    - REIT
+    - Real Estate Analyst
+    - Property Manager
+
+  # MUST CONTAIN — Healthcare is her actual industry
+  must_contain_in_target_industries_themes:
+    - Healthcare
+  must_contain_in_target_functions_themes:
+    - Healthcare
+  must_contain_in_keywords_t1_themes:
+    - Healthcare
+
+  headline_must_contain_one_of:
+    - Healthcare
+    - Health
+    - Consultant

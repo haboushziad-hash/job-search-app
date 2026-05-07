@@ -1,0 +1,52 @@
+# SCENARIO 07: New grad with internships in 3 different fields (IB, brand mgmt, consulting)
+#
+# Tests that the builder DOESN'T spread Tier 1 across all 3 industries
+# indiscriminately when freeform context narrows. Her freeform names IB +
+# corporate finance as the primary path; brand and consulting are secondary
+# (T2 acceptable) — she's not actively pursuing them.
+#
+# Common failure: builder dumps "Investment Banking", "Brand Management",
+# "Strategy Consulting", and "Healthcare Strategy" all into Tier 1 because
+# her resume mentions all of them. v0.3.4 should respect the freeform
+# narrowing and primary/secondary discipline.
+
+description: "New grad with diverse internships — should respect freeform narrowing, not stack all 3 in T1"
+
+user_preferences:
+  salary_minimum: 90000
+  acceptable_locations:
+    - Chicago IL
+    - New York NY
+    - Indianapolis IN
+  freeform_context: "Primarily targeting Investment Banking analyst, corporate finance analyst, or financial analyst roles. Open to consulting if the right firm. Brand management is a backup — not actively pursuing it."
+
+expected:
+  # T1 should be FINANCE-heavy (the primary), not equally split across 3
+  must_contain_in_keywords_t1_themes:
+    - Analyst
+  must_contain_in_target_functions_themes:
+    - Finance
+
+  # Brand management should NOT dominate T1 (it's secondary per freeform)
+  must_not_contain_in_keywords_t1:
+    - Senior Brand Manager
+    - Brand Director
+
+  # No AI hijacking from generic "data" mention
+  must_not_contain_in_target_functions:
+    - AI Strategy
+    - Data Science
+
+  must_not_contain_in_keywords_t1:
+    - AI Strategist
+    - Data Scientist
+    - ML Engineer
+
+  # Industries shouldn't expand into pharma/consumer just because of internships
+  max_target_industries: 6
+
+  headline_must_contain_one_of:
+    - Finance
+    - Analyst
+    - Banking
+    - Graduate

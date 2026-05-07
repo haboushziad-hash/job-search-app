@@ -489,6 +489,22 @@ def write_audit_files(
     near_miss = [r for r in scored_roles if 20 <= (getattr(r, "final_score", None) or 0) < 40]
 
     profile_dump = profile.model_dump(mode="json") if hasattr(profile, "model_dump") else {}
+    # v0.3.4: strip resume filenames from the audit JSON. Filenames often
+    # contain personal info ("Joshua_Reiner_AI_Strategy_Resume_v3.pdf") and
+    # the audit JSON gets uploaded to the operator dashboard. The filename
+    # has no analytical value past profile-build time — Stage 3 references
+    # resumes by index ("unified" or "0", "1", "2"), not by filename.
+    # Replace each filename with a stable placeholder that preserves the
+    # ORDER (so multi-resume best_resume_match references still work).
+    if isinstance(profile_dump, dict) and isinstance(profile_dump.get("resumes"), list):
+        for i, r in enumerate(profile_dump["resumes"]):
+            if isinstance(r, dict) and "filename" in r:
+                # Preserve only the file extension as a coarse type signal
+                ext = ""
+                orig = str(r.get("filename") or "")
+                if "." in orig:
+                    ext = "." + orig.rsplit(".", 1)[-1].lower()[:5]
+                r["filename"] = f"resume_{i + 1}{ext}"
     summary_dump = summary.model_dump(mode="json") if hasattr(summary, "model_dump") else {}
 
     # ---- Build audit dict ----

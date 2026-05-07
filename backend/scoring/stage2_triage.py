@@ -25,6 +25,7 @@ from typing import Optional
 from backend.config import config
 from backend.models import CandidateProfile, Role, Tier, score_to_tier
 from backend.scoring.llm_client import LLMClient, get_llm_client
+from backend.scoring.title_floor import apply_floor_to_score
 
 
 STAGE2_SYSTEM_PROMPT = """\
@@ -205,6 +206,46 @@ PRINCIPLE 9: TITLE PATTERNS REQUIRING CAREFUL JD READING
   - "Federal AI Strategy" / "Public Sector AI Consultant" / "AI Modernization
     Consultant": Score 60-80 for federal-experienced candidates. These are
     target matches.
+
+PRINCIPLE 10: INDUSTRY-WEIGHT ADJUSTMENT (PROPORTIONAL — v0.3.4)
+  After computing a base score from function/seniority/JD-fit signals, apply
+  a PROPORTIONAL industry-fit adjustment. Use the candidate's target_industries
+  list and the role's company / industry context to classify:
+
+    SAME industry (role's industry is in candidate's target_industries
+                   OR is an obvious sub-bucket of one — e.g., "fintech" ⊂
+                   "Financial Services", "biotech" ⊂ "Life Sciences"):
+      → Apply NO adjustment (the base score already credits fit).
+
+    ADJACENT industry (one step removed but plausible — e.g.,
+                       healthcare ↔ pharma ↔ life sciences,
+                       financial services ↔ insurance ↔ fintech,
+                       consulting ↔ professional services,
+                       SaaS ↔ enterprise software,
+                       CPG ↔ retail ↔ consumer goods):
+      → Apply 0 adjustment (no penalty, no bonus). These are legitimate
+        cross-sector pivots.
+
+    OFF-TARGET industry (not in target_industries AND not adjacent):
+      → Apply -10 to the base score.
+
+    VERY-OFF-TARGET industry (the candidate's profile + freeform context
+                              gives strong signal they would NOT pursue
+                              this — e.g., a federal-only candidate vs
+                              a startup, a healthcare consultant vs
+                              construction, a non-AI candidate vs an AI
+                              research lab):
+      → Apply -15 to the base score.
+
+  IMPORTANT: This is industry FIT, not function FIT. Function mismatch is
+  already covered by other principles. Industry adjustment is on top of
+  function-based scoring, not a substitute. A perfect-function role at an
+  off-target industry should still score reasonably (function dominates),
+  but the industry adjustment correctly reflects that the candidate is
+  less likely to apply.
+
+  ALSO IMPORTANT: This rule does NOT apply when target_industries is empty
+  or generic ("Any" / "Various" / "Open"). Skip the adjustment in that case.
 
 ============================================================
 GEOGRAPHIC MISMATCH HANDLING
@@ -455,4 +496,27 @@ async def stage2_triage(
         )
         for r in roles
     ]
-    return await asyncio.gather(*tasks)
+    scored = await asyncio.gather(*tasks)
+
+    # Code-level title floor enforcement (v0.3.4) — belt-and-suspenders for
+    # PRINCIPLE 8 in the prompt. If the LLM scored a role below the floor
+    # despite a strong title-headline overlap, raise the score to the floor
+    # and tag the reasoning. This catches occasional violations the prompt
+    # rule alone misses (audit data showed 1-content-word overlaps like
+    # "Marketing Operations Manager" for an Operations candidate landing
+    # at 47, below the 55 floor). The floor only RAISES; never lowers.
+    for role in scored:
+        if role.stage2_score is None:
+            continue
+        new_score, tag = apply_floor_to_score(
+            score=role.stage2_score,
+            role_title=role.job_title,
+            candidate_headline=profile.headline,
+            candidate_target_functions=profile.target_functions,
+        )
+        if tag is not None:
+            role.stage2_score = new_score
+            role.stage2_tier = score_to_tier(new_score)
+            role.stage2_reasoning = f"{tag} {role.stage2_reasoning or ''}".strip()[:1000]
+
+    return scored
