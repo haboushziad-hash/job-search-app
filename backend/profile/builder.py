@@ -1215,16 +1215,51 @@ async def _stage1_diversity_sampling(
 
     Returns list of (label, draft_dict) tuples. Failed calls are skipped.
     Progress callback is fired (done, total) each time a sample completes.
+
+    v0.3.5: Builds a Gemini context cache for the ~7,500-token system prompt
+    once, then passes the cache handle to all 3 Gemini Pro samples. The
+    system prompt clears Gemini Pro's 4,096-token caching minimum, and the
+    repeated calls within ~1 minute (well under the 1h TTL) hit the cache
+    each time — saves 50% of input cost on the prompt body across the 3
+    samples (~$0.04-0.06/build at current pricing). Falls back to inline
+    system prompt if cache creation fails.
     """
+    # v0.3.5: cache enabled (fix verified live on ship night).
+    # PROFILE_BUILDER_PROMPT is ~7,500 tokens — well above Pro's
+    # 4,096-token cache minimum. Three Gemini Pro draft calls share
+    # the same cache → ~50% input-cost reduction on profile build
+    # (~$0.05/build savings).
+    #
+    # Bug history: prior in-progress work passed the CachedContent
+    # object directly to the SDK, which raised Pydantic ValidationError.
+    # Fix landed at llm_client.py:257 — extracts .name string when an
+    # object is passed. The try/except below is the safety net for
+    # transient API errors.
+    cached_handle = None
+    try:
+        cached_handle = await gemini_client.create_cache(
+            model=config.PROFILE_BUILD_MODEL,
+            system=PROFILE_BUILDER_PROMPT,
+            ttl_seconds=3600,
+        )
+    except Exception:
+        cached_handle = None
+
     tasks: list[Any] = []
     labels: list[str] = []
 
     # 3 Gemini Pro samples at temp 0.5 for diversity
     for i in range(config.PROFILE_BUILD_SAMPLES):
-        tasks.append(_gemini_sample(gemini_client, prompt, sample_idx=i))
+        tasks.append(
+            _gemini_sample(
+                gemini_client, prompt, sample_idx=i,
+                cached_content=cached_handle,
+            )
+        )
         labels.append(f"Gemini-Pro-{i + 1}")
 
-    # 1 Claude Opus sample (cross-model)
+    # 1 Claude Opus sample (cross-model). Anthropic caching is a separate
+    # mechanism — not piggybacking on Gemini's cache handle.
     if config.PROFILE_CONSENSUS_ENABLED:
         tasks.append(_claude_sample(gemini_client, prompt))
         labels.append("Claude-Opus")
@@ -1251,19 +1286,33 @@ async def _stage1_diversity_sampling(
     return drafts
 
 
-async def _gemini_sample(client, prompt: str, sample_idx: int = 0) -> Optional[dict]:
-    """Single Gemini Pro generation at the configured temperature."""
+async def _gemini_sample(
+    client,
+    prompt: str,
+    sample_idx: int = 0,
+    cached_content: Any = None,
+) -> Optional[dict]:
+    """Single Gemini Pro generation at the configured temperature.
+
+    cached_content (v0.3.5): when provided, the system prompt is served from
+    Gemini's context cache (~50% input-token discount) instead of being sent
+    inline on every call. Pass None to disable caching for this call.
+    """
     try:
         # Each sample uses its own current_stage tag for cost-tracker visibility
         original_stage = getattr(client, "current_stage", "profile_build")
         client.current_stage = f"profile_build_gemini_{sample_idx + 1}"  # type: ignore[attr-defined]
         response = await client.complete(
             model=config.PROFILE_BUILD_MODEL,
-            system=PROFILE_BUILDER_PROMPT,
+            # When the cache is in play, drop the inline system instruction —
+            # the cache handle already carries it. (Mirrors the stage2_triage
+            # pattern for the same reason.)
+            system=None if cached_content else PROFILE_BUILDER_PROMPT,
             user=prompt,
             max_output_tokens=8192,
             temperature=config.PROFILE_BUILD_TEMPERATURE,
             json_schema=_RESPONSE_SCHEMA,
+            cached_content=cached_content,
             thinking_budget=config.PROFILE_BUILD_THINKING,
         )
         client.current_stage = original_stage  # type: ignore[attr-defined]

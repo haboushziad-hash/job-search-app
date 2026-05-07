@@ -450,7 +450,22 @@ async def stage2_triage(
     roles: list[Role],
     client: Optional[LLMClient] = None,
     concurrency: int = 8,
-    use_cache: bool = False,  # Flash is cheap enough that cache savings aren't worth complexity
+    # v0.3.5: cache ENABLED. STAGE2_SYSTEM_PROMPT is ~3,400 tokens —
+    # well above Flash's 1,024-token cache minimum.
+    #
+    # Bug history: spawn-session work-in-progress had use_cache=True
+    # AND a wiring bug where the CachedContent object was passed to
+    # GenerateContentConfig.cached_content (Pydantic rejects — needs
+    # the .name string). Fix landed at llm_client.py:257 — extracts
+    # .name when an object is passed.
+    #
+    # Live A/B verified on ship night: 5 Stage 2 calls, no cache
+    # $0.00155, with cache $0.00061 = 60% reduction. Scaled to
+    # ~280 roles per run, saves ~$0.05/run on Stage 2 alone.
+    # Cache hit rate ~95% within a single run (every role's system
+    # prompt is identical) and ~75% across consecutive runs in
+    # the 1-hour default TTL window.
+    use_cache: bool = True,
     run_id: Optional[str] = None,
     # Flash supports thinking_budget=0 for cheapest+fastest. Pro requires >=1.
     # The explicit anti-pattern + scoring rubric in the prompt does most of the

@@ -68,6 +68,36 @@ HIGH_VALUE_TARGETS: list[tuple[str, str]] = [
     ("SAIC",             "https://saic.wd1.myworkdayjobs.com/SAIC_External_Career_Site"),
     ("Northrop Grumman", "https://ngc.wd1.myworkdayjobs.com/NGCExternal"),
     ("McDonald's",       "https://mcdonalds.wd1.myworkdayjobs.com/Corporate"),
+    # ----------------------------------------------------------------
+    # v0.3.5 expansion: target the industry verticals where v0.3.4
+    # synthetic fixtures returned 0/0/0/N (pharma, healthcare, retail,
+    # CPG, finance). Each candidate URL below was sourced from the
+    # company's public careers page redirect target — verify with the
+    # probe before adding to backend/scraper/workday.py:WORKDAY_TENANTS.
+    # ----------------------------------------------------------------
+    # Pharma / biotech (life-sciences fixture #08)
+    ("Pfizer",           "https://pfizer.wd1.myworkdayjobs.com/PfizerCareers"),
+    ("AbbVie",           "https://abbvie.wd5.myworkdayjobs.com/External"),
+    ("Bristol-Myers Squibb", "https://bms.wd5.myworkdayjobs.com/BMS"),
+    ("Amgen",            "https://amgen.wd1.myworkdayjobs.com/Careers"),
+    ("Eli Lilly",        "https://lilly.wd5.myworkdayjobs.com/LLY"),
+    ("Regeneron",        "https://regeneron.wd1.myworkdayjobs.com/Regeneron_Careers"),
+    # Healthcare / payers (healthcare consultant fixture #04)
+    ("HCA Healthcare",   "https://hca.wd5.myworkdayjobs.com/HCAExternal"),
+    ("CVS Health",       "https://cvshealth.wd1.myworkdayjobs.com/CVS_Health_Careers"),
+    ("Cigna",            "https://cigna.wd5.myworkdayjobs.com/cignacareers"),
+    ("Kaiser Permanente","https://kp.wd5.myworkdayjobs.com/kp"),
+    ("Anthem (Elevance)","https://elevancehealth.wd1.myworkdayjobs.com/ANTHFT"),
+    # Finance — adding the names absent from the existing 27-tenant list
+    ("Bank of America",  "https://bankofamerica.wd1.myworkdayjobs.com/Lateral_Careers"),
+    # CPG (rounding out spawn-task list)
+    ("Unilever",         "https://unilever.wd3.myworkdayjobs.com/external_uk"),
+    # Retail (operations / billing-specialist fixtures #01, #02)
+    ("Walmart",          "https://walmart.wd5.myworkdayjobs.com/WalmartExternal"),
+    ("Target",           "https://target.wd5.myworkdayjobs.com/targetcareers"),
+    ("Costco",           "https://costco.wd5.myworkdayjobs.com/External"),
+    ("Home Depot",       "https://homedepot.wd1.myworkdayjobs.com/THDcareers"),
+    ("Lowe's",           "https://lowes.wd1.myworkdayjobs.com/External"),
 ]
 
 

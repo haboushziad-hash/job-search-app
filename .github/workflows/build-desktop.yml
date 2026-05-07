@@ -252,7 +252,41 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: npm run tauri build
+        # v0.3.5: retry-on-failure for Tauri build on macOS.
+        #
+        # Why: bundle_dmg.sh inside Tauri's macOS bundling step uses
+        # AppleScript to set DMG window size + icon positions. AppleScript
+        # in headless GitHub Actions runners is occasionally flaky — the
+        # same code on the same runner image produces different outcomes
+        # within minutes. The v0.3.4 ship hit this exact failure pattern:
+        # build #69 (tag) succeeded end-to-end on macos-15-intel; build #68
+        # (main branch, identical commit ace6f2b, ~3 min apart) failed at
+        # `bundle_dmg.sh` with non-determinism.
+        #
+        # Pure non-determinism — no code change broke it. Retry catches
+        # the flake without losing the custom DMG layout (background image,
+        # icon positions). Documented Tauri issue: tauri-apps/tauri#3055.
+        #
+        # 2 attempts × 30 min timeout each = 60 min worst case (vs ~22 min
+        # success path). 30s wait between attempts gives the runner a beat
+        # to settle. If a single retry doesn't catch it, the runner has a
+        # genuine problem and human investigation is warranted.
+        run: |
+          for attempt in 1 2; do
+            echo "::group::Tauri build attempt $attempt"
+            if npm run tauri build; then
+              echo "::endgroup::"
+              echo "Tauri build succeeded on attempt $attempt"
+              exit 0
+            fi
+            echo "::endgroup::"
+            if [ "$attempt" -lt 2 ]; then
+              echo "::warning::Tauri build attempt $attempt failed (likely AppleScript flake in bundle_dmg.sh) — retrying in 30s"
+              sleep 30
+            fi
+          done
+          echo "::error::Tauri build failed after 2 attempts"
+          exit 1
 
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4

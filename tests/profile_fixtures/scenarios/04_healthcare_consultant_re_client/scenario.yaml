@@ -13,6 +13,10 @@ user_preferences:
   acceptable_locations:
     - Boston MA
     - Remote
+  work_arrangements:
+    - remote
+    - hybrid
+    - on-site
   freeform_context: "Senior healthcare consultant or in-house health-system strategy roles. Open to payer or life-sciences strategy too. Not pursuing real estate."
 
 expected:

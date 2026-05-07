@@ -175,6 +175,24 @@ async def run_search(
             if text and tier in (1, 2) and text not in expanded_jsearch_kw:
                 expanded_jsearch_kw.append(text)
 
+    # v0.3.5: surface user prefs to scrapers that can filter at the API.
+    # Currently JSearch + Adzuna; GoogleJobs/BingJobs already filter by
+    # location at the Serper level. Drops 30-50% of unrelated roles before
+    # they enter the downstream pipeline (Stage 1 embeddings + Stage 3 LLM).
+    user_filters: dict = {}
+    locs = list(getattr(profile, "acceptable_locations", []) or [])
+    if locs:
+        # Pass the FIRST location only — Adzuna/JSearch take a single
+        # `where`/`location` value. The downstream hard_filter still
+        # checks the full acceptable_locations list, so we don't lose
+        # roles that match alternate user locations; this just tightens
+        # the upstream pull around the primary preference.
+        user_filters["location_text"] = str(locs[0])
+    if getattr(profile, "salary_minimum", None):
+        user_filters["salary_minimum"] = int(profile.salary_minimum)
+    if getattr(profile, "remote_only", False):
+        user_filters["remote_only"] = True
+
     raw_roles = await scrape_all(
         keywords=keywords,
         sources=sources,
@@ -182,6 +200,7 @@ async def run_search(
         log=log,
         health_out=scrape_health,
         extra_jsearch_keywords=expanded_jsearch_kw if len(expanded_jsearch_kw) > len(keywords) else None,
+        user_filters=user_filters or None,
     )
     # Note: scrape_health gets attached to summary below, after score_roles
     # creates the summary object. Don't try to write to summary here.

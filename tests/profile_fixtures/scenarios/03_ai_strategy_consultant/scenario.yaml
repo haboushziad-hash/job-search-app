@@ -13,6 +13,10 @@ user_preferences:
     - Washington DC
     - Richmond VA
     - Remote
+  work_arrangements:
+    - remote
+    - hybrid
+    - on-site
   freeform_context: "Targeting AI Strategy, AI Enablement, AI Adoption, AI Governance, or AI Program Manager roles. Federal-friendly background (Booz Allen) but interested in commercial too. Senior IC or consultant level."
 
 expected:

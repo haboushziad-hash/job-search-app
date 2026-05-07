@@ -115,6 +115,50 @@ CANDIDATES = [
     ("Hershey alt",        "hersheys","wd1","External"),
     ("Mondelez alt 2",     "mdlz",  "wd1", "External"),
     ("Coke alt 3",         "ko",    "wd1", "External"),
+
+    # ===== v0.3.5 expansion targets =====
+    # Pharma / biotech (industries the curated list missed)
+    ("Amgen",              "amgen", "wd1", "Careers"),
+    ("Amgen alt",          "amgen", "wd5", "External"),
+    ("Eli Lilly",          "lilly", "wd5", "LillyCareers"),
+    ("Eli Lilly alt",      "lilly", "wd1", "External"),
+    ("Regeneron",          "regeneron", "wd5", "Regeneron_Careers"),
+    ("Regeneron alt",      "regeneron","wd1", "External"),
+    ("Novartis",           "novartis","wd3", "Novartis_Careers"),
+    ("Sanofi",             "sanofi","wd3", "SanofiCareers"),
+    ("Genentech",          "roche", "wd3", "Roche_Careers"),
+    ("Vertex",             "vrtx",  "wd1", "vertex"),
+
+    # Healthcare / payers
+    ("HCA Healthcare",     "hca",   "wd1", "HCAExternal"),
+    ("HCA alt",            "hcahealthcare","wd1","HCAExternal"),
+    ("Cigna",              "cigna", "wd5", "cigna_careers"),
+    ("Cigna alt",          "cigna", "wd1", "External"),
+    ("Kaiser Permanente",  "kp",    "wd5", "kaiser"),
+    ("Kaiser alt",         "kaiser","wd1", "External"),
+    ("UnitedHealth alt 3", "uhg",   "wd1", "External"),
+    ("Humana",             "humana","wd5", "External"),
+
+    # Big banks (the v0.3.4 failure list explicitly called these out)
+    ("JPMorgan",           "jpmc",  "wd1", "External"),
+    ("JPMorgan alt 1",     "jpmc",  "wd5", "JPMC_External"),
+    ("JPMorgan alt 2",     "jpmorganchase","wd1", "External"),
+    ("Goldman Sachs",      "gs",    "wd1", "GS_External"),
+    ("Goldman alt",        "goldmansachs","wd1","External"),
+    ("Bank of America",    "bofa",  "wd1", "External"),
+    ("BofA alt 1",         "bankofamerica","wd1","External"),
+    ("BofA alt 2",         "bankofamerica","wd5","External"),
+
+    # Big retail (v0.3.4 dropped these from the curated list)
+    ("Walmart WD",         "walmart","wd5","WalmartExternal"),
+    ("Walmart alt",        "walmart","wd1","External"),
+    ("Target WD",          "target","wd5", "External"),
+    ("Target alt",         "target","wd1", "External"),
+
+    # CPG additions
+    ("Unilever",           "unilever","wd3","External"),
+    ("Unilever alt",       "unilever","wd5","External_Careers"),
+    ("Coca-Cola alt 4",    "coca-cola","wd5","Coca-Cola_External"),
 ]
 
 

@@ -74,3 +74,45 @@ backend/venv/Scripts/python.exe tests/profile_fixtures/run_all.py --verbose
 - Scenarios are deliberately stylized to push specific failure modes.
   Real resumes have more complexity, but the builder should still respect
   these rules in real cases.
+
+## Live-app equivalence guarantee
+
+The harness uses the EXACT same code path the production app uses. There
+is no parallel "test" implementation that can drift from production:
+
+  - `run_all.py` imports `build_profile_from_resumes` from
+    `backend.profile.builder` — the SAME function called by `backend/api.py`
+    when a real user uploads a resume.
+  - `scripts/run_synthetic_pipeline.py` imports `run_search` from
+    `backend.runner` — the SAME function the live shell sidecar invokes.
+  - Scrapers picked up at run time via `SCRAPER_REGISTRY` in
+    `backend/scraper/orchestrator.py`. New scrapers added there are
+    automatically available to the harness — no test maintenance needed.
+  - Hard filters (`backend.filter.hard_filters`), scoring stages
+    (`backend.scoring.*`), title floor (`backend.scoring.title_floor`),
+    and audit writing all run identically in test and production.
+
+What CAN drift (and how to keep in sync):
+
+  1. **`scenario.yaml` user_preferences**: these are the synthetic
+     tester's stated prefs. If the profile builder defaults change
+     (e.g. we start defaulting `work_arrangements` to include remote
+     for white-collar candidates), the scenarios should reflect realistic
+     test cases. Update the YAML; the cache auto-invalidates because
+     `user_preferences` is part of the cache hash.
+  2. **Cache invalidation rules**: cache key = sha256(resume_bytes +
+     user_preferences_json + PROFILE_BUILDER_PROMPT +
+     PROFILE_SYNTHESIS_PROMPT + PROFILE_AUDIT_PROMPT). Changes to
+     scrapers / filters / scoring DO NOT invalidate the profile cache —
+     intentional, because profile generation is upstream of search.
+     The synthetic pipeline runner reads the cached profile dict but
+     runs the CURRENT-CODE search.
+  3. **Adding fixture scenarios**: when we encounter a new failure
+     mode in production (e.g. an industry pattern not currently covered),
+     add a new `scenarios/NN_short_name/` folder with `resume.txt` +
+     `scenario.yaml`. The runner picks it up automatically.
+
+When in doubt: if you change a profile-builder prompt, RE-RUN the harness
+before shipping. If you change a scraper, run
+`scripts/run_synthetic_pipeline.py --scenario <name>` to verify the new
+source produces sensible roles for the synthetic profile.

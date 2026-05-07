@@ -12,6 +12,10 @@ user_preferences:
   acceptable_locations:
     - Charlotte NC
     - Remote
+  work_arrangements:
+    - remote
+    - hybrid
+    - on-site
   freeform_context: "Senior Billing or Revenue Cycle Manager roles in healthcare or SaaS. Open to billing operations leadership or platform-implementation roles."
 
 expected:

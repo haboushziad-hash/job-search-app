@@ -79,8 +79,10 @@ async def score_roles(
     client: Optional[LLMClient] = None,
     license_key: Optional[str] = None,
     embed_keep_fraction: float = 0.40,
+    embed_max_roles: int = 500,
     stage3_skip_above: int = 101,
-    stage3_skip_below: int = 55,
+    stage3_skip_below: int = 58,
+    stage3_max_roles: int = 100,
     log: bool = True,
     progress: Optional[Callable[[int, str, int], None]] = None,
 ) -> tuple[list[Role], RunSummary]:
@@ -121,6 +123,7 @@ async def score_roles(
         profile=profile,
         roles=roles,
         keep_fraction=embed_keep_fraction,
+        max_roles=embed_max_roles,
         client=client,
     )
     if log:
@@ -149,20 +152,50 @@ async def score_roles(
         s2_qualifying = [r for r in scored if (r.stage2_score or 0) >= 55]
         print(f"[orchestrator] after Stage 2: {len(scored)} scored, {len(s2_qualifying)} qualifying (>=55)")
 
-    # ---- 4. Stage 3 deep eval (55-87 band only) ----
+    # ---- 4. Stage 3 deep eval (in-band roles only) ----
+    # v0.3.5: skip_below bumped 55 → 58 (kills the bottom STRETCH/MAYBE
+    # sliver where Pro rarely flips a verdict — saves ~$0.03-0.05/run).
+    # max_roles=100 caps the worst-case Stage 3 spend on big-pool runs:
+    # at 250-300 qualifying scale we've seen up to 180 roles enter Stage 3,
+    # most of which read identically to the Stage 3 LLM. Top-100 by stage2
+    # score is the sweet spot.
+    #
     # Note: s2_in_band is the subset entering Pro deep-eval (stage2_score
-    # in [55, skip_above)). It is NOT the final qualifying count — STRETCH
-    # roles in [40, 55) qualify too via Stage 2 alone. We word the message
-    # accordingly so the user doesn't see "Stage 3 reviewing N qualifying"
-    # and then "Final: M qualifying" with M > N (confusing).
-    s2_in_band = sum(1 for r in scored if r.stage2_score is not None and 55 <= r.stage2_score < stage3_skip_above)
+    # in [skip_below, skip_above)). It is NOT the final qualifying count —
+    # STRETCH roles in [40, skip_below) qualify too via Stage 2 alone. We
+    # word the message accordingly so the user doesn't see "Stage 3
+    # reviewing N qualifying" and then "Final: M qualifying" with M > N.
+    in_band_roles = [
+        r for r in scored
+        if r.stage2_score is not None
+        and stage3_skip_below <= r.stage2_score < stage3_skip_above
+    ]
+    in_band_roles.sort(key=lambda r: r.stage2_score or 0, reverse=True)
+    if stage3_max_roles is not None and len(in_band_roles) > stage3_max_roles:
+        # Truncate to top-N and mark losers as Stage 3 skipped so their
+        # stage2 score becomes their final score in _finalize_score below.
+        # We do this by raising the *effective* skip_above for the cut-off
+        # tail — set their stage3 to None (already the default) and let
+        # the orchestrator's finalize step pick stage2 as the final.
+        cutoff = in_band_roles[stage3_max_roles].stage2_score or stage3_skip_below
+        # cutoff is the highest score still EXCLUDED from Stage 3.
+        # Bumping skip_below for THIS run to one above cutoff effectively
+        # truncates the tail. Use max() so we never lower the threshold.
+        effective_skip_below = max(stage3_skip_below, cutoff + 1)
+    else:
+        effective_skip_below = stage3_skip_below
+    s2_in_band = sum(
+        1 for r in scored
+        if r.stage2_score is not None
+        and effective_skip_below <= r.stage2_score < stage3_skip_above
+    )
     _emit(80, "Scoring with AI cascade", 5, f"Stage 3 deep evaluation on {s2_in_band} top-tier roles (Pro, ~5-10s each)...")
     scored = await stage3_deep_eval(
         profile=profile,
         roles=scored,
         client=client,
         skip_above=stage3_skip_above,
-        skip_below=stage3_skip_below,
+        skip_below=effective_skip_below,
         run_id=run_id,
     )
     s3_count = sum(1 for r in scored if r.stage3_score is not None)

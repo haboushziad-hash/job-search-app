@@ -255,7 +255,22 @@ class GeminiClient(LLMClient):
         if system and not cached_content:
             gen_config["system_instruction"] = system
         if cached_content is not None:
-            gen_config["cached_content"] = cached_content
+            # google-genai SDK expects `cached_content` to be the cache's
+            # resource-name string (e.g. "cachedContents/abc123"), NOT the
+            # CachedContent object that caches.create() returns.
+            # v0.3.5 ship-night live test confirmed: passing the object
+            # raises Pydantic ValidationError on GenerateContentConfig.
+            # Defensive: accept either form (str passed-through; object
+            # → extract .name attribute).
+            if isinstance(cached_content, str):
+                gen_config["cached_content"] = cached_content
+            elif hasattr(cached_content, "name"):
+                gen_config["cached_content"] = cached_content.name
+            else:
+                # Unknown shape — log + fall back to inline system prompt
+                # rather than risk the Pydantic crash.
+                if system:
+                    gen_config["system_instruction"] = system
         # Gemini 2.5 thinking budget — set to 0 to disable thinking (cheapest)
         if thinking_budget is not None:
             gen_config["thinking_config"] = genai_types.ThinkingConfig(

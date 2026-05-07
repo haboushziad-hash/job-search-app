@@ -21,6 +21,7 @@ from backend.scraper.indeed import IndeedScraper
 from backend.scraper.wellfound import WellfoundScraper
 from backend.scraper.workday import WorkdayScraper
 from backend.scraper.icims_playwright import ICIMSPlaywrightScraper
+from backend.scraper.icims_rss import ICIMSRSSScraper
 from backend.scraper.usajobs import USAJobsScraper
 from backend.scraper.themuse import TheMuseScraper
 from backend.scraper.remotive import RemotiveScraper
@@ -31,6 +32,15 @@ from backend.scraper.arbeitnow import ArbeitnowScraper
 from backend.scraper.hn_hiring import HNHiringScraper
 from backend.scraper.findwork import FindworkScraper
 from backend.scraper.jsearch import JSearchScraper
+from backend.scraper.google_jobs import GoogleJobsScraper
+from backend.scraper.bing_jobs import BingJobsScraper
+from backend.scraper.remoteok import RemoteOKScraper
+from backend.scraper.weworkremotely import WeWorkRemotelyScraper
+from backend.scraper.working_nomads import WorkingNomadsScraper
+from backend.scraper.higheredjobs import HigherEdJobsScraper
+from backend.scraper.biospace import BioSpaceScraper
+from backend.scraper.jobicy import JobicyScraper
+from backend.scraper.nodesk import NoDeskScraper
 from backend.scraper import _keyword_match as _kw_match
 
 
@@ -59,6 +69,13 @@ SCRAPER_REGISTRY: dict[str, type[BaseScraper]] = {
     "Ashby":      AshbyScraper,
     "Workday":    WorkdayScraper,
     "iCIMS":      ICIMSPlaywrightScraper,
+    # v0.3.5: iCIMS RSS path — DEFERRED until iCIMS restores public RSS.
+    # Probe (scripts/probe_icims_rss.py, 2026-05-07) confirmed all 22
+    # candidate tenants 302-redirect /jobs/search/rss to the SPA HTML page;
+    # there is no alternate URL pattern that returns XML. Scraper file is
+    # kept in place so re-enabling is a one-line registry edit if iCIMS
+    # changes their behavior. Not registered here so we don't waste a
+    # scrape slot on a guaranteed-empty result.
     # Phase C broad aggregators — single API call returns roles across
     # many companies, breaking the company-by-company ceiling.
     "TheMuse":    TheMuseScraper,    # ~10K curated jobs, broad employer mix (free, no key)
@@ -76,6 +93,53 @@ SCRAPER_REGISTRY: dict[str, type[BaseScraper]] = {
     # requests/month, Pro $25/mo for 10K. Routes through Worker proxy in
     # production so testers don't need their own RapidAPI key.
     "JSearch":    JSearchScraper,
+    # v0.3.5: Google Jobs via Serper.dev. Backstops the curated ATS tenant
+    # lists with everything Google has indexed (pharma/biotech/retail
+    # employers absent from our 27 Workday + 5 iCIMS tenants). Free tier
+    # 2,500 calls/mo — at 14 search_terms × ~96 user searches/mo this is
+    # 1,344 calls (well under cap).
+    #
+    # v0.3.5 ship-night CORRECTION: Serper.dev does NOT actually have a
+    # /jobs endpoint. Live test returned 404. The scraper file
+    # (google_jobs.py) currently points at the wrong URL and will silently
+    # waste credits per call. Disabled until v0.3.6 rewrite for SerpAPI
+    # ($50/mo Hobby tier — the actual home of Google Jobs aggregation).
+    # See ~/.claude/projects/.../memory/project_v036_scraper_queue.md.
+    # "GoogleJobs": GoogleJobsScraper,
+    # v0.3.5: Bing Jobs via Serper.dev /search with engine=bing. Same key
+    # as GoogleJobs; complements Google's index (Bing surfaces government /
+    # non-profit / enterprise listings that Google's "popular" bias buries).
+    # Counts against the same 2,500-call free tier — combined ~2,688 calls/mo
+    # is a $0.20/mo overage at paid pricing.
+    "BingJobs":   BingJobsScraper,
+    # v0.3.5: Remote OK — free public JSON of all active remote roles.
+    # No auth, attribution required (surfaced via .attribution → audit JSON).
+    # Broader than Remotive in product / management / ops verticals.
+    "RemoteOK":   RemoteOKScraper,
+    # v0.3.5: WeWorkRemotely — RSS of the active remote roster, US/CA tilt.
+    "WeWorkRemotely": WeWorkRemotelyScraper,
+    # v0.3.5: Working Nomads — JSON of active remote roles. Different employer
+    # pool than Remotive/RemoteOK; rounds out remote coverage.
+    "WorkingNomads":  WorkingNomadsScraper,
+    # v0.3.5: HigherEdJobs — RSS per category. Surfaces admin / ops / IT /
+    # research / advancement roles at colleges and universities — segments
+    # corporate ATS scrapers under-serve.
+    "HigherEdJobs":   HigherEdJobsScraper,
+    # v0.3.5: BioSpace — HTML scrape of life-sciences-specific board.
+    # Closes the pharma / biotech / med-device / clinical-research gap left
+    # by Workday/Greenhouse/Lever for non-Big-Pharma employers.
+    "BioSpace":       BioSpaceScraper,
+    # v0.3.5 quick-win: Jobicy — free RSS, curated remote roles with
+    # structured per-item fields (job_type, company, location). 50-item
+    # rolling feed, broad category mix. Complements RemoteOK/WWR/Working
+    # Nomads with a slightly different employer set.
+    "Jobicy":         JobicyScraper,
+    # v0.3.5 quick-win: NoDesk — free RSS, hand-curated remote roles
+    # leaning design / engineering / product. Smaller pool than Jobicy
+    # but higher-quality curation (less spam). Has malformed-XML quirk
+    # in the upstream feed; scraper uses lxml recover-mode parser
+    # (or regex pre-clean fallback) so we never lose items to that.
+    "NoDesk":         NoDeskScraper,
 }
 
 # Deferred — anti-bot blocked, would require Playwright + ongoing maintenance
@@ -93,6 +157,7 @@ async def scrape_all(
     log: bool = True,
     health_out: Optional[dict] = None,
     extra_jsearch_keywords: Optional[list[str]] = None,
+    user_filters: Optional[dict] = None,
 ) -> list[Role]:
     """Run all configured scrapers in parallel, return a deduped Role list.
 
@@ -148,6 +213,11 @@ async def scrape_all(
             if not cls:
                 continue
             scraper = cls(client=http)
+            # v0.3.5: inject upstream user filters. Scrapers that support
+            # them (JSearch, Adzuna, GoogleJobs, BingJobs) translate to
+            # API-side filters; others ignore.
+            if user_filters:
+                scraper._user_filters = user_filters
             scrapers_by_name[source_name] = scraper
             valid_sources.append(source_name)
             tasks.append(timed_run(source_name, scraper))
@@ -175,6 +245,7 @@ async def scrape_all(
                 "error": f"{type(result).__name__}: {str(result)[:200]}",
                 "quota_exhausted": quota_exhausted,
                 "quota_exhausted_reason": quota_reason if quota_exhausted else "",
+                "attribution": str(getattr(scraper_inst, "attribution", "") or ""),
             }
             continue
         by_source[source] = len(result)
@@ -182,6 +253,11 @@ async def scrape_all(
         # them. Currently JSearch is the only scraper with this, but the
         # field is on BaseScraper so other scrapers can opt-in trivially.
         per_kw = dict(getattr(scraper_inst, "per_keyword_raw_counts", {}) or {})
+        # v0.3.5: surface the scraper's `attribution` string when set so
+        # the runner can persist it into the audit JSON. Currently RemoteOK
+        # is the only scraper that requires per-ToS attribution; other
+        # scrapers leave the field empty.
+        attribution = str(getattr(scraper_inst, "attribution", "") or "")
         health[source] = {
             "roles": len(result),
             "elapsed_s": round(elapsed, 1),
@@ -190,6 +266,7 @@ async def scrape_all(
             "quota_exhausted": quota_exhausted,
             "quota_exhausted_reason": quota_reason if quota_exhausted else "",
             "per_keyword_raw_counts": per_kw,
+            "attribution": attribution,
         }
         if quota_exhausted and log:
             print(f"[scraper] {source} quota exhausted: {quota_reason}")

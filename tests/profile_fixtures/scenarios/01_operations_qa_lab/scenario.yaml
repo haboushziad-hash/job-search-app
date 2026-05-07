@@ -13,6 +13,10 @@ user_preferences:
   salary_minimum: 100000
   acceptable_locations:
     - Richmond VA
+  work_arrangements:
+    - remote
+    - hybrid
+    - on-site
   freeform_context: "Looking for the next step in QA, lab operations, or quality systems work. Open to operations or program coordination roles in life sciences. Not looking to pivot careers."
 
 expected:

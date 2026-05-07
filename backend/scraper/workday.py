@@ -85,6 +85,29 @@ WORKDAY_TENANTS: list[tuple[str, str, str]] = [
     ("RAND Corporation",   "https://rand.wd5.myworkdayjobs.com",               "External_Career_Site"),
     # Discovered 2026-05-03 via load-time XHR capture (workday_discover_v2.py)
     ("State Street",       "https://statestreet.wd1.myworkdayjobs.com",        "Global"),
+    # ===========================================================================
+    # v0.3.5 expansion (2026-05-07) — verified by scripts/workday_direct_probe.py
+    # against 60+ candidate tenant/pod/board combos. These six returned 200 with
+    # >=20 jobPostings on a "manager" probe; the rest of the candidates 422'd
+    # (body shape rejected — likely require Playwright discovery to capture
+    # the live request shape) or 404'd (wrong subdomain/board path).
+    #
+    # Why these matter:
+    #   - Pfizer / Amgen / Novartis / Sanofi / Merck — life sciences. v0.3.4
+    #     audit showed the synthetic "operations QA / lab" persona scored 0
+    #     STRONG roles because pharma employers were absent from the curated
+    #     tenant list. Adding 5 of the top US/EU pharma employers closes
+    #     that gap directly.
+    #   - Walmart — the largest US private employer. Operations / supply
+    #     chain / merchandising roles surface here that no other ATS scraper
+    #     reaches at this scale.
+    # ===========================================================================
+    ("Pfizer",             "https://pfizer.wd1.myworkdayjobs.com",             "PfizerCareers"),
+    ("Amgen",              "https://amgen.wd1.myworkdayjobs.com",              "Careers"),
+    ("Novartis",           "https://novartis.wd3.myworkdayjobs.com",           "Novartis_Careers"),
+    ("Sanofi",             "https://sanofi.wd3.myworkdayjobs.com",             "SanofiCareers"),
+    ("Merck",              "https://msd.wd5.myworkdayjobs.com",                "SearchJobs"),
+    ("Walmart",            "https://walmart.wd5.myworkdayjobs.com",            "WalmartExternal"),
 ]
 
 # Tenants STILL FAILING after smart cluster-debug verification (2026-05-02):

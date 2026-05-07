@@ -41,6 +41,18 @@ class BaseScraper(ABC):
         #   - Whether num_pages tuning actually translates to more raw roles
         # Lives on the scraper instance for the lifetime of one search call.
         self.per_keyword_raw_counts: dict[str, int] = {}
+        # v0.3.5: optional per-user upstream filters. The orchestrator sets
+        # this before calling search() so scrapers that support upstream
+        # narrowing (JSearch, Adzuna, GoogleJobs) can translate user prefs
+        # into API-side filters and reduce noise pre-pipeline. Scrapers
+        # that don't support filters ignore the field. Shape:
+        #   {
+        #       "location_text": "Washington DC" | None,
+        #       "salary_minimum": 95000 | None,
+        #       "remote_only": True | False | None,
+        #   }
+        # All keys optional. None values = no filter.
+        self._user_filters: Optional[dict] = None
 
     async def __aenter__(self):
         if self._client is None:

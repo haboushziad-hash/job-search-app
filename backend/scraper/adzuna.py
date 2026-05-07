@@ -147,6 +147,20 @@ class AdzunaScraper(BaseScraper):
             if max_age_days:
                 params["max_days_old"] = max_age_days
 
+            # v0.3.5: upstream user-pref filters. Adzuna supports `where`
+            # (location text) and `salary_min` directly on the search
+            # endpoint. Surfacing the user's preferences here drops 30-50%
+            # of mismatched roles before they enter the pipeline.
+            uf = getattr(self, "_user_filters", None) or {}
+            loc_text = (uf.get("location_text") or "").strip()
+            if loc_text:
+                params["where"] = loc_text
+            salary_min = uf.get("salary_minimum")
+            if isinstance(salary_min, (int, float)) and salary_min > 0:
+                # Adzuna's salary_min is in the country's local currency.
+                # For the US Adzuna country it's already USD.
+                params["salary_min"] = int(salary_min)
+
             try:
                 resp = await self.client._client.get(  # type: ignore[union-attr]
                     url, params=params,

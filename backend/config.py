@@ -98,6 +98,10 @@ class Config:
     ADZUNA_COUNTRY: str = os.getenv("ADZUNA_COUNTRY", "us").strip().lower()
     THEMUSE_API_KEY: str = os.getenv("THEMUSE_API_KEY", "").strip()
     FINDWORK_API_KEY: str = os.getenv("FINDWORK_API_KEY", "").strip()
+    # v0.3.5: Serper.dev for Google Jobs aggregation. Free tier 2,500
+    # calls/mo; backstops the curated ATS tenant lists with whatever
+    # Google has indexed (pharma, biotech, retail, etc.).
+    SERPER_API_KEY: str = os.getenv("SERPER_API_KEY", "").strip()
 
     @classmethod
     def is_central_server_mode(cls) -> bool:

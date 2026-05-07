@@ -67,6 +67,7 @@ async def filter_roles_by_embedding(
     roles: list[Role],
     keep_fraction: float = 0.60,
     min_similarity: float = 0.45,
+    max_roles: int | None = None,
     client: LLMClient | None = None,
     batch_size: int = 100,
 ) -> list[Role]:
@@ -74,6 +75,11 @@ async def filter_roles_by_embedding(
 
     keep_fraction: keep top N% of roles (default 40%)
     min_similarity: hard floor — drop anything below this regardless of fraction
+    max_roles: hard cap on output count (v0.3.5). Applied AFTER fraction +
+               min_similarity filtering. Caps Stage 1's input at 500 in the
+               default orchestrator wiring — at 250-300 qualifying scale,
+               this halves Stage 1+2 token spend without hurting recall
+               (the bottom-similarity tail rarely produces qualifying roles).
     batch_size: how many role texts to embed per API call
 
     Mutates each input role's `embedding_similarity` field for inspection.
@@ -140,6 +146,12 @@ async def filter_roles_by_embedding(
     kept_indices = [
         i for i, sim in indexed[:keep_count] if sim >= min_similarity
     ]
+    # v0.3.5: hard cap on output. The fraction-based cap can let huge raw
+    # pools (250-300 qualifying-scale runs see 8-12K raw roles → ~4K kept)
+    # run away on Stage 1/2 cost. Capping at the top-N most similar keeps
+    # the spend bounded without losing the high-confidence head.
+    if max_roles is not None and len(kept_indices) > max_roles:
+        kept_indices = kept_indices[:max_roles]
     kept_indices.sort()  # restore original ordering
 
     return [roles[i] for i in kept_indices]

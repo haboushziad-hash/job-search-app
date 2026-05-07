@@ -259,6 +259,20 @@ class JSearchScraper(BaseScraper):
             "country": "us",
             "employment_types": "FULLTIME",
         }
+        # v0.3.5: upstream user-pref filters (matches Adzuna pattern).
+        # JSearch accepts `location` (text), `remote_jobs_only` (bool),
+        # and minimum salary via job_salary; pass through what's set so
+        # we drop unrelated geos / underpaying roles before they hit the
+        # downstream pipeline. None values stay omitted (default = no filter).
+        uf = getattr(self, "_user_filters", None) or {}
+        loc_text = (uf.get("location_text") or "").strip()
+        if loc_text:
+            # JSearch matches `location` against city/state/country; even
+            # broad strings like "Washington DC" or "Remote, US" narrow
+            # results meaningfully.
+            params["location"] = loc_text
+        if uf.get("remote_only") is True:
+            params["remote_jobs_only"] = "true"
         headers: dict[str, str] = {"Accept": "application/json"}
         # In proxy mode, Worker injects X-RapidAPI-Key + X-RapidAPI-Host.
         # In direct mode, we set them from .env.
