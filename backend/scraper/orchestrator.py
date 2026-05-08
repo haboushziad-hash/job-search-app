@@ -281,7 +281,31 @@ async def scrape_all(
             "quota_exhausted_reason": quota_reason if quota_exhausted else "",
             "per_keyword_raw_counts": per_kw,
             "attribution": attribution,
+            # v0.3.12: paid-upstream cost in USD (DataForSEO, RapidAPI, etc.).
+            # 0.0 for free/public scrapers. Audit roll-up reads this when
+            # building the cost_breakdown.scraper_apis_usd line.
+            "cost_estimate_usd": round(
+                float(getattr(scraper_inst, "cost_estimate", 0.0) or 0.0), 4
+            ),
         }
+        # v0.3.12: silent-zero scraper alert. Catches the bug class that
+        # hid GoogleJobs (proxy creds missing) and iCIMS (Playwright
+        # ImportError swallowed) for 3+ releases. The exact triple
+        # (errored=False, roles=0, elapsed_s<0.1, no quota_exhausted) is
+        # the signature of "scraper hit an early-return cred check or
+        # silent ImportError." Logging this on the very first run that
+        # triggers it would have saved 3 release cycles of debugging
+        # GoogleJobs alone.
+        if (not quota_exhausted
+                and len(result) == 0
+                and elapsed < 0.1):
+            print(
+                f"[orchestrator] WARNING: {source} exited without doing "
+                f"work (roles=0, elapsed_s={elapsed:.3f}). Likely a "
+                f"missing-cred or early-return path; check the scraper's "
+                f"search() method for silent return [].",
+                flush=True,
+            )
         if quota_exhausted and log:
             print(f"[scraper] {source} quota exhausted: {quota_reason}")
         all_roles.extend(result)

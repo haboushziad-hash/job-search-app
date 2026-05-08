@@ -31,18 +31,297 @@ import asyncio
 import json
 import re
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any, Optional
+from urllib.parse import urlparse
 
 from backend.models import Role
 from backend.scraper.base import BaseScraper
 from backend.scraper.greenhouse import _strip_html
 
 
+# Path to per-tenant JSON config files written by the grinder
+# (scripts/tenant_grinder.py + integrate_grinder_tenants.py). These augment
+# the hardcoded HARDCODED_WORKDAY_TENANTS list below; the merged superset is
+# what the scraper actually iterates over at runtime.
+#
+# Schema (matches what integrate_grinder_tenants.build_tenant_record writes):
+#   {
+#     "display_name": "Capital One",
+#     "careers_url":  "https://capitalone.wd12.myworkdayjobs.com/Capital_One",
+#     "captured": {
+#       "url":     "https://capitalone.wd12.myworkdayjobs.com/wday/cxs/capitalone/Capital_One/jobs",
+#       ...
+#     }
+#   }
+#
+# v0.3.12: dual-path resolution for dev mode AND PyInstaller bundle mode.
+# In dev: `__file__` is backend/scraper/workday.py on disk. parent is
+#   backend/scraper/, so `parent/workday_tenants` is the source dir.
+# In bundle: PyInstaller extracts files to `sys._MEIPASS`. If the spec file
+#   correctly bundles workday_tenants/*.json under "backend/scraper/workday_tenants",
+#   then `__file__` resolves to `<MEIPASS>/backend/scraper/workday.py` and the
+#   parent-relative lookup still works.
+# To be extra defensive: if `__file__`-relative path doesn't exist OR is
+#   empty, fall back to `sys._MEIPASS/backend/scraper/workday_tenants`. This
+#   covers a class of PyInstaller weirdness where `__file__` may point at a
+#   stub path while data files are extracted elsewhere.
+import sys as _sys
+
+def _resolve_tenants_dir() -> Path:
+    """Find the workday_tenants directory in both dev and bundled modes."""
+    primary = Path(__file__).resolve().parent / "workday_tenants"
+    if primary.is_dir() and any(primary.glob("*.json")):
+        return primary
+    # PyInstaller fallback: data files extracted to _MEIPASS
+    meipass = getattr(_sys, "_MEIPASS", None)
+    if meipass:
+        bundle_path = Path(meipass) / "backend" / "scraper" / "workday_tenants"
+        if bundle_path.is_dir() and any(bundle_path.glob("*.json")):
+            return bundle_path
+    # Fall back to primary even if empty — caller logs the situation
+    return primary
+
+TENANTS_DIR = _resolve_tenants_dir()
+
+# Display-name overrides for opaque tenant IDs. Keep in sync with
+# scripts/integrate_grinder_tenants.py — same dict, but duplicated here so
+# the scraper doesn't depend on the scripts/ tree at runtime (scripts/ is
+# excluded from PyInstaller bundles).
+_DISPLAY_NAME_OVERRIDES: dict[str, str] = {
+    "ngc": "Northrop Grumman",
+    "bah": "Booz Allen Hamilton",
+    "capitalone": "Capital One",
+    "leidos": "Leidos",
+    "kbr": "KBR",
+    "ms": "Morgan Stanley",  # in our hardcoded set; if a different tenant uses 'ms' as ID we override here
+    "rb": "Federal Reserve System",  # rb.wd5.myworkdayjobs.com/FRS — Fed Reserve Banks system
+    "vca": "VCA Animal Hospitals",
+    "geaerospace": "GE Aerospace",
+    "mars": "Mars Inc",
+    "wwwinc": "Worthington Industries",
+    "moog": "Moog Inc",
+    "mymvw": "Marriott Vacations Worldwide",
+    "geico": "GEICO",
+    "warnerbros": "Warner Bros Discovery",
+    "fanniemae": "Fannie Mae",
+    "freddiemac": "Freddie Mac",
+    "intel": "Intel",
+    "cisco": "Cisco",
+    "rand": "RAND Corporation",
+    "washpost": "The Washington Post",
+    "atlanticmedia": "The Atlantic",
+    "mwaa": "Metropolitan Washington Airports Authority",
+    "erickson": "Erickson Senior Living",
+    "tapestry": "Tapestry",
+    "wawa": "Wawa",
+    "carmax": "CarMax",
+    "markelcorp": "Markel",
+    "owensminor": "Owens & Minor",
+    "shm": "Sentara Healthcare",
+    "bmc": "Boston Medical Center",
+    "lvhn": "Lehigh Valley Health Network",
+    "highmarkhealth": "Highmark Health",
+    "sluhn": "St Luke's University Health Network",
+    "carilionclinic": "Carilion Clinic",
+    "wellstar": "Wellstar Health",
+    "ummh": "UMass Memorial Health",
+    "memorialhermann": "Memorial Hermann Health",
+    "elevancehealth": "Elevance Health",
+    "trinityhealth": "Trinity Health",
+    "massgeneralbrigham": "Mass General Brigham",
+    "wvumedicine": "WVU Medicine",
+    "jeffersonhealth": "Jefferson Health",
+    "guidehouse": "Guidehouse",
+    "medline": "Medline Industries",
+    "choa": "Children's Healthcare of Atlanta",
+    "virtua": "Virtua Health",
+    "asmglobal": "ASM Global",
+    "dickssportinggoods": "Dick's Sporting Goods",
+    "redrobin": "Red Robin",
+    "flextronics": "Flex",
+    "bjswholesaleclub": "BJ's Wholesale Club",
+    "signetjewelers": "Signet Jewelers",
+    "fifththird": "Fifth Third Bank",
+    "bdx": "Becton Dickinson",
+    "snc": "Sierra Nevada Corporation",
+    "avav": "AeroVironment",
+    "ultra": "Ultra Electronics",
+    "townepark": "Towne Park",
+    "calistacorp": "Calista Corporation",
+    "outrigger": "Outrigger Hotels",
+    "rwlasvegas": "Resorts World Las Vegas",
+    "shawinc": "Shaw Industries",
+    "sierraspace": "Sierra Space",
+    "marymount": "Marymount University",
+    "tsc": "Tractor Supply Company",
+    "seic": "SEI Investments",
+    "oregon": "State of Oregon",
+    "aero": "Aerospace Corporation",
+    "pg": "Procter & Gamble",
+    "cartech": "Carpenter Technology",
+    "ntst": "Netsmart Technologies",
+    "mosaic": "Mosaic Co",
+    "gaig": "Great American Insurance Group",
+    "tel": "TE Connectivity",
+    "patientfirst": "Patient First",
+    "bmo": "BMO Bank",
+    "axosbank": "Axos Bank",
+    "hcmportal": "HCM Portal (multi-tenant)",
+    "myhrabc": "ABC HR Portal",
+    "path": "Pathstone (multi-tenant)",
+    "richmond": "City of Richmond VA",
+    "vcuhealth": "VCU Health",
+    "dukeenergy": "Duke Energy",
+    "petco": "Petco",
+    "agiliti": "Agiliti Health",
+    "pfg": "Performance Food Group",
+    "alcoa": "Alcoa",
+    "aes": "AES Corporation",
+    "ameresco": "Ameresco",
+    "regeneron": "Regeneron",
+    "takeda": "Takeda Pharmaceuticals",
+    "catalent": "Catalent",
+    "hdsupply": "HD Supply",
+    "wk": "Wolters Kluwer",
+    "biibhr": "Biogen",
+    "integer": "Integer Holdings",
+    "williams": "Williams Companies",
+    "worldwide": "Worldwide Express",
+    "conagrabrands": "Conagra Brands",
+    "exxonmobil": "ExxonMobil",
+    "microsoft": "Microsoft",
+    "merck": "Merck",
+    "pandg": "Procter & Gamble",
+    "coca-cola": "Coca-Cola",
+    "deloitte": "Deloitte",
+    "ey": "EY",
+    "skookum": "Skookum",
+    "interstate": "Interstate Hotels",
+    "druryhotels": "Drury Hotels",
+    "aritzia": "Aritzia",
+    "bilh": "Beth Israel Lahey Health",
+    "slihrms": "Sun Life",
+    "crateandbarrel": "Crate & Barrel",
+    "vibewell": "Vibewell",
+    "clark": "Clark Construction",
+    "acrt": "ACRT",
+    "groundswell": "Groundswell",
+    "calwatergroup": "California Water Service",
+    "performant": "Performant Financial",
+    "saif": "SAIF Corporation",
+    "axie": "Axie",
+    "ngs": "NGS",
+    "kmkp": "Kentucky Machine & Welding",
+    "nghs": "Northeast Georgia Health System",
+    "phoebehealth": "Phoebe Putney Health System",
+    "ambgroup": "Arthur M Blank Family of Businesses",
+    "wmeimg": "WME-IMG",
+    "calix": "Calix Inc",
+    "web": "Web.com",
+    "hhc": "Hartford HealthCare",
+    "biospace": "BioSpace Corp",
+    "pinerest": "Pine Rest Christian Mental Health",
+    "gohealthuc": "GoHealth Urgent Care",
+    "cresta": "Cresta",
+    "sharecare": "Sharecare",
+    "caresource": "CareSource",
+    "hollandhospital": "Holland Hospital",
+    "bcbsa": "Blue Cross Blue Shield Association",
+    "bcbsnj": "Horizon BCBS NJ",
+    "solutionhealth": "SolutionHealth",
+    "usacs": "US Acute Care Solutions",
+    "choicehotels": "Choice Hotels",
+    "premierinc": "Premier Inc",
+    "gen": "Gen Digital",
+    "martin": "Martin Health",
+    "state_street_v2": "State Street",
+    "workday": "Workday Inc",
+}
+
+
+def _parse_careers_url(careers_url: str) -> Optional[tuple[str, str]]:
+    """Parse a careers_url like https://markelcorp.wd5.myworkdayjobs.com/GlobalCareers
+    into (base_url, board_path).
+
+    Returns None if the URL doesn't match the Workday pattern.
+    """
+    try:
+        p = urlparse(careers_url.strip())
+    except Exception:
+        return None
+    if not p.scheme or not p.netloc or "myworkdayjobs.com" not in p.netloc:
+        return None
+    base_url = f"{p.scheme}://{p.netloc}"
+    # Path may have a leading /, optional locale segment (en-US), and the board.
+    # Examples seen:  /External, /en-US/External, /Capital_One, /BAH_Jobs
+    parts = [s for s in p.path.split("/") if s]
+    if not parts:
+        return None
+    # Strip locale prefix if present (en-US, en_US, en-GB, etc.)
+    if re.match(r"^[a-z]{2}[-_][A-Z]{2}$", parts[0]):
+        parts = parts[1:]
+    if not parts:
+        return None
+    board = parts[0]
+    return base_url, board
+
+
+def _load_dynamic_tenants() -> list[tuple[str, str, str]]:
+    """Scan workday_tenants/*.json and return a list of (display_name,
+    base_url, board) tuples ready to merge with HARDCODED_WORKDAY_TENANTS.
+
+    Silently skips malformed files — never raises. The hardcoded list is the
+    safety net; missing dynamic files just means we lose those bonus tenants
+    for one run.
+    """
+    out: list[tuple[str, str, str]] = []
+    if not TENANTS_DIR.is_dir():
+        return out
+    for path in sorted(TENANTS_DIR.glob("*.json")):
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        if not isinstance(data, dict):
+            continue
+        # Skip non-OK entries (grinder writes status="OK" for verified tenants)
+        status = data.get("status")
+        if status and status != "OK":
+            continue
+        careers_url = (data.get("careers_url") or "").strip()
+        if not careers_url:
+            continue
+        parsed = _parse_careers_url(careers_url)
+        if not parsed:
+            continue
+        base_url, board = parsed
+        tenant_id = path.stem
+        # Display name resolution: explicit override > grinder-supplied >
+        # tenant ID title-cased
+        raw_display = (data.get("display_name") or "").strip()
+        display = (
+            _DISPLAY_NAME_OVERRIDES.get(tenant_id)
+            or (raw_display if raw_display and raw_display != tenant_id.title() else None)
+            or tenant_id.replace("-", " ").replace("_", " ").title()
+        )
+        out.append((display, base_url, board))
+    return out
+
+
 # Curated Workday tenants — VERIFIED WORKING via test calls.
 # Each entry: (display_name, base_url, board_path)
 # Each represents an actual confirmed Workday API endpoint we can hit.
 # Add new tenants only after verifying with a test POST returns 200.
-WORKDAY_TENANTS: list[tuple[str, str, str]] = [
+#
+# v0.3.12: Renamed from WORKDAY_TENANTS to HARDCODED_WORKDAY_TENANTS. The
+# runtime-merged superset (hardcoded + JSON files in workday_tenants/) is
+# now exposed as WORKDAY_TENANTS at module load. This was a no-op rename
+# for readers but a critical fix for the scraper itself: prior to v0.3.12,
+# the 145 grinder-discovered JSON tenants in workday_tenants/ were
+# completely ignored — the scraper only iterated the hardcoded 31. See
+# _load_dynamic_tenants() above.
+HARDCODED_WORKDAY_TENANTS: list[tuple[str, str, str]] = [
     # Trimmed 2026-05-04 from 41 → 27. Dropped tenants with low AI-strategy/
     # consulting/governance role density (Walmart, Target, CarMax — retail;
     # Boeing, 3M, Old Dominion — heavy industry; Pfizer/Gilead/Amgen/Merck/
@@ -109,6 +388,62 @@ WORKDAY_TENANTS: list[tuple[str, str, str]] = [
     ("Merck",              "https://msd.wd5.myworkdayjobs.com",                "SearchJobs"),
     ("Walmart",            "https://walmart.wd5.myworkdayjobs.com",            "WalmartExternal"),
 ]
+
+
+def _merge_tenants(
+    hardcoded: list[tuple[str, str, str]],
+    dynamic: list[tuple[str, str, str]],
+) -> list[tuple[str, str, str]]:
+    """Merge hardcoded + dynamic tenants, deduping on (base_url, board).
+
+    Dedup key uses the lowercased base_url + board so that a hardcoded entry
+    like ('Capital One', 'https://capitalone.wd12.myworkdayjobs.com',
+    'Capital_One') is recognized as the same tenant as a JSON file at
+    capitalone.json with the same careers_url. Hardcoded entries win on
+    collision (their display names are hand-curated).
+    """
+    seen: set[tuple[str, str]] = set()
+    merged: list[tuple[str, str, str]] = []
+    for entry in hardcoded:
+        _, base_url, board = entry
+        key = (base_url.lower().rstrip("/"), board.lower())
+        if key in seen:
+            continue
+        seen.add(key)
+        merged.append(entry)
+    for entry in dynamic:
+        _, base_url, board = entry
+        key = (base_url.lower().rstrip("/"), board.lower())
+        if key in seen:
+            continue
+        seen.add(key)
+        merged.append(entry)
+    return merged
+
+
+# Runtime tenant superset: hardcoded base + JSON-file extras from
+# workday_tenants/. Computed at module import. Any code that previously read
+# `WORKDAY_TENANTS` keeps working — this is a drop-in replacement, just with
+# 4-5x more entries in production.
+_dynamic_tenants = _load_dynamic_tenants()
+WORKDAY_TENANTS: list[tuple[str, str, str]] = _merge_tenants(
+    HARDCODED_WORKDAY_TENANTS,
+    _dynamic_tenants,
+)
+
+# v0.3.12: emit a one-line summary at module import so we can verify the
+# tenant loader is actually reading JSON files in production. If you see
+# "dynamic=0 (using hardcoded only)" in the audit's stdout log, the
+# PyInstaller bundle didn't include the workday_tenants/*.json files —
+# this is the first thing to check when STRONG count regresses or
+# total_scraped is suspiciously low.
+print(
+    f"[workday] tenant loader: hardcoded={len(HARDCODED_WORKDAY_TENANTS)} "
+    f"dynamic={len(_dynamic_tenants)} "
+    f"merged={len(WORKDAY_TENANTS)} "
+    f"tenants_dir={TENANTS_DIR}",
+    flush=True,
+)
 
 # Tenants STILL FAILING after smart cluster-debug verification (2026-05-02):
 #   Deloitte, EY, KPMG, JPMorgan, Goldman Sachs, Wells Fargo, BoA, US Bank,

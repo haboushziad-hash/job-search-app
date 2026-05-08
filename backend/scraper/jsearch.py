@@ -244,13 +244,19 @@ class JSearchScraper(BaseScraper):
         # Stage 1/2 cost is small (~$0.001/role at Gemini Flash). Watch
         # the next 3-5 runs: if pages 6-10 mostly produce STRETCH/SKIP
         # noise that wastes Stage 3 budget, revert to 7-8 in v0.3.4.
-        # Env-var JSEARCH_NUM_PAGES overrides; default 10.
-        # Math at num_pages=10: 11 search_terms × 1 request/keyword =
-        # 11 calls/search (RapidAPI counts each call as 1 regardless of
-        # num_pages). Pro tier 10K/month: 32 searches/mo × 11 calls =
-        # 352 calls = 3.5% of Pro quota. Even at 100 searches/mo (1100
-        # calls = 11% of quota), there's massive headroom.
-        num_pages = str(getattr(config, "JSEARCH_NUM_PAGES", None) or 10)
+        # Env-var JSEARCH_NUM_PAGES overrides; default 5.
+        #
+        # v0.3.12: lowered from 10 to 5. Per Agent 2's audit: items[:limit]
+        # truncates at limit_per_keyword=50 (line 315), but num_pages=10
+        # tells JSearch to return up to 100 items. Pages 6-10 are silently
+        # discarded — fetched, transferred, deserialized, then thrown away.
+        # That's why the user's 5→8→10 experiment didn't scale linearly:
+        # the first 50 items dominate any difference. Dropping num_pages
+        # to 5 saves ~5 API calls per keyword × 14 keywords = 70 calls per
+        # run = 0.7% of monthly Pro quota recovered per run, with zero
+        # functional impact (we were throwing those pages away anyway).
+        # If we ever raise limit_per_keyword > 100, revert this to 10+.
+        num_pages = str(getattr(config, "JSEARCH_NUM_PAGES", None) or 5)
         params = {
             "query": keyword,
             "page": "1",

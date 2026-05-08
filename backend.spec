@@ -60,6 +60,25 @@ seed_path = PROJECT_ROOT / "backend" / "data" / "seed_market_contributions.jsonl
 if seed_path.exists():
     datas.append((str(seed_path), "backend/data"))
 
+# v0.3.12: Workday tenant JSON configs (165+ files). These power the runtime
+# tenant loader added to backend/scraper/workday.py. `collect_all('backend')`
+# above SHOULD include them transitively, but PyInstaller's data-file
+# collection is sensitive to package layout: if `backend/scraper/__init__.py`
+# excludes subpackages, or if collect_all's heuristic misses non-.py files
+# in a non-package subdirectory, these silently vanish from the bundle and
+# the loader regresses to the 31 hardcoded tenants with NO error surfaced.
+#
+# This is the same silent-failure bug class as GoogleJobs and iCIMS — and
+# the loss would be catastrophic: 135 dynamically-loaded tenants gone in
+# production. So we add them EXPLICITLY here as a belt-and-suspenders
+# guarantee. Each JSON gets dropped at backend/scraper/workday_tenants/
+# inside the bundle, matching what `Path(__file__).resolve().parent /
+# 'workday_tenants'` resolves to at runtime.
+tenants_dir = PROJECT_ROOT / "backend" / "scraper" / "workday_tenants"
+if tenants_dir.is_dir():
+    for tenant_json in tenants_dir.glob("*.json"):
+        datas.append((str(tenant_json), "backend/scraper/workday_tenants"))
+
 
 a = Analysis(
     ['backend/backend_main.py'],

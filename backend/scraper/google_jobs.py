@@ -65,6 +65,35 @@ def _dfseo_creds() -> tuple[str, str]:
     return login, pw
 
 
+def _dfseo_endpoints() -> tuple[str, str, Optional[tuple[str, str]]]:
+    """Return (task_post_url, task_get_base_url, basic_auth_or_None).
+
+    v0.3.12 fix: GoogleJobs was silently dead in proxy-mode production runs
+    because lib.rs only forwards LLM_PROXY_URL/AUDIT_UPLOAD_URL/TESTER_UUID
+    to the sidecar — DATAFORSEO_LOGIN/PASSWORD never make it from the .env
+    on Ziad's dev box to the tester's installed sidecar. The scraper hit
+    `_dfseo_creds() -> ("", "")` and returned [] in 1ms (audit showed
+    elapsed_s=0.0, errored=False, roles=0 for two consecutive runs).
+
+    Mirroring the JSearch pattern: when LLM_PROXY_URL is set, route through
+    the Worker which injects DataForSEO Basic Auth from wrangler secrets.
+    Local-dev still works with .env creds.
+    """
+    proxy = (getattr(config, "LLM_PROXY_URL", "") or "").rstrip("/")
+    if proxy:
+        return (
+            f"{proxy}/v1/scraper/dataforseo/jobs/task_post",
+            f"{proxy}/v1/scraper/dataforseo/jobs/task_get/advanced",
+            None,  # Worker injects Basic Auth server-side
+        )
+    login, pw = _dfseo_creds()
+    return (
+        DATAFORSEO_TASK_POST,
+        DATAFORSEO_TASK_GET,
+        (login, pw) if (login and pw) else None,
+    )
+
+
 def _parse_salary_text(salary: str) -> tuple[Optional[int], Optional[int]]:
     """Best-effort range parse from DataForSEO's salary string.
 
@@ -135,9 +164,18 @@ class GoogleJobsScraper(BaseScraper):
         limit_per_keyword: int = 20,
         posted_within_days: Optional[int] = 30,
     ) -> list[Role]:
-        login, password = _dfseo_creds()
-        if not (login and password):
-            return []  # silent no-op if not configured
+        post_url, get_base_url, auth = _dfseo_endpoints()
+        proxy_mode = auth is None and post_url != DATAFORSEO_TASK_POST
+        if not proxy_mode and auth is None:
+            # Local mode + no creds = silent no-op. This is the path that
+            # was silently dying in production through v0.3.11. v0.3.12
+            # routes proxy mode through the Worker so this branch is only
+            # hit in local dev without .env creds.
+            print(
+                "[GoogleJobs] no DataForSEO creds (local mode + missing "
+                "DATAFORSEO_LOGIN/PASSWORD); scraper returning empty"
+            )
+            return []
 
         # Submit ALL tasks in parallel (so we pay one round-trip latency
         # not 14× round-trip)
@@ -151,9 +189,7 @@ class GoogleJobsScraper(BaseScraper):
                     return None
                 try:
                     async with httpx.AsyncClient(timeout=15.0) as client:
-                        r = await client.post(
-                            DATAFORSEO_TASK_POST,
-                            auth=(login, password),
+                        kwargs: dict[str, Any] = dict(
                             json=[{
                                 "keyword": kw,
                                 "location_name": "United States",
@@ -162,6 +198,9 @@ class GoogleJobsScraper(BaseScraper):
                                 "priority": 2,
                             }],
                         )
+                        if auth is not None:
+                            kwargs["auth"] = auth  # local mode
+                        r = await client.post(post_url, **kwargs)
                     if r.status_code != 200:
                         return None
                     data = r.json()
@@ -182,14 +221,11 @@ class GoogleJobsScraper(BaseScraper):
 
         task_ids = await asyncio.gather(*[_submit(kw) for kw in keywords])
         keyword_to_task = {kw: tid for kw, tid in zip(keywords, task_ids) if tid}
-        # v0.3.9.1 BUGFIX: BaseScraper doesn't expose cost_estimate, so the
-        # `self.cost_estimate += ...` line crashed in production with
-        # AttributeError, silently swallowed by the orchestrator's per-source
-        # try/except. That's why GoogleJobs returned 0 raw in v0.3.9.
-        # Tracking cost locally as a safe attribute initialized lazily.
-        if not hasattr(self, "_dfseo_cost_estimate"):
-            self._dfseo_cost_estimate = 0.0
-        self._dfseo_cost_estimate += len(keyword_to_task) * DFSE_COST_PER_QUERY
+        # v0.3.12: writes to BaseScraper.cost_estimate (now a proper
+        # interface attribute). Orchestrator picks it up at the end of the
+        # scrape and rolls it into cost_breakdown.scraper_apis_usd in the
+        # audit JSON. The earlier `_dfseo_cost_estimate` workaround is gone.
+        self.cost_estimate += len(keyword_to_task) * DFSE_COST_PER_QUERY
 
         if not keyword_to_task:
             return []
@@ -205,9 +241,12 @@ class GoogleJobsScraper(BaseScraper):
             async with sem_get:
                 try:
                     async with httpx.AsyncClient(timeout=15.0) as client:
+                        kwargs: dict[str, Any] = {}
+                        if auth is not None:
+                            kwargs["auth"] = auth  # local mode
                         rr = await client.get(
-                            f"{DATAFORSEO_TASK_GET}/{tid}",
-                            auth=(login, password),
+                            f"{get_base_url}/{tid}",
+                            **kwargs,
                         )
                     d = rr.json()
                     t = (d.get("tasks") or [{}])[0]

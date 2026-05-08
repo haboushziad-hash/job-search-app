@@ -563,6 +563,19 @@ def write_audit_files(
         "embeddings_usd": summary_dump.get("cost_embeddings_usd", 0.0),
         "misc_usd":       summary_dump.get("cost_misc_usd", 0.0),
     }
+    # v0.3.12: scraper-API cost roll-up. Each scraper's per_source_health
+    # entry now carries `cost_estimate_usd` (DataForSEO/Serper/RapidAPI
+    # spend). Sum it and surface as a separate line item so cost-trend
+    # diagnosis no longer needs a manual DataForSEO export cross-reference.
+    # Cost tracker stages (above) are LLM-only; this is the upstream-API
+    # complement.
+    _per_source_health = summary_dump.get("per_source_counts") or {}
+    scraper_apis_usd = round(sum(
+        float(s.get("cost_estimate_usd", 0) or 0)
+        for s in _per_source_health.values()
+        if isinstance(s, dict)
+    ), 4)
+    cost_by_stage["scraper_apis_usd"] = scraper_apis_usd
     audit = {
         "run_metadata": {
             "run_id": run_id,

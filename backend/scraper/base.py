@@ -53,6 +53,16 @@ class BaseScraper(ABC):
         #   }
         # All keys optional. None values = no filter.
         self._user_filters: Optional[dict] = None
+        # v0.3.12: per-source paid-API cost in USD. Scrapers that hit a
+        # paid upstream (DataForSEO, Serper, RapidAPI) accumulate the
+        # estimated dollar cost here so the orchestrator can roll it into
+        # the audit JSON's cost_breakdown. Free / public scrapers leave it
+        # at 0.0. v0.3.9 GoogleJobs originally tried to write this as
+        # `cost_estimate` directly but the attribute didn't exist on
+        # BaseScraper, raising AttributeError silently and zeroing out the
+        # whole scraper run. v0.3.10 patched with `_dfseo_cost_estimate`
+        # local attr; v0.3.12 promotes it to the proper interface.
+        self.cost_estimate: float = 0.0
 
     async def __aenter__(self):
         if self._client is None:

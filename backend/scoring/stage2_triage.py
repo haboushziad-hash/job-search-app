@@ -36,25 +36,25 @@ Score from 0 to 100, where 0 means "absolutely not a fit" and 100 means
 "perfect, apply today." Use the FULL range.
 
 ================================================================
-v0.3.11 — ANTI-CLUSTERING (mandatory)
+ANTI-CLUSTERING (mandatory)
 ================================================================
 
-Production audit of v0.3.6-v0.3.9 revealed your scores cluster heavily
-at exact anchor values. In a typical 280-role run:
+Score-clustering at exact anchor values is a known LLM scoring failure
+mode. Without explicit calibration, models tend to round to "round"
+multiples of 5 (like 55, 65, 75) and then bucket roles at those anchors
+rather than spreading them across the full range. This destroys the
+downstream tier-determination signal: if 30%+ of roles share the same
+score, the tier-assigner can't differentiate between them.
 
-  s2 = 78:  18 roles (clustered)
-  s2 = 68:  41 roles (HUGE CLUSTER)
-  s2 = 58:  40 roles (HUGE CLUSTER)
-  s2 = 55:  20 roles
-  s2 = 43:  24 roles
-  s2 = 30:  17 roles
+DETECTION RULE: If you would emit the same score for 15% or more of
+roles in a typical run, your scoring is collapsed and you must spread
+it. The healthy distribution shape across N roles should be roughly
+uniform within each tier band, not piled at anchor values.
 
-That's 160 of 280 roles at exactly 6 anchor values. You're using these
-as buckets. STOP IT.
-
-FORBIDDEN values for v0.3.11: 58, 68, 78. If you find yourself rounding
-to one of these, force a 1-3 point shift based on a specific concern
-severity differential. Examples:
+FORBIDDEN values: 58, 68, 78. These are the historical clustering
+anchors observed in past audits. If you find yourself rounding to one
+of these, force a 1-3 point shift based on a specific concern severity
+differential. Examples:
 
   Role: borderline GOOD with one concern about seniority
         → DO NOT score 68. Score 65, 67, 69, 71, 73, or 74.
@@ -232,19 +232,24 @@ PRINCIPLE 8: TITLE-HEADLINE OVERLAP FLOOR (graduated, v0.3.3)
 
   Apply the floor based on overlap count:
 
-    3+ content words match → base score FLOORS at 70 (was 70, unchanged)
-    2 content words match  → base score FLOORS at 65 (NEW in v0.3.3)
+    3+ content words match → base score FLOORS at 60
+    2 content words match  → base score FLOORS at 55
     1 content word matches the candidate's CORE function noun (the
                              function explicitly named in their headline
-                             or top target_function) → FLOORS at 55
-                             (NEW in v0.3.3)
+                             or top target_function) → no floor (the
+                             single-word match is too weak to guarantee
+                             a floor; let other principles score it)
 
-  Why graduated (v0.3.3): the prior binary 3-word floor failed on legitimate
-  1-2 word overlaps like "Operations Manager" (1 content word after stopword
-  removal) for an Operations-headline candidate. Audit data showed roles
-  like "Marketing Operations Manager" landing at 47-58 because the binary
-  floor didn't trigger. The graduated floor protects partial title matches
-  proportional to overlap strength.
+  Why graduated: the prior binary 3-word floor failed on legitimate 1-2
+  word overlaps like "Operations Manager" (1 content word after stopword
+  removal) for an Operations-headline candidate. The graduated floor
+  protects partial title matches proportional to overlap strength.
+
+  v0.3.12: floor numbers reconciled to match what the code at
+  title_floor.py:graduated mode actually applies (60/55/none). Previous
+  prompt versions cited 70/65/55 (the legacy mode) — those were stale
+  references that asked the LLM to do reasoning to reach a floor the code
+  was overriding lower. Now prompt and code agree.
 
   Domain or seniority concerns can reduce by 5-10 points from the floor,
   but the floor itself holds. This rule still respects PRINCIPLE 1 (title
@@ -254,39 +259,42 @@ PRINCIPLE 8: TITLE-HEADLINE OVERLAP FLOOR (graduated, v0.3.3)
   the applicable floor.
 
   Example: candidate headline "AI Strategy and Enablement Consultant" vs
-  role "AI Strategy Consultant" shares 3+ content words → floor at 70.
+  role "AI Strategy Consultant" shares 3+ content words → floor at 60.
   Candidate headline "Operations and Strategic Support Leader" vs role
   "Marketing Operations Manager" shares 1 core-function word ("Operations")
-  → floor at 55, even though "Marketing" is a sub-domain modifier the
-  candidate doesn't share.
+  → no graduated floor; score on title fit, domain, JD content as usual.
 
 PRINCIPLE 9: TITLE PATTERNS REQUIRING CAREFUL JD READING
   Some title patterns reliably mislead. Read the JD carefully before scoring
-  these high or low — don't auto-reject:
+  these high or low — don't auto-reject. Examples below assume the candidate
+  has the relevant background; if the candidate's profile doesn't include
+  the relevant function/domain experience, score normally.
 
   - "AI Consultant" / "Senior AI Consultant" / "AI Solutions Consultant":
     Score 55-75 if JD emphasizes strategy, readiness assessment, adoption
-    workshops, change management, or client advisory WITHOUT requiring SQL/ML
-    /cloud engineering. Score 25-40 if JD requires hands-on technical build
-    (RAG, ML models, data pipelines). At AI-native firms (Anthropic, Snorkel,
-    Launchpad, OneStream, Quandri), Microsoft partners (Quisitive, Interlink,
-    Ahead), and Big 4 (Deloitte, PwC, EY, Accenture) — assume strategy/
-    advisory unless JD explicitly proves otherwise.
+    workshops, change management, or client advisory WITHOUT requiring
+    SQL/ML/cloud engineering. Score 25-40 if JD requires hands-on technical
+    build (RAG, ML models, data pipelines). Most AI-native startups,
+    consulting firms with named AI practices, and Big 4 firms default to
+    strategy/advisory framing unless the JD explicitly requires hands-on
+    engineering — read the JD content rather than the company name.
   - "Forward Deployed Strategist" / "Forward Deployed Consultant" / "Advisory
     AI Strategist": Score 55-70 if client-facing strategy/enablement without
     software engineering requirements. "Forward Deployed Engineer" with
-    coding requirements is still a 25-35.
-  - "Engagement Manager" with AI context: Score 55-70 if managing AI delivery
-    engagements, client relationships, or portfolios. Bump for senior
-    consulting candidates UNLESS JD explicitly says "must carry individual
-    sales quota."
+    coding requirements is a different track — score 25-35 unless the
+    candidate's profile includes hands-on engineering.
+  - "Engagement Manager" with AI context: Score 55-70 if managing AI
+    delivery engagements, client relationships, or portfolios. Bump for
+    senior consulting candidates UNLESS JD explicitly says "must carry
+    individual sales quota."
   - "AI Strategy Consultant" / "AI Strategist" / "Senior AI Strategist":
     Score 55-75 at any company. Do NOT reject for "requires MBB background"
-    unless JD explicitly says "MBB experience required." "Strategy consulting
-    background preferred" is different from "MBB required."
+    unless JD explicitly says "MBB experience required." "Strategy
+    consulting background preferred" is different from "MBB required."
   - "Federal AI Strategy" / "Public Sector AI Consultant" / "AI Modernization
     Consultant": Score 60-80 for federal-experienced candidates. These are
-    target matches.
+    target matches when the candidate's profile includes federal/public
+    sector work.
 
 PRINCIPLE 10: INDUSTRY-WEIGHT ADJUSTMENT (PROPORTIONAL — v0.3.4)
   After computing a base score from function/seniority/JD-fit signals, apply

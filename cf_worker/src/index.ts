@@ -49,6 +49,19 @@ export interface Env {
   USAJOBS_USER_AGENT?: string;
   FINDWORK_API_KEY?: string;
   JSEARCH_RAPIDAPI_KEY?: string;
+  // v0.3.5: Serper.dev (Bing Jobs + Google web search). One key for
+  // both engines via different /endpoint paths or engine= params.
+  SERPER_API_KEY?: string;
+  // v0.3.6: DataForSEO uses HTTP Basic Auth (login + password tuple),
+  // NOT a single API key. Both must be set together; either alone is
+  // useless. Login is the user's account email. The password is a
+  // separate API password they generate in their dashboard, NOT the
+  // account login password.
+  DATAFORSEO_LOGIN?: string;
+  DATAFORSEO_PASSWORD?: string;
+  // v0.3.5: TheMuse — optional, increases rate limit when set. Scraper
+  // works without a key but throttles aggressively under parallel load.
+  THEMUSE_API_KEY?: string;
 
   // v0.2.2: secret for the /v1/stats download-counter endpoint. Set via
   // `wrangler secret put STATS_SECRET`. Until set, /v1/stats returns 503
@@ -218,6 +231,31 @@ export default {
       }
       if (path.startsWith("/v1/scraper/jsearch")) {
         return await proxyJSearch(req, env, url);
+      }
+      // v0.3.5: Serper.dev proxy — used by BingJobs scraper (and future
+      // GoogleJobs after the v0.3.6 DataForSEO migration). Same X-API-KEY
+      // header pattern, different upstream paths under google.serper.dev.
+      if (path.startsWith("/v1/scraper/serper")) {
+        return await proxySerper(req, env, url);
+      }
+      // v0.3.12: DataForSEO proxy — backs the GoogleJobs scraper. The
+      // Python sidecar can't reach api.dataforseo.com directly in proxy
+      // mode (lib.rs only forwards LLM_PROXY_URL/AUDIT_UPLOAD_URL/
+      // TESTER_UUID, so DATAFORSEO_LOGIN/PASSWORD never make it from the
+      // dev .env to the tester's installed sidecar). Worker injects HTTP
+      // Basic Auth from wrangler secrets and forwards.
+      //
+      // Routes proxied:
+      //   /v1/scraper/dataforseo/jobs/task_post
+      //     → POST https://api.dataforseo.com/v3/serp/google/jobs/task_post
+      //   /v1/scraper/dataforseo/jobs/task_get/advanced/<task_id>
+      //     → GET  https://api.dataforseo.com/v3/serp/google/jobs/task_get/advanced/<task_id>
+      //
+      // wrangler secrets required (set via `wrangler secret put`):
+      //   DATAFORSEO_LOGIN     — DataForSEO account email
+      //   DATAFORSEO_PASSWORD  — DataForSEO API password (NOT login pw)
+      if (path.startsWith("/v1/scraper/dataforseo")) {
+        return await proxyDataForSEO(req, env, url);
       }
 
       return json({ error: "not_found" }, 404);
@@ -407,6 +445,61 @@ async function proxyFindwork(req: Request, env: Env, reqUrl: URL): Promise<Respo
     },
   });
 }
+
+// v0.3.12: DataForSEO proxy — auth via HTTP Basic (login:password). Used by
+// GoogleJobs scraper.
+//
+// Path translation:
+//   /v1/scraper/dataforseo/jobs/task_post
+//     → https://api.dataforseo.com/v3/serp/google/jobs/task_post
+//   /v1/scraper/dataforseo/jobs/task_get/advanced/<id>
+//     → https://api.dataforseo.com/v3/serp/google/jobs/task_get/advanced/<id>
+//
+// Body and query string passed through verbatim. Basic Auth replaces
+// whatever the client sent (the sidecar sends nothing in proxy mode).
+async function proxyDataForSEO(req: Request, env: Env, reqUrl: URL): Promise<Response> {
+  if (!env.DATAFORSEO_LOGIN || !env.DATAFORSEO_PASSWORD) {
+    return json({ error: "dataforseo_credentials_not_configured" }, 500);
+  }
+  // Strip /v1/scraper/dataforseo and remap our short suffix to the full
+  // DataForSEO path. We keep our suffix tight so we don't accidentally
+  // expose every DataForSEO endpoint — only Google Jobs SERP for now.
+  const suffix = reqUrl.pathname.replace(/^\/v1\/scraper\/dataforseo/, "");
+  if (!suffix.startsWith("/jobs/")) {
+    return json(
+      { error: "dataforseo_route_not_allowlisted", suffix },
+      404,
+    );
+  }
+  // /jobs/task_post → /v3/serp/google/jobs/task_post
+  // /jobs/task_get/advanced/<id> → /v3/serp/google/jobs/task_get/advanced/<id>
+  const upstreamPath = `/v3/serp/google${suffix}`;
+  const upstreamUrl = `https://api.dataforseo.com${upstreamPath}${reqUrl.search}`;
+
+  const basic = btoa(`${env.DATAFORSEO_LOGIN}:${env.DATAFORSEO_PASSWORD}`);
+  const upstreamHeaders = new Headers();
+  upstreamHeaders.set("Authorization", `Basic ${basic}`);
+  upstreamHeaders.set(
+    "Content-Type",
+    req.headers.get("Content-Type") || "application/json",
+  );
+  const accept = req.headers.get("Accept");
+  if (accept) upstreamHeaders.set("Accept", accept);
+
+  const resp = await fetch(upstreamUrl, {
+    method: req.method,
+    headers: upstreamHeaders,
+    body: req.method === "GET" || req.method === "HEAD" ? undefined : req.body,
+  });
+  return new Response(resp.body, {
+    status: resp.status,
+    headers: {
+      "Content-Type": resp.headers.get("Content-Type") || "application/json",
+      "X-Proxied-By": "fmsdj-worker",
+    },
+  });
+}
+
 
 // JSearch (RapidAPI) — auth via two headers: X-RapidAPI-Key + X-RapidAPI-Host.
 //   /v1/scraper/jsearch/search?query=...&page=1&num_pages=1&date_posted=month

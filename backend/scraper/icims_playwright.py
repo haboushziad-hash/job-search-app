@@ -61,9 +61,25 @@ class ICIMSPlaywrightScraper(BaseScraper):
         posted_within_days: Optional[int] = 30,
     ) -> list[Role]:
         # Lazy import — Playwright may not be installed in some environments
+        # v0.3.12: surface the missing-dependency error so testers see *why*
+        # iCIMS returns 0. The PyInstaller bundle excludes Playwright (it's
+        # in backend.spec's `excludes` list at line 74) so production runs
+        # ALWAYS hit this branch. Previously this returned [] silently with
+        # roles=0, elapsed_s=0.0, errored=False — the exact silent-no-op
+        # signature that hid GoogleJobs for 3 releases. The orchestrator's
+        # silent-zero alert (also v0.3.12) now logs a WARNING when it sees
+        # this triple, but setting quota_exhausted_reason makes the *cause*
+        # explicit in the audit JSON's per_source_health.
         try:
             from playwright.async_api import async_playwright  # noqa: F401
         except ImportError:
+            self.quota_exhausted = True
+            self.quota_exhausted_reason = (
+                "Playwright not installed in this build (excluded from "
+                "PyInstaller bundle). iCIMS scraping requires headless "
+                "browser; v0.3.13 may add an HTTP-only fallback for "
+                "tenants that expose JSON endpoints."
+            )
             return []
 
         sem = asyncio.Semaphore(4)  # browser context cap

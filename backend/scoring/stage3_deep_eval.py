@@ -265,11 +265,18 @@ seniority modifiers. Look for substantive function/domain nouns
 
 Then apply the floor based on overlap count:
 
-  3+ content words match → score FLOORS at 70 (was 55)
-  2 content words match  → score FLOORS at 65
-  1 content word matches the candidate's CORE function noun (the
-                           function explicitly named in their headline
-                           or top target_function) → score FLOORS at 55
+  3+ content words match → score FLOORS at 60
+  2 content words match  → score FLOORS at 55
+  1 content word matches the candidate's CORE function noun → no floor
+                           (single-word match is too weak; let other
+                           signals determine the score)
+
+v0.3.12: floor numbers reconciled to match the code in title_floor.py
+graduated mode (60/55/none). Earlier prompts cited 70/65/55 (legacy
+mode) which asked the LLM to do reasoning toward a floor the code then
+overrode lower — wasting reasoning tokens and creating audit-trail
+inconsistencies (Stage 3 reasoning would say "applied floor at 70" but
+the actual score post-code-enforcement would be 60).
 
 Domain, seniority, or comp concerns can reduce from there, but you must
 NOT score below the applicable floor. The floor protects the candidate
