@@ -57,7 +57,7 @@ def section(name: str) -> None:
 section("Version")
 from backend import __version__  # noqa: E402
 
-check("backend.__version__", __version__, "0.3.13.1")
+check("backend.__version__", __version__, "0.3.14")
 
 
 # ----------------------------------------------------------------------
