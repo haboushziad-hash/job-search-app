@@ -217,19 +217,16 @@ class GeminiClient(LLMClient):
         return len(self._api_keys)
 
     # ---- core completion ----
+    #
+    # v0.3.13: replaced @retry decorator with manual retry loop. The
+    # decorator was an EXCELLENT recipe for hidden cost: every retry on a
+    # 429/500/503 was a separate billed API call, but only the FINAL
+    # successful attempt landed in cost_log via the logging block at the
+    # end. v0.3.12 audit confirmed: $1.49 logged vs $2.73 actually billed
+    # (45% gap, $1.24 unlogged). The new manual loop logs every attempt —
+    # success AND failure — with conservative cost estimates for failed
+    # attempts that didn't reach the response-parsing stage.
 
-    @retry(
-        stop=stop_after_attempt(5),
-        wait=wait_exponential(multiplier=2, min=2, max=30),
-        reraise=True,
-        retry=retry_if_exception(
-            lambda e: (
-                # Retry on transient Gemini errors: 429, 500, 502, 503, 504
-                # Or any exception with "503", "429", "UNAVAILABLE", "quota" in str
-                any(s in str(e) for s in ("503", "429", "500", "502", "504", "UNAVAILABLE", "quota", "RESOURCE_EXHAUSTED"))
-            )
-        ),
-    )
     async def complete(
         self,
         *,
@@ -285,25 +282,136 @@ class GeminiClient(LLMClient):
                 config=genai_types.GenerateContentConfig(**gen_config),
             )
 
-        # Try the call. If we hit per-day quota, rotate to next key and retry.
-        # (Per-minute rate limits are handled by the @retry decorator above —
-        # those retry on the same key. Per-day quotas need a different key.)
-        try:
-            response = await asyncio.to_thread(_call)
-        except Exception as e:
-            err_str = str(e)
-            is_daily_quota = (
-                "RESOURCE_EXHAUSTED" in err_str
-                and "per_day" in err_str.lower()
-            )
-            if is_daily_quota and self.num_keys > 1:
-                if self._rotate_to_next_key():
-                    # Retry with the new key
-                    response = await asyncio.to_thread(_call)
-                else:
-                    raise  # all keys exhausted
-            else:
-                raise
+        # ---- v0.3.13 manual retry loop with per-attempt cost logging ----
+        #
+        # Conservative cost estimates for failed attempts (peer review):
+        #   429 (rate limit, request rejected at quota gate):
+        #     Server processed enough to enforce quota but didn't fully
+        #     bill. Estimate $0.0005 per Pro 429, $0.0001 per Flash 429.
+        #   500/502/503/504 (transient server error):
+        #     Request was likely processed but response failed mid-stream.
+        #     Estimate $0.005 per Pro 5xx, $0.0008 per Flash 5xx
+        #     (partial input processing + output cost).
+        #   Daily quota (key rotation triggered):
+        #     Same as 429 — quota gate rejected. Estimate $0.0005.
+        #
+        # These estimates may UNDER-count vs reality but are explicitly
+        # conservative to avoid over-billing the user. The audit JSON now
+        # surfaces a `failed_attempt_cost_usd` line so the user can see
+        # how much "ghost" cost we're estimating per run.
+
+        def _is_retryable(err_str: str) -> bool:
+            return any(s in err_str for s in (
+                "503", "429", "500", "502", "504",
+                "UNAVAILABLE", "quota", "RESOURCE_EXHAUSTED",
+            ))
+
+        def _classify_error(err_str: str) -> str:
+            if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str.upper():
+                return "rate_limited_429"
+            if any(c in err_str for c in ("500", "502", "503", "504", "UNAVAILABLE")):
+                return "transient_5xx"
+            return "other_retryable"
+
+        def _estimate_failed_cost(model: str, err_class: str) -> float:
+            # Pro vs Flash differential — Pro is ~17x more expensive.
+            is_pro = "pro" in model.lower()
+            if err_class == "rate_limited_429":
+                return 0.0005 if is_pro else 0.0001
+            if err_class == "transient_5xx":
+                return 0.005 if is_pro else 0.0008
+            return 0.0001  # "other_retryable" — minimal estimate
+
+        max_attempts = 5
+        last_exception: Optional[Exception] = None
+        response = None
+
+        for attempt_idx in range(max_attempts):
+            attempt_start = time.perf_counter()
+            try:
+                response = await asyncio.to_thread(_call)
+                # Success — break out of retry loop, log will fire below
+                break
+            except Exception as e:
+                last_exception = e
+                err_str = str(e)
+                attempt_latency = int((time.perf_counter() - attempt_start) * 1000)
+
+                is_daily_quota = (
+                    "RESOURCE_EXHAUSTED" in err_str
+                    and "per_day" in err_str.lower()
+                )
+
+                # Log this failed attempt's estimated cost so it's not
+                # invisible in cost_log.db
+                err_class = _classify_error(err_str)
+                est_cost = _estimate_failed_cost(model, err_class)
+                try:
+                    failed_log = LLMCallLog(
+                        run_id=self.current_run_id,
+                        license_key=self.current_license_key,
+                        stage=f"{self.current_stage}_retry",
+                        provider=self.provider_name,
+                        model=model,
+                        is_batch=is_batch,
+                        input_tokens=0,  # not available on failure
+                        output_tokens=0,
+                        cost_usd=est_cost,
+                        latency_ms=attempt_latency,
+                        success=False,
+                        error_message=f"attempt={attempt_idx + 1} class={err_class} msg={err_str[:200]}",
+                    )
+                    self._call_log.append(failed_log)
+                    cost_tracker.log_call(failed_log)
+                except Exception:
+                    # Never let cost-logging fail the retry path
+                    pass
+
+                # Daily-quota path: rotate key, retry on the same attempt slot
+                # (don't burn a retry budget on the rotation itself)
+                if is_daily_quota and self.num_keys > 1:
+                    if self._rotate_to_next_key():
+                        try:
+                            response = await asyncio.to_thread(_call)
+                            break
+                        except Exception as e2:
+                            last_exception = e2
+                            # Log the rotation-retry's failure too
+                            try:
+                                rotation_failed_log = LLMCallLog(
+                                    run_id=self.current_run_id,
+                                    license_key=self.current_license_key,
+                                    stage=f"{self.current_stage}_retry",
+                                    provider=self.provider_name,
+                                    model=model,
+                                    is_batch=is_batch,
+                                    cost_usd=_estimate_failed_cost(model, _classify_error(str(e2))),
+                                    latency_ms=int((time.perf_counter() - attempt_start) * 1000),
+                                    success=False,
+                                    error_message=f"attempt={attempt_idx + 1}_rotated class={_classify_error(str(e2))} msg={str(e2)[:200]}",
+                                )
+                                self._call_log.append(rotation_failed_log)
+                                cost_tracker.log_call(rotation_failed_log)
+                            except Exception:
+                                pass
+
+                # Decide retry/raise
+                if not _is_retryable(err_str):
+                    raise
+                if attempt_idx >= max_attempts - 1:
+                    raise
+                # Exponential backoff (matches old tenacity config)
+                wait_s = min(30, 2 * (2 ** attempt_idx))
+                await asyncio.sleep(wait_s)
+
+        if response is None:
+            # Defensive — shouldn't reach here (last failed attempt would
+            # have raised), but if we somehow exhausted the loop without
+            # success or exception, raise the last_exception.
+            if last_exception is not None:
+                raise last_exception
+            raise RuntimeError("LLM call exhausted retries without response or exception")
+
         latency_ms = int((time.perf_counter() - start) * 1000)
 
         # Extract usage (None-safe — Gemini returns None for unused fields)

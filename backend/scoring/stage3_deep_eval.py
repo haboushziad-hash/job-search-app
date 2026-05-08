@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import re
 from typing import Optional
 
@@ -590,7 +591,7 @@ async def stage3_deep_eval(
     profile: CandidateProfile,
     roles: list[Role],
     client: Optional[LLMClient] = None,
-    concurrency: int = 6,
+    concurrency: int = int(os.environ.get("STAGE3_CONCURRENCY", "3")),
     skip_above: int = 101,
     skip_below: int = 55,
     run_id: Optional[str] = None,

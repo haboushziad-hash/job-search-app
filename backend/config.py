@@ -57,8 +57,71 @@ if _env_path is not None:
 # else: rely on inherited environment variables (LLM_PROXY_URL, etc.) —
 # the Tauri sidecar passes some of these explicitly via lib.rs.
 
-ARCHIVE_DIR = PROJECT_ROOT / "archive"
+
+def _resolve_archive_dir() -> Path:
+    """Resolve the archive directory in a way that PERSISTS across app
+    restarts in bundled mode.
+
+    v0.3.13 fix: The previous `PROJECT_ROOT / "archive"` path resolves to
+    `_MEIPASS/archive/` in PyInstaller bundles. PyInstaller wipes the
+    _MEIPASS temp dir on every app exit, which means:
+      - cost_log.db is destroyed every time the user closes the app
+      - All historical cost data from desktop runs is lost
+      - The local "all-time usage" dashboard only shows current-session
+        runs because everything else got wiped
+
+    Cost-log forensics on 2026-05-08 confirmed: $11 in CLI's archive vs
+    $109 actual Cloud Console spend. The ~$95 gap was bundled-app runs
+    that wrote to _MEIPASS then evaporated.
+
+    New behavior:
+      - Source/dev mode: ARCHIVE_DIR = PROJECT_ROOT / "archive" (unchanged)
+      - Bundled mode (frozen): ARCHIVE_DIR = OS-standard app data dir,
+        which persists across app launches and is the conventional place
+        for app-state on each platform.
+
+    OS-standard paths used:
+      Windows:  %APPDATA%\app.jobsearch.desktop\archive
+      macOS:    ~/Library/Application Support/app.jobsearch.desktop/archive
+      Linux:    ~/.local/share/app.jobsearch.desktop/archive
+
+    These match where Tauri's log plugin and tester_id.txt already live,
+    so users can find all app data in one place.
+    """
+    if getattr(sys, "frozen", False):
+        bundle_id = "app.jobsearch.desktop"
+        try:
+            if sys.platform == "win32":
+                appdata = os.environ.get("APPDATA")
+                if appdata:
+                    return Path(appdata) / bundle_id / "archive"
+                # Fallback if APPDATA is somehow unset
+                return Path.home() / "AppData" / "Roaming" / bundle_id / "archive"
+            elif sys.platform == "darwin":
+                return Path.home() / "Library" / "Application Support" / bundle_id / "archive"
+            else:
+                # Linux / other Unix
+                xdg_data = os.environ.get("XDG_DATA_HOME")
+                if xdg_data:
+                    return Path(xdg_data) / bundle_id / "archive"
+                return Path.home() / ".local" / "share" / bundle_id / "archive"
+        except Exception:
+            # Fall through to PROJECT_ROOT default if anything goes wrong
+            pass
+    # Source mode (dev / CLI from-source): preserve old behavior so
+    # cost_log.db queries against `archive/cost_log.db` keep working.
+    return PROJECT_ROOT / "archive"
+
+
+ARCHIVE_DIR = _resolve_archive_dir()
 REFERENCE_DATA_DIR = ARCHIVE_DIR / "reference_data"
+
+# Emit a one-line breadcrumb so we can verify in production stdout where
+# the archive actually landed. v0.3.13 forensics need this.
+try:
+    print(f"[config] ARCHIVE_DIR={ARCHIVE_DIR} (frozen={getattr(sys, 'frozen', False)})", flush=True)
+except Exception:
+    pass
 
 
 class Config:

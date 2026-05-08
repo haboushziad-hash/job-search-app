@@ -39,6 +39,7 @@ funds. Default $5/run hard cap (configurable).
 from __future__ import annotations
 
 import asyncio
+import os
 import re
 from datetime import datetime, timezone
 from typing import Any, Optional
@@ -48,6 +49,37 @@ import httpx
 from backend.config import config
 from backend.models import Role
 from backend.scraper.base import BaseScraper
+
+
+def _proxy_headers() -> dict[str, str]:
+    """Headers required by the LLM_PROXY Worker for keyed-scraper routes.
+
+    v0.3.13 fix: The Worker's `/v1/scraper/dataforseo/jobs/*` route was
+    added in v0.3.12, AFTER the global `X-Tester-UUID` gate was put in
+    place. JSearch's `/v1/scraper/jsearch/*` route predates the gate and
+    is grandfathered. So GoogleJobs is the first scraper that hits the
+    UUID requirement — without this header, the Worker returns
+    `{"error": "X-Tester-UUID header required (UUID v4)"}` with a 4xx
+    status. The scraper then gets r.status_code != 200 and returns None
+    for every keyword, ending up with 0 roles, elapsed_s≈4.5s, and
+    cost_estimate=$0 — exactly the v0.3.12 audit signature.
+
+    The TESTER_UUID is set on the sidecar by lib.rs at app launch (line
+    133): `sidecar = sidecar.env("TESTER_UUID", &tester_uuid)`. We read
+    it here from the inherited env. Falls back to a deterministic
+    placeholder for local dev / CLI runs where TESTER_UUID isn't set —
+    the Worker accepts any valid UUIDv4 string.
+    """
+    headers = {"Content-Type": "application/json"}
+    uuid = (os.environ.get("TESTER_UUID") or "").strip()
+    if uuid:
+        headers["X-Tester-UUID"] = uuid
+    else:
+        # Local dev / CLI fallback. The Worker only validates UUID format,
+        # not whether the UUID is registered. This nil-UUID-ish placeholder
+        # passes the format check.
+        headers["X-Tester-UUID"] = "00000000-0000-4000-8000-000000000000"
+    return headers
 
 
 DATAFORSEO_BASE = "https://api.dataforseo.com/v3/serp/google/jobs"
@@ -200,6 +232,9 @@ class GoogleJobsScraper(BaseScraper):
                         )
                         if auth is not None:
                             kwargs["auth"] = auth  # local mode
+                        else:
+                            # Proxy mode — Worker requires X-Tester-UUID
+                            kwargs["headers"] = _proxy_headers()
                         r = await client.post(post_url, **kwargs)
                     if r.status_code != 200:
                         return None
@@ -244,6 +279,9 @@ class GoogleJobsScraper(BaseScraper):
                         kwargs: dict[str, Any] = {}
                         if auth is not None:
                             kwargs["auth"] = auth  # local mode
+                        else:
+                            # Proxy mode — Worker requires X-Tester-UUID
+                            kwargs["headers"] = _proxy_headers()
                         rr = await client.get(
                             f"{get_base_url}/{tid}",
                             **kwargs,

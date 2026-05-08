@@ -576,6 +576,99 @@ def write_audit_files(
         if isinstance(s, dict)
     ), 4)
     cost_by_stage["scraper_apis_usd"] = scraper_apis_usd
+
+    # v0.3.13: roll up failed-attempt cost estimates from the *_retry
+    # stages. The retry-aware logging in llm_client.py now writes a
+    # separate llm_calls row with stage="<stage>_retry" and an estimated
+    # conservative cost for each rate-limited / transient-error attempt.
+    # Sum these so the audit JSON can show "ghost" retry cost
+    # transparently. Computed by querying the cost_tracker directly
+    # since RunSummary doesn't carry a separate retry-cost field yet.
+    failed_attempt_cost_usd = 0.0
+    try:
+        from backend.scoring import cost_tracker
+        run_id = summary_dump.get("run_id")
+        if run_id:
+            breakdown = cost_tracker.cost_by_run(run_id)
+            failed_attempt_cost_usd = round(sum(
+                float(v.get("cost", 0) or 0)
+                for k, v in breakdown.items()
+                if isinstance(v, dict) and k.endswith("_retry")
+            ), 4)
+    except Exception:
+        # Cost tracker query failures shouldn't crash audit serialization
+        pass
+    cost_by_stage["failed_attempt_cost_usd"] = failed_attempt_cost_usd
+    # v0.3.13: optional manual balance reconciliation. Set env vars
+    # BALANCE_GEMINI_PRE / BALANCE_GEMINI_POST (and per-provider equivalents)
+    # before/after the run to capture the ground-truth provider deltas.
+    # Compares against logged total — if discrepancy > 10%, the audit
+    # JSON's `balance_reconciliation.discrepancy_pct` will surface it.
+    # This sidesteps every cost-tracker bug (retry hidden, /tmp wiped,
+    # SDK retries invisible) by reading the actual provider balance.
+    import os as _os
+    def _try_float(v: Optional[str]) -> Optional[float]:
+        if v is None: return None
+        try:
+            return float(str(v).strip().lstrip("$").replace(",", ""))
+        except Exception:
+            return None
+    bal_gemini_pre  = _try_float(_os.environ.get("BALANCE_GEMINI_PRE"))
+    bal_gemini_post = _try_float(_os.environ.get("BALANCE_GEMINI_POST"))
+    bal_claude_pre  = _try_float(_os.environ.get("BALANCE_CLAUDE_PRE"))
+    bal_claude_post = _try_float(_os.environ.get("BALANCE_CLAUDE_POST"))
+    bal_dfse_pre    = _try_float(_os.environ.get("BALANCE_DATAFORSEO_PRE"))
+    bal_dfse_post   = _try_float(_os.environ.get("BALANCE_DATAFORSEO_POST"))
+
+    balance_reconciliation: Optional[dict] = None
+    if any(v is not None for v in (bal_gemini_pre, bal_gemini_post,
+                                    bal_claude_pre, bal_claude_post,
+                                    bal_dfse_pre, bal_dfse_post)):
+        gemini_actual = (bal_gemini_pre - bal_gemini_post) if (bal_gemini_pre is not None and bal_gemini_post is not None) else None
+        claude_actual = (bal_claude_pre - bal_claude_post) if (bal_claude_pre is not None and bal_claude_post is not None) else None
+        dfse_actual   = (bal_dfse_pre - bal_dfse_post) if (bal_dfse_pre is not None and bal_dfse_post is not None) else None
+
+        # Sum logged provider costs (LLM stages only; scraper APIs already
+        # broken out separately as scraper_apis_usd)
+        logged_gemini_claude = round(
+            cost_by_stage.get("stage1_usd", 0.0)
+            + cost_by_stage.get("stage2_usd", 0.0)
+            + cost_by_stage.get("stage3_usd", 0.0)
+            + cost_by_stage.get("embeddings_usd", 0.0)
+            + cost_by_stage.get("misc_usd", 0.0)
+            + cost_by_stage.get("failed_attempt_cost_usd", 0.0),
+            4,
+        )
+
+        balance_reconciliation = {
+            "gemini_pre_usd":   bal_gemini_pre,
+            "gemini_post_usd":  bal_gemini_post,
+            "gemini_actual_delta_usd": round(gemini_actual, 4) if gemini_actual is not None else None,
+            "claude_pre_usd":   bal_claude_pre,
+            "claude_post_usd":  bal_claude_post,
+            "claude_actual_delta_usd": round(claude_actual, 4) if claude_actual is not None else None,
+            "dataforseo_pre_usd":  bal_dfse_pre,
+            "dataforseo_post_usd": bal_dfse_post,
+            "dataforseo_actual_delta_usd": round(dfse_actual, 4) if dfse_actual is not None else None,
+            "logged_total_usd": logged_gemini_claude,
+        }
+        # Compute discrepancy (prefer Gemini delta when available since
+        # that's where most cost lives; fall back to summed deltas)
+        actual_total = sum(
+            v for v in (gemini_actual, claude_actual)
+            if v is not None
+        )
+        if actual_total > 0 and logged_gemini_claude > 0:
+            discrepancy_pct = round((actual_total - logged_gemini_claude) / actual_total * 100, 1)
+            balance_reconciliation["discrepancy_pct"] = discrepancy_pct
+            balance_reconciliation["discrepancy_note"] = (
+                "Logged < actual: cost tracker is undercounting (likely SDK retries below tenacity layer)."
+                if discrepancy_pct > 10
+                else "Logged > actual: cost tracker may be over-attributing failed-attempt estimates."
+                if discrepancy_pct < -10
+                else "Logged matches actual within 10%."
+            )
+
     audit = {
         "run_metadata": {
             "run_id": run_id,
@@ -584,6 +677,7 @@ def write_audit_files(
             "cost_breakdown": {
                 "total_usd": summary_dump.get("cost_total_usd"),
                 "by_stage": cost_by_stage,
+                **({"balance_reconciliation": balance_reconciliation} if balance_reconciliation else {}),
             },
             "sources_searched": sources_searched or summary_dump.get("boards_searched", []),
             "keywords_used": keywords,
