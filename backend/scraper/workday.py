@@ -489,13 +489,15 @@ class WorkdayScraper(BaseScraper):
         posted_within_days: Optional[int] = 30,
     ) -> list[Role]:
         # Workday tenants are independent — fan out across all tenants × keywords
-        # v0.3.9: bumped concurrency 12 → 20 per peer review. At 200+ tenants
-        # (post-grinder integration), 12-concurrency = ~30 second wall-clock for
-        # Workday phase alone. 20-concurrency = ~18s wall-clock at 200 tenants,
-        # ~45s at 500 tenants (auto-grind v3.10 scale). Per-tenant API still
-        # gets respected (no more than ~1 in-flight per tenant due to sequential
-        # keyword loop). Per-tenant-keyword timeout (30s wall-clock) preserved.
-        sem = asyncio.Semaphore(20)
+        # v0.3.9: bumped concurrency 12 → 20 per peer review.
+        # v0.3.13: env-var override added. Run `bench_workday_concurrency.py`
+        # to find the production sweet spot. Each tenant has its own API
+        # endpoint (no shared rate limit), so the ceiling is mostly about
+        # network egress and per-tenant rate limits. Likely 40-80 is fine.
+        # Per-tenant-keyword timeout (30s wall-clock) preserved as safety.
+        import os as _os
+        concurrency = int(_os.environ.get("WORKDAY_CONCURRENCY", "20"))
+        sem = asyncio.Semaphore(concurrency)
 
         # Per-tenant 500-error tracker. If a tenant returns 500 to >=3 keyword
         # queries in a row, skip remaining keywords for that tenant. Run 3

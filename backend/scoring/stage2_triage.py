@@ -696,7 +696,11 @@ async def stage2_triage(
     profile: CandidateProfile,
     roles: list[Role],
     client: Optional[LLMClient] = None,
-    concurrency: int = 8,
+    # v0.3.13: env-var override for benchmarking. Flash has very high TPM
+    # ceiling (~1000 RPM/key × 3 keys = 3000 RPM), so concurrency=8 was
+    # historically very conservative. Bumping to 16-30 should be safe.
+    # Set STAGE2_CONCURRENCY env var to override.
+    concurrency: int = int(__import__("os").environ.get("STAGE2_CONCURRENCY", "8")),
     # v0.3.5.2: cache RE-ENABLED with two-layer safety net.
     #
     # History: v0.3.5 hit 71% cache failures (`403 PERMISSION_DENIED —

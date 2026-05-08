@@ -323,8 +323,9 @@ class LLMCallLog(BaseModel):
     model: str
     is_batch: bool = False
     input_tokens: int = 0
-    output_tokens: int = 0
+    output_tokens: int = 0                      # NOTE (v0.3.13.1): includes thinking_tokens
     cached_tokens: int = 0
+    thinking_tokens: int = 0                    # Gemini 2.5 reasoning tokens (already folded into output_tokens for cost)
     cost_usd: float = 0.0
     latency_ms: int = 0
     success: bool = True

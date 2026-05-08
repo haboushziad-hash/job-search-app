@@ -415,9 +415,18 @@ class GeminiClient(LLMClient):
         latency_ms = int((time.perf_counter() - start) * 1000)
 
         # Extract usage (None-safe — Gemini returns None for unused fields)
+        # CRITICAL (v0.3.13.1): Gemini 2.5 thinking models return `thoughts_token_count`
+        # SEPARATELY from `candidates_token_count`. Thinking tokens are billed at the
+        # OUTPUT rate ($5/MTok for Pro, $0.60/MTok for Flash). If we don't fold them
+        # into output_tokens, we silently undercount cost by ~$0.005/Pro call. Across
+        # ~220 Pro calls/run that's ~$1.10/run invisible. Across 30 runs since v0.3.10
+        # rollout that's ~$30-35 of "phantom" Gemini billing.
         usage = getattr(response, "usage_metadata", None)
         input_tokens = (getattr(usage, "prompt_token_count", 0) or 0) if usage else 0
-        output_tokens = (getattr(usage, "candidates_token_count", 0) or 0) if usage else 0
+        candidate_tokens = (getattr(usage, "candidates_token_count", 0) or 0) if usage else 0
+        thinking_tokens = (getattr(usage, "thoughts_token_count", 0) or 0) if usage else 0
+        # Fold thinking tokens into output_tokens for cost calc (billed at output rate)
+        output_tokens = candidate_tokens + thinking_tokens
         cached_tokens = (getattr(usage, "cached_content_token_count", 0) or 0) if usage else 0
 
         # Extract text (None-safe — Gemini may return None when output budget exceeded)
@@ -440,6 +449,9 @@ class GeminiClient(LLMClient):
         )
 
         # Log the call (in-memory + persistent cost log)
+        # v0.3.13.1: thinking_tokens stored separately for visibility — it's
+        # already folded into output_tokens above for cost calculation. Logging
+        # separately answers "how much of our spend is reasoning?" in queries.
         log_entry = LLMCallLog(
             run_id=self.current_run_id,
             license_key=self.current_license_key,
@@ -449,18 +461,12 @@ class GeminiClient(LLMClient):
             is_batch=is_batch,
             input_tokens=input_tokens,
             output_tokens=output_tokens,
+            cached_tokens=cached_tokens,
+            thinking_tokens=thinking_tokens,
             cost_usd=cost,
             latency_ms=latency_ms,
             success=True,
         )
-        # Attach cached_tokens to log entry (model allows extra)
-        log_entry_dict = log_entry.model_dump()
-        log_entry_dict["cached_tokens"] = cached_tokens
-        # Re-create with cached_tokens preserved
-        try:
-            log_entry.cached_tokens = cached_tokens  # type: ignore[attr-defined]
-        except Exception:
-            pass
         self._call_log.append(log_entry)
         cost_tracker.log_call(log_entry)
 

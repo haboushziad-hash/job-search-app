@@ -49,6 +49,7 @@ CREATE TABLE IF NOT EXISTS llm_calls (
     input_tokens    INTEGER,
     output_tokens   INTEGER,
     cached_tokens   INTEGER DEFAULT 0,
+    thinking_tokens INTEGER DEFAULT 0,
     cost_usd        REAL,
     latency_ms      INTEGER,
     success         INTEGER,
@@ -81,10 +82,31 @@ CREATE TABLE IF NOT EXISTS run_summaries (
 
 
 def _init_db() -> None:
-    """Create the cost log DB and tables if they don't exist."""
+    """Create the cost log DB and tables if they don't exist.
+
+    Also performs idempotent column migrations for older databases that
+    pre-date a column addition (e.g. cached_tokens, thinking_tokens).
+    """
     config.ARCHIVE_DIR.mkdir(parents=True, exist_ok=True)
     with sqlite3.connect(COST_DB_PATH) as conn:
         conn.executescript(_SCHEMA)
+        # Idempotent migrations — ALTER TABLE ADD COLUMN errors if column
+        # already exists, but PRAGMA table_info lets us check first cheaply.
+        existing_cols = {
+            row[1]
+            for row in conn.execute("PRAGMA table_info(llm_calls)").fetchall()
+        }
+        if "cached_tokens" not in existing_cols:
+            conn.execute(
+                "ALTER TABLE llm_calls ADD COLUMN cached_tokens INTEGER DEFAULT 0"
+            )
+        if "thinking_tokens" not in existing_cols:
+            # v0.3.13.1: track Gemini 2.5 reasoning tokens separately. They
+            # are already folded into output_tokens for cost calc, but logging
+            # them gives us visibility into how much of our spend is reasoning.
+            conn.execute(
+                "ALTER TABLE llm_calls ADD COLUMN thinking_tokens INTEGER DEFAULT 0"
+            )
         conn.commit()
 
 
@@ -112,8 +134,8 @@ def log_call(call: LLMCallLog) -> None:
             INSERT INTO llm_calls (
                 timestamp, run_id, license_key, stage, provider, model,
                 is_batch, input_tokens, output_tokens, cached_tokens,
-                cost_usd, latency_ms, success, error_message
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                thinking_tokens, cost_usd, latency_ms, success, error_message
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 call.timestamp.isoformat(),
@@ -126,6 +148,7 @@ def log_call(call: LLMCallLog) -> None:
                 call.input_tokens,
                 call.output_tokens,
                 getattr(call, "cached_tokens", 0),
+                getattr(call, "thinking_tokens", 0),
                 call.cost_usd,
                 call.latency_ms,
                 int(call.success),
@@ -146,8 +169,8 @@ def _append_csv(call: LLMCallLog) -> None:
             writer.writerow([
                 "timestamp", "run_id", "license_key", "stage", "provider",
                 "model", "is_batch", "input_tokens", "output_tokens",
-                "cached_tokens", "cost_usd", "latency_ms", "success",
-                "error_message",
+                "cached_tokens", "thinking_tokens", "cost_usd", "latency_ms",
+                "success", "error_message",
             ])
         writer.writerow([
             call.timestamp.isoformat(),
@@ -160,6 +183,7 @@ def _append_csv(call: LLMCallLog) -> None:
             call.input_tokens,
             call.output_tokens,
             getattr(call, "cached_tokens", 0),
+            getattr(call, "thinking_tokens", 0),
             f"{call.cost_usd:.6f}",
             call.latency_ms,
             int(call.success),

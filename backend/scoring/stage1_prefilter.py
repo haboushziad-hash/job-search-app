@@ -128,7 +128,10 @@ async def stage1_prefilter(
     profile: CandidateProfile,
     roles: list[Role],
     client: Optional[LLMClient] = None,
-    concurrency: int = 10,
+    # v0.3.13: env-var override for benchmarking. Stage 1 calls are tiny
+    # (128 max output tokens, 0 thinking) so we can push concurrency
+    # aggressively. STAGE1_CONCURRENCY env var allows runtime tuning.
+    concurrency: int = int(__import__("os").environ.get("STAGE1_CONCURRENCY", "10")),
     run_id: Optional[str] = None,
 ) -> list[Role]:
     """Run Stage 1 pre-filter across roles. Returns only roles flagged keep=True.
