@@ -61,25 +61,71 @@ def calculate_cost(
 ) -> float:
     """Return USD cost for a single LLM call.
 
-    Cached tokens get a 75% discount (charged at 25% of input rate).
-    Batch calls get 50% off both input and output.
+    v0.3.15 (P1.1-P1.3): now uses corrected rates from
+    https://ai.google.dev/gemini-api/docs/pricing (verified 2026-05-08)
+    AND properly handles:
+      - Pro >200K-context tier ($2.50 input, $15 output vs $1.25/$10)
+      - Explicit cached input at 90% off (rate from config, not hardcoded 25%)
+      - Per-token embedding pricing (callers must pass tokens, not chars)
+      - Batch API rates from config (50% off)
+
+    Cached input rate: pulls from `cached_input` key in the pricing dict.
+    For models without an explicit cached rate, falls back to 10% of input
+    rate (90% discount, matching Gemini 2.5 explicit cache GA pricing).
     """
     pricing = config.PRICING.get(model)
     if not pricing:
         return 0.0
 
+    # Determine if this call hits the Pro long-context tier (>200K input).
+    # Only Pro has a documented long-context tier breakpoint as of 2026-05-08.
+    is_long_ctx = (
+        input_tokens > config.PRO_LONG_CONTEXT_THRESHOLD
+        and "input_long" in pricing
+    )
+
     if is_batch:
+        # Batch API: 50% off list rates. We use explicit batch rates from
+        # config when present; fall back to half of standard rates.
         in_rate = pricing.get("batch_input", pricing["input"] / 2)
         out_rate = pricing.get("batch_output", pricing["output"] / 2)
+        cached_rate = pricing.get("cached_input", in_rate * 0.10) / 2
+    elif is_long_ctx:
+        in_rate = pricing["input_long"]
+        out_rate = pricing["output_long"]
+        cached_rate = pricing.get("cached_input_long", in_rate * 0.10)
     else:
         in_rate = pricing["input"]
         out_rate = pricing["output"]
+        cached_rate = pricing.get("cached_input", in_rate * 0.10)
 
-    # Cached tokens charged at 25% of input rate (Gemini context cache)
     fresh_input = max(0, input_tokens - cached_tokens)
-    cost = (fresh_input * in_rate / 1_000_000) + (cached_tokens * in_rate * 0.25 / 1_000_000)
+    cost = (fresh_input * in_rate / 1_000_000) + (cached_tokens * cached_rate / 1_000_000)
     cost += output_tokens * out_rate / 1_000_000
     return round(cost, 6)
+
+
+def calculate_cache_storage_cost(
+    model: str,
+    cached_tokens: int,
+    seconds_active: float,
+) -> float:
+    """Return USD storage cost for an explicit context cache.
+
+    Gemini bills explicit cache storage at $/MTok-hour for the TTL window
+    the cache is active. Per the GA pricing page (verified 2026-05-08):
+      - Flash & Flash-Lite: $1.00/MTok-hour
+      - Pro: $4.50/MTok-hour
+
+    v0.3.15 (P1.5): added so the orchestrator can log Stage 2's cache
+    storage cost — previously invisible in the cost log.
+    """
+    pricing = config.PRICING.get(model) or {}
+    rate_per_hour = pricing.get("cache_storage_per_hour", 0.0)
+    if rate_per_hour <= 0 or cached_tokens <= 0 or seconds_active <= 0:
+        return 0.0
+    hours = seconds_active / 3600.0
+    return round(cached_tokens * rate_per_hour * hours / 1_000_000, 6)
 
 
 # ----------------------------------------------------------------------------
@@ -502,10 +548,34 @@ class GeminiClient(LLMClient):
         embeddings_attr = getattr(result, "embeddings", [])
         embeddings = [list(e.values) for e in embeddings_attr]
 
-        # Charge embedding cost: text-embedding-004 priced per 1K input chars
-        total_chars = sum(len(t) for t in texts)
-        # Pricing: $0.0001 per 1K chars input
-        cost = total_chars * 0.0001 / 1000
+        # v0.3.15 (P1.3): embedding cost now per-TOKEN at $0.15/MTok, not
+        # per-CHAR at $0.0001/1K. Prior code used the legacy text-embedding-004
+        # rate against the gemini-embedding-001 model, OVER-counting embedding
+        # spend by ~2.6x. The SDK doesn't return token counts in the embed
+        # response, so we estimate using chars/4 (industry-standard average
+        # for English text). If the SDK adds usage_metadata in future, switch
+        # to that.
+        usage = getattr(result, "usage_metadata", None)
+        reported_tokens = (
+            getattr(usage, "total_token_count", None)
+            or getattr(usage, "prompt_token_count", None)
+        ) if usage else None
+
+        if reported_tokens:
+            estimated_tokens = int(reported_tokens)
+            token_source = "sdk"
+        else:
+            total_chars = sum(len(t) for t in texts)
+            estimated_tokens = total_chars // 4  # ~4 chars/token English avg
+            token_source = "estimated"
+
+        cost = calculate_cost(
+            model=model,
+            input_tokens=estimated_tokens,
+            output_tokens=0,
+            cached_tokens=0,
+            is_batch=False,
+        )
 
         log_entry = LLMCallLog(
             run_id=self.current_run_id,
@@ -513,7 +583,7 @@ class GeminiClient(LLMClient):
             stage="embedding",
             provider=self.provider_name,
             model=model,
-            input_tokens=total_chars,  # chars, not tokens — embedding model bills on chars
+            input_tokens=estimated_tokens,
             output_tokens=0,
             cost_usd=cost,
             latency_ms=latency_ms,
@@ -521,6 +591,9 @@ class GeminiClient(LLMClient):
         )
         self._call_log.append(log_entry)
         cost_tracker.log_call(log_entry)
+        # Track whether token count came from SDK or estimation
+        if hasattr(log_entry, "error_message") and token_source == "estimated":
+            log_entry.error_message = "tokens_estimated_from_chars"
 
         return embeddings
 
@@ -538,7 +611,14 @@ class GeminiClient(LLMClient):
         Caches must be at least ~32K tokens to be useful with Gemini Pro;
         for smaller system prompts the SDK may decline. We catch the error
         and fall back to inline system prompt at the call site.
+
+        v0.3.15 (P1.4 + P1.5): now logs both the cache CREATE call cost
+        (the system prompt sent at the regular input rate) AND the cache
+        STORAGE cost (rate × tokens × TTL hours). Both were previously
+        invisible to the cost tracker.
         """
+        start = time.perf_counter()
+
         def _call() -> Any:
             return self._client.caches.create(
                 model=model,
@@ -549,11 +629,82 @@ class GeminiClient(LLMClient):
             )
 
         try:
-            return await asyncio.to_thread(_call)
-        except Exception as e:
+            handle = await asyncio.to_thread(_call)
+        except Exception:
             # Cache creation can fail on prompts under the minimum token threshold.
             # Caller should treat None as "no cache available, use inline system prompt".
             return None
+
+        latency_ms = int((time.perf_counter() - start) * 1000)
+
+        # Extract cached token count from the handle's usage_metadata.
+        # SDK exposes this as `usage_metadata.total_token_count` on the
+        # cached content object.
+        cached_token_count = 0
+        try:
+            usage = getattr(handle, "usage_metadata", None)
+            if usage is not None:
+                cached_token_count = (
+                    getattr(usage, "total_token_count", 0)
+                    or getattr(usage, "prompt_token_count", 0)
+                    or 0
+                )
+        except Exception:
+            cached_token_count = 0
+
+        # Log the CREATE call cost — system prompt billed at regular input rate
+        try:
+            create_cost = calculate_cost(
+                model=model,
+                input_tokens=cached_token_count,
+                output_tokens=0,
+                cached_tokens=0,  # not yet cached on creation
+                is_batch=False,
+            )
+            create_log = LLMCallLog(
+                run_id=self.current_run_id,
+                license_key=self.current_license_key,
+                stage="cache_create",
+                provider=self.provider_name,
+                model=model,
+                input_tokens=cached_token_count,
+                output_tokens=0,
+                cost_usd=create_cost,
+                latency_ms=latency_ms,
+                success=True,
+            )
+            self._call_log.append(create_log)
+            cost_tracker.log_call(create_log)
+        except Exception:
+            pass  # never let cost-logging fail the cache path
+
+        # Log the STORAGE cost — rate × tokens × TTL hours
+        try:
+            storage_cost = calculate_cache_storage_cost(
+                model=model,
+                cached_tokens=cached_token_count,
+                seconds_active=ttl_seconds,
+            )
+            if storage_cost > 0:
+                storage_log = LLMCallLog(
+                    run_id=self.current_run_id,
+                    license_key=self.current_license_key,
+                    stage="cache_storage",
+                    provider=self.provider_name,
+                    model=model,
+                    input_tokens=cached_token_count,
+                    output_tokens=0,
+                    cost_usd=storage_cost,
+                    latency_ms=0,
+                    success=True,
+                    error_message=f"ttl_seconds={ttl_seconds}",
+                )
+                self._call_log.append(storage_log)
+                cost_tracker.log_call(storage_log)
+        except Exception:
+            pass
+
+        return handle
 
     # ---- log access ----
 

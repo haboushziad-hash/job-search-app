@@ -192,10 +192,10 @@ export default {
         // /v1/llm/anthropic/v1/messages
         //   → https://api.anthropic.com/v1/messages
         if (path.startsWith("/v1/llm/gemini")) {
-          return await proxyGeminiDeep(req, env, url);
+          return await proxyGeminiDeep(req, env, url, ctx, testerUuid);
         }
         if (path.startsWith("/v1/llm/anthropic")) {
-          return await proxyAnthropicDeep(req, env, url);
+          return await proxyAnthropicDeep(req, env, url, ctx, testerUuid);
         }
       }
 
@@ -269,18 +269,53 @@ export default {
 // LLM proxies
 // ============================================================================
 
+// Deterministic string → bucket index. Used to pin each tester's Gemini
+// calls to a single API key so Pro context caches (created with that key)
+// remain accessible across all of their subsequent calls. Plain 32-bit
+// FNV/DJB-style hash; uniform enough for a 3-bucket spread of UUIDs.
+function hashStringToIndex(s: string, buckets: number): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) {
+    h = ((h << 5) - h) + s.charCodeAt(i);
+    h |= 0; // force 32-bit signed int
+  }
+  // Math.abs handles INT32_MIN edge case (would otherwise stay negative)
+  const positive = h === -2147483648 ? 0 : Math.abs(h);
+  return positive % Math.max(1, buckets);
+}
+
 // Deep proxy: forwards the SDK's full path + body to Google. The Python
 // Gemini SDK calls /v1beta/models/{model}:{method}?key=... — we strip the
 // /v1/llm/gemini prefix and forward the rest, swapping the dummy key the
 // SDK sends for one of the Worker's real keys. Streaming is handled by
 // passing the response body directly (Cloudflare Workers support streaming
 // fetch responses).
-async function proxyGeminiDeep(req: Request, env: Env, reqUrl: URL): Promise<Response> {
+async function proxyGeminiDeep(
+  req: Request,
+  env: Env,
+  reqUrl: URL,
+  ctx: ExecutionContext,
+  testerUuid: string,
+): Promise<Response> {
   const keys = [env.GOOGLE_API_KEY, env.GOOGLE_API_KEY_2, env.GOOGLE_API_KEY_3].filter(Boolean) as string[];
   if (keys.length === 0) {
     return json({ error: "no_google_keys_configured" }, 500);
   }
-  const key = keys[Math.floor(Math.random() * keys.length)];
+  // Pin each tester's Gemini calls to a single deterministic key. This is
+  // REQUIRED for Pro context caching to work — caches are bound to the
+  // key that created them, so all of a tester's Stage 3 calls must hit
+  // the same key to find the cache they created at run start.
+  // Prior random rotation caused ~67% of Stage 3 calls to land on a
+  // different key from the cache owner, returning `403 PERMISSION_DENIED
+  // CachedContent not found` and silently failing Stage 3. Confirmed via
+  // audit 2026-05-29_02-55_f4ea0252 — 121 of 198 Stage 3 attempts (61%)
+  // hit this bug, dumping good roles into MAYBE on stage2_score fallback.
+  // Load balancing still happens across testers (each tester pins to one
+  // key, but different testers hash to different keys).
+  // Wave-2 followup: replace this with Worker-managed per-key caches
+  // (see task #15) for cross-run reuse and N-key generalization.
+  const keyIdx = hashStringToIndex(testerUuid, keys.length);
+  const key = keys[keyIdx];
 
   // Strip the /v1/llm/gemini prefix to get the upstream path.
   // e.g. /v1/llm/gemini/v1beta/models/gemini-2.5-flash:generateContent
@@ -303,12 +338,26 @@ async function proxyGeminiDeep(req: Request, env: Env, reqUrl: URL): Promise<Res
     headers: upstreamHeaders,
     body: req.method === "GET" || req.method === "HEAD" ? undefined : req.body,
   });
+
+  // v0.3.15 (P1.10): increment cost counter in KV asynchronously so it
+  // doesn't block the response. Clone the body so we can read usage_metadata
+  // without consuming the stream the client gets.
+  // Streaming SSE responses (text/event-stream) skip counter — usage parse
+  // would require SSE-aware streaming, deferred to a future iteration.
+  const respContentType = resp.headers.get("Content-Type") || "";
+  if (resp.ok && respContentType.includes("application/json")) {
+    const cloned = resp.clone();
+    ctx.waitUntil(
+      incrementCostCounter(env, testerUuid, "google", upstreamPath, cloned).catch(() => {}),
+    );
+  }
+
   // Stream the upstream response back. body is a ReadableStream when the
   // upstream uses streaming; works for non-streaming JSON too.
   return new Response(resp.body, {
     status: resp.status,
     headers: {
-      "Content-Type": resp.headers.get("Content-Type") || "application/json",
+      "Content-Type": respContentType || "application/json",
       "X-Proxied-By": "fmsdj-worker",
     },
   });
@@ -317,7 +366,13 @@ async function proxyGeminiDeep(req: Request, env: Env, reqUrl: URL): Promise<Res
 // Deep proxy for Anthropic. The Python anthropic SDK calls /v1/messages
 // (and /v1/messages/batches for batch mode) — same idea, strip prefix,
 // forward everything, substitute the real x-api-key.
-async function proxyAnthropicDeep(req: Request, env: Env, reqUrl: URL): Promise<Response> {
+async function proxyAnthropicDeep(
+  req: Request,
+  env: Env,
+  reqUrl: URL,
+  ctx: ExecutionContext,
+  testerUuid: string,
+): Promise<Response> {
   if (!env.ANTHROPIC_API_KEY) {
     return json({ error: "anthropic_key_not_configured" }, 500);
   }
@@ -339,12 +394,179 @@ async function proxyAnthropicDeep(req: Request, env: Env, reqUrl: URL): Promise<
     headers: upstreamHeaders,
     body: req.method === "GET" || req.method === "HEAD" ? undefined : req.body,
   });
+
+  // v0.3.15 (P1.10): cost counter increment, see proxyGeminiDeep for rationale.
+  const respContentType = resp.headers.get("Content-Type") || "";
+  if (resp.ok && respContentType.includes("application/json")) {
+    const cloned = resp.clone();
+    ctx.waitUntil(
+      incrementCostCounter(env, testerUuid, "anthropic", upstreamPath, cloned).catch(() => {}),
+    );
+  }
+
   return new Response(resp.body, {
     status: resp.status,
     headers: {
-      "Content-Type": resp.headers.get("Content-Type") || "application/json",
+      "Content-Type": respContentType || "application/json",
       "X-Proxied-By": "fmsdj-worker",
     },
+  });
+}
+
+// ============================================================================
+// v0.3.15 (P1.10) — Worker-side cost counter
+// ============================================================================
+//
+// Independent ground-truth counter for cost reconciliation. The Python
+// cost_tracker can lie (rate-table bugs, missed code paths, untracked
+// surfaces). The Worker SEES every billed request and writes
+// (provider, model, est_cost, timestamp) to KV per-tester per-day.
+//
+// Reconciliation rule: cost_log.db SUM should match Worker counter SUM
+// within 5% across a 5-run observation window. If they diverge >5%,
+// there's an untracked cost surface to investigate.
+//
+// Storage key: cost_counter:{testerUuid}:{YYYY-MM-DD}
+// Value: JSON with {requests, total_input_tokens, total_output_tokens,
+//                   total_estimated_cost_usd, last_updated}
+// TTL: 35 days (covers full month + grace).
+
+type CostCounter = {
+  requests: number;
+  total_input_tokens: number;
+  total_output_tokens: number;
+  total_cached_tokens: number;
+  total_estimated_cost_usd: number;
+  last_updated: string;
+};
+
+// Mirror of backend/config.py PRICING table — kept in sync manually.
+// Used for Worker-side cost estimation. If divergence is detected with
+// the Python cost_log, that's a signal to update one or the other.
+const WORKER_PRICING: Record<string, {
+  input: number;
+  input_long?: number;
+  output: number;
+  output_long?: number;
+  cached_input: number;
+  cached_input_long?: number;
+}> = {
+  "gemini-2.5-pro": {
+    input: 1.25, input_long: 2.50,
+    output: 10.00, output_long: 15.00,
+    cached_input: 0.125, cached_input_long: 0.25,
+  },
+  "gemini-2.5-flash": {
+    input: 0.30, output: 2.50, cached_input: 0.03,
+  },
+  "gemini-2.5-flash-lite": {
+    input: 0.10, output: 0.40, cached_input: 0.01,
+  },
+  "gemini-embedding-001": { input: 0.15, output: 0.0, cached_input: 0.0 },
+  "claude-opus-4-7": { input: 5.00, output: 25.00, cached_input: 0.50 },
+  "claude-opus-4-6": { input: 5.00, output: 25.00, cached_input: 0.50 },
+  "claude-opus-4-5": { input: 5.00, output: 25.00, cached_input: 0.50 },
+  "claude-sonnet-4-6": { input: 3.00, output: 15.00, cached_input: 0.30 },
+  "claude-sonnet-4-5": { input: 3.00, output: 15.00, cached_input: 0.30 },
+};
+
+const PRO_LONG_CONTEXT_THRESHOLD = 200_000;
+
+function extractGeminiModelFromPath(path: string): string {
+  // path looks like /v1beta/models/gemini-2.5-flash:generateContent
+  const match = path.match(/\/models\/([^:?\/]+)/);
+  return match ? match[1] : "unknown";
+}
+
+function extractAnthropicModelFromBody(body: any): string {
+  // Anthropic responses include "model" in the JSON body (echoed from request)
+  return typeof body?.model === "string" ? body.model : "unknown";
+}
+
+function estimateCost(
+  provider: "google" | "anthropic",
+  model: string,
+  inputTokens: number,
+  outputTokens: number,
+  cachedTokens: number,
+): number {
+  const pricing = WORKER_PRICING[model];
+  if (!pricing) return 0;
+
+  const isLong = inputTokens > PRO_LONG_CONTEXT_THRESHOLD && pricing.input_long !== undefined;
+  const inRate = isLong ? (pricing.input_long ?? pricing.input) : pricing.input;
+  const outRate = isLong ? (pricing.output_long ?? pricing.output) : pricing.output;
+  const cachedRate = isLong
+    ? (pricing.cached_input_long ?? pricing.cached_input)
+    : pricing.cached_input;
+
+  const fresh = Math.max(0, inputTokens - cachedTokens);
+  const cost = (fresh * inRate / 1_000_000)
+    + (cachedTokens * cachedRate / 1_000_000)
+    + (outputTokens * outRate / 1_000_000);
+  return Math.round(cost * 1_000_000) / 1_000_000;
+}
+
+async function incrementCostCounter(
+  env: Env,
+  testerUuid: string,
+  provider: "google" | "anthropic",
+  upstreamPath: string,
+  responseClone: Response,
+): Promise<void> {
+  let body: any;
+  try {
+    body = await responseClone.json();
+  } catch {
+    return; // not JSON
+  }
+
+  let model = "unknown";
+  let inputTokens = 0;
+  let outputTokens = 0;
+  let cachedTokens = 0;
+
+  if (provider === "google") {
+    model = extractGeminiModelFromPath(upstreamPath);
+    const um = body?.usageMetadata;
+    if (um) {
+      inputTokens = um.promptTokenCount || 0;
+      // Output includes thinking tokens (Gemini 2.5 thinking models)
+      outputTokens = (um.candidatesTokenCount || 0) + (um.thoughtsTokenCount || 0);
+      cachedTokens = um.cachedContentTokenCount || 0;
+    }
+  } else {
+    model = extractAnthropicModelFromBody(body);
+    const um = body?.usage;
+    if (um) {
+      inputTokens = (um.input_tokens || 0) + (um.cache_creation_input_tokens || 0);
+      outputTokens = um.output_tokens || 0;
+      cachedTokens = um.cache_read_input_tokens || 0;
+    }
+  }
+
+  const cost = estimateCost(provider, model, inputTokens, outputTokens, cachedTokens);
+
+  const today = new Date().toISOString().slice(0, 10);
+  const key = `cost_counter:${testerUuid}:${today}`;
+
+  // Read-modify-write. KV doesn't have atomic increment for objects, so
+  // there's a small race window if multiple requests land within ~50ms.
+  // Acceptable for our volume (one tester, ~1 call/sec peak); Worker
+  // counter is a reconciliation tool, not load-bearing for billing.
+  const existing = (await env.TESTER_KV.get(key, "json")) as CostCounter | null;
+  const next: CostCounter = {
+    requests: (existing?.requests || 0) + 1,
+    total_input_tokens: (existing?.total_input_tokens || 0) + inputTokens,
+    total_output_tokens: (existing?.total_output_tokens || 0) + outputTokens,
+    total_cached_tokens: (existing?.total_cached_tokens || 0) + cachedTokens,
+    total_estimated_cost_usd:
+      (existing?.total_estimated_cost_usd || 0) + cost,
+    last_updated: new Date().toISOString(),
+  };
+
+  await env.TESTER_KV.put(key, JSON.stringify(next), {
+    expirationTtl: 35 * 24 * 3600, // 35 days
   });
 }
 
@@ -915,6 +1137,69 @@ async function handleAdmin(req: Request, env: Env, path: string): Promise<Respon
       uuid: o.customMetadata?.uuid,
     }));
     return json({ runs: out, truncated: list.truncated });
+  }
+
+  // v0.3.15 (P1.10): cost counter readback for reconciliation against the
+  // Python cost_log.db. Query: /v1/admin/cost-counter?uuid=<uuid>&date=YYYY-MM-DD
+  // (date defaults to today). Returns the counter object if present, or
+  // {requests: 0, ...} zeros if no counter for that key.
+  // Also supports ?range=<N> to fetch the last N days at once.
+  if (path === "/v1/admin/cost-counter" && req.method === "GET") {
+    const uuid = url.searchParams.get("uuid");
+    if (!uuid) return json({ error: "missing_uuid_param" }, 400);
+    const dateParam = url.searchParams.get("date");
+    const rangeParam = url.searchParams.get("range");
+
+    const buildKey = (d: string) => `cost_counter:${uuid}:${d}`;
+    const fmt = (d: Date) => d.toISOString().slice(0, 10);
+
+    if (rangeParam) {
+      const n = Math.max(1, Math.min(60, parseInt(rangeParam, 10) || 7));
+      const days: { date: string; counter: CostCounter | null }[] = [];
+      const today = new Date();
+      for (let i = 0; i < n; i++) {
+        const d = new Date(today);
+        d.setUTCDate(today.getUTCDate() - i);
+        const dateStr = fmt(d);
+        const counter = (await env.TESTER_KV.get(buildKey(dateStr), "json")) as CostCounter | null;
+        days.push({ date: dateStr, counter });
+      }
+      const totals: CostCounter = {
+        requests: 0,
+        total_input_tokens: 0,
+        total_output_tokens: 0,
+        total_cached_tokens: 0,
+        total_estimated_cost_usd: 0,
+        last_updated: "",
+      };
+      for (const d of days) {
+        if (!d.counter) continue;
+        totals.requests += d.counter.requests;
+        totals.total_input_tokens += d.counter.total_input_tokens;
+        totals.total_output_tokens += d.counter.total_output_tokens;
+        totals.total_cached_tokens += d.counter.total_cached_tokens || 0;
+        totals.total_estimated_cost_usd += d.counter.total_estimated_cost_usd;
+        if ((d.counter.last_updated || "") > totals.last_updated) {
+          totals.last_updated = d.counter.last_updated;
+        }
+      }
+      return json({ uuid, range_days: n, totals, per_day: days });
+    }
+
+    const dateStr = dateParam || fmt(new Date());
+    const counter = (await env.TESTER_KV.get(buildKey(dateStr), "json")) as CostCounter | null;
+    return json({
+      uuid,
+      date: dateStr,
+      counter: counter || {
+        requests: 0,
+        total_input_tokens: 0,
+        total_output_tokens: 0,
+        total_cached_tokens: 0,
+        total_estimated_cost_usd: 0,
+        last_updated: null,
+      },
+    });
   }
   if (path === "/v1/admin/run" && req.method === "GET") {
     const k = url.searchParams.get("k") || url.searchParams.get("run_key");

@@ -203,10 +203,73 @@ class Config:
     # Models — single source of truth for provider/model selection
     # NOTE: Gemini 3.x preview models are also available — consider upgrading
     # once they go GA. For now, 2.5 stable is the right choice.
-    EMBEDDING_MODEL: str = "gemini-embedding-001"         # Gemini, ~$0.0001/1K chars
-    STAGE1_MODEL: str = "gemini-2.5-flash"                # Cheap pre-filter
-    STAGE2_MODEL: str = "gemini-2.5-flash"                # Triage — Flash for higher daily cap
+    EMBEDDING_MODEL: str = "gemini-embedding-001"         # Gemini, $0.15/MTok (text)
+    # v0.3.15: Stage 1+2 stay on Flash for this ship. The Flash-Lite swap
+    # (P1.14 + P1.18) is documented as a Phase 1B candidate — 6.25× cheaper
+    # output ($0.40/M vs $2.50/M) but model-touching, so it must clear the
+    # rescore harness before activating. The PRICING table below already
+    # has gemini-2.5-flash-lite entries so cost calc is correct if/when
+    # the swap activates. Each swap is a one-line edit.
+    STAGE1_MODEL: str = "gemini-2.5-flash"                # Phase 1B candidate: -> "gemini-2.5-flash-lite" (P1.14)
+    STAGE2_MODEL: str = "gemini-2.5-flash"                # Phase 1B candidate: -> "gemini-2.5-flash-lite" (P1.18)
     STAGE3_MODEL: str = "gemini-2.5-pro"                  # Deep eval — keep Pro quality
+
+    # Wave-1 (2026-05-11) cost-reduction levers:
+    # PAIR_B = drop `concerns` from Stage 3 response schema.
+    # 16K-production-baseline retest (round5_research/_pair_b_16k_workarounds_results.json)
+    # showed the 3-section prompt strip FAILS at ρ=0.959 (cross-batch noise floor).
+    # The original ρ=0.963 was at 8K JD baseline — measurement artifact.
+    # Drop_concerns + thinking=768 (W3 workaround) had cleanest STRONG behavior
+    # (diff=1, mean delta -1.00). Ships drop_concerns ONLY. Saves ~$0.05/run.
+    PAIR_B_ENABLED: bool = True
+    # Wave-1 (2026-05-11): 3-section prompt compression disabled by default.
+    # Failed 16K-baseline retest at ρ=0.959 (at noise floor, no measurable
+    # quality gain over baseline). Kept as code path for future revisit if
+    # production data suggests cross-batch noise floor is tighter.
+    STAGE3_PROMPT_COMPRESSION_ENABLED: bool = False
+    # Wave-1 (2026-05-11): thinking_budget kept at 1024 for production.
+    # Round 9 isolation test (n=30 fresh 16K baseline):
+    #   - drop_concerns + t=1024: ρ=0.917, mean delta 0.00 (within noise)
+    #   - drop_concerns + t=768:  ρ=0.838, mean delta +2.00 (real drift)
+    # t=768 introduces a +2.0 systematic upward bias on a 30-fixture sample.
+    # Reverted to t=1024 to preserve calibration. Loses ~$1.16/run thinking
+    # budget saving but keeps drop_concerns schema saving (~$0.05/run).
+    STAGE3_THINKING_BUDGET_PAIR_B: int = 1024
+    STAGE3_THINKING_BUDGET_FULL: int = 1024  # fallback if PAIR_B disabled
+    # Wave-1 (2026-05-11): cache STAGE3_SYSTEM_PROMPT once per run.
+    # Round 9 Test 1: validated 14% per-call cost saving, $0.77/run at
+    # 290 Stage 3 calls cold-cache. Infrastructure exists in llm_client.create_cache().
+    # Initially DISABLED 2026-05-29 after audit 2026-05-29_02-55_f4ea0252
+    # exposed that 121 of 198 Stage 3 attempts (61%) failed with
+    # `403 PERMISSION_DENIED CachedContent not found` because the Worker's
+    # random key rotation (Math.random across 3 keys) routed ~2/3 of
+    # cache reads to a different key than the cache owner.
+    # RE-ENABLED 2026-05-29 after fixing the Worker: cf_worker now pins
+    # each tester's Gemini calls to a single deterministic key derived
+    # from a hash of their UUID. All of a tester's cache reads now hit
+    # the same key that created the cache. Wave-2 task #15 will replace
+    # this pin-per-tester with full Worker-managed caching for cross-run
+    # reuse + N-key generalization.
+    PRO_CONTEXT_CACHING_ENABLED: bool = True
+    PRO_CONTEXT_CACHE_TTL_SECONDS: int = 3600  # 1 hour Gemini default
+
+    # Wave-1 Section 14.4 (2026-05-11): JD regex compression in Stage 2.
+    # Strips EEO/benefits/about-us boilerplate while preserving requirements,
+    # qualifications, responsibilities, salary. Safe-fallback: returns original
+    # JD if compression would remove >70% of content. Saves ~$0.02-0.07/run
+    # on Stage 2 input tokens. Needs pre-ship A/B test on real fixtures.
+    STAGE2_JD_COMPRESSION_ENABLED: bool = True
+
+    # Wave-1 Path B (2026-05-11): LightGBM Stage 3 gate.
+    # Pre-Stage-3 gate model predicts likely Stage 3 score from Stage 2
+    # features. Skips Stage 3 for confidently-LOW predictions and confident-
+    # STRONG band (s2 >= 88, redundant with Skip-Above 88 but defensive).
+    # Empirical: 8.6% gate fire rate, 0/41 STRONG loss on 18-audit corpus.
+    # Cross-archetype: ρ=0.973 on Zach n=78.
+    # SHIPS DISABLED for wave-1 launch. Enable per-tester after Phase 1.5
+    # cold-cache baseline + 2-tester canary with per-user STRONG-recall ≥95%
+    # monitoring. Auto-disable per-user if recall <95% in first 2 runs.
+    PATH_B_GATE_ENABLED: bool = False
 
     # Profile + keyword generation is THE critical LLM call — every downstream
     # scrape uses these keywords. We use a max-quality pipeline:
@@ -223,6 +286,14 @@ class Config:
     PROFILE_BUILD_MODEL: str = "gemini-2.5-pro"
     PROFILE_BUILD_THINKING: int = 8192
     PROFILE_BUILD_SAMPLES: int = 3                        # # of Gemini variants
+    # v0.3.16-wave2a (2026-05-29): briefly tried 0.5 → 0.2 to reduce
+    # cross-run variance, but reverted to 0.5 after recognizing it
+    # collapses the 3 samples into near-identical output — wasting the
+    # consensus-voting design (3 distinct samples → merge picks best).
+    # The variance we wanted to reduce was actually driven by other
+    # factors (resume content drift, summary-opening sensitivity) which
+    # the new prompt rules now constrain. Keep diversity sampling at
+    # 0.5 and let the merge step do its job.
     PROFILE_BUILD_TEMPERATURE: float = 0.5                # Diversity in samples
 
     # Cross-model — Anthropic Claude (graceful fallback if key missing)
@@ -237,20 +308,60 @@ class Config:
     PROFILE_AUDIT_ENABLED: bool = True
     PROFILE_AUDIT_THINKING: int = 8192
 
-    # Pricing (USD per 1M tokens for completions; per 1K chars for embeddings)
+    # Pricing (USD per 1M tokens; embedding now per-token, not per-char)
     # Kept here so cost tracker is auditable.
+    #
+    # v0.3.15 (P1.1, P1.2, P1.3): rate table corrected against
+    # https://ai.google.dev/gemini-api/docs/pricing as verified 2026-05-08.
+    # Prior values were Gemini 1.5-era prices applied to 2.5 model strings.
+    # Specifically:
+    #   - Pro output was $5; correct is $10 (≤200K context) / $15 (>200K)
+    #   - Flash input was $0.075; correct is $0.30
+    #   - Flash output was $0.30; correct is $2.50 (incl. thinking)
+    #   - Embedding was charged on chars at $0.0001/1K; correct is per-token at $0.15/M
+    #
+    # New schema: each entry can have `input_long`, `output_long` for
+    # >200K-token tier (Pro only). Cached input rates added explicitly
+    # (90% off explicit cache; handled in calculate_cost).
+    # Cache STORAGE rates ($/MTok-hour) added for accurate cost tracking
+    # of context cache lifetimes (Pro is $4.50/M-hour, Flash $1.00/M-hour).
     PRICING = {
-        "gemini-2.5-flash": {"input": 0.075, "output": 0.30, "batch_input": 0.0375, "batch_output": 0.15},
-        "gemini-2.5-pro":   {"input": 1.25,  "output": 5.00, "batch_input": 0.625,  "batch_output": 2.50},
-        "gemini-embedding-001": {"input": 0.0001, "output": 0.0},   # per 1K chars
-        "gemini-embedding-2":   {"input": 0.0001, "output": 0.0},
+        # Gemini 2.5 family (verified GA list price 2026-05-08)
+        "gemini-2.5-pro": {
+            "input": 1.25,            # ≤200K context
+            "input_long": 2.50,       # >200K context
+            "output": 10.00,          # ≤200K context (incl. thinking tokens)
+            "output_long": 15.00,     # >200K context
+            "cached_input": 0.125,    # 90% off explicit cache
+            "cached_input_long": 0.25,
+            "cache_storage_per_hour": 4.50,  # $/MTok-hour
+            "batch_input": 0.625,     # 50% off via Batch API
+            "batch_output": 5.00,
+        },
+        "gemini-2.5-flash": {
+            "input": 0.30,
+            "output": 2.50,           # incl. thinking tokens
+            "cached_input": 0.03,     # 90% off explicit cache
+            "cache_storage_per_hour": 1.00,
+            "batch_input": 0.15,
+            "batch_output": 1.25,
+        },
+        "gemini-2.5-flash-lite": {
+            "input": 0.10,
+            "output": 0.40,           # incl. thinking tokens
+            "cached_input": 0.01,     # 90% off explicit cache
+            "cache_storage_per_hour": 1.00,
+            "batch_input": 0.05,
+            "batch_output": 0.20,
+        },
+        # Embeddings — now per-token, NOT per-char
+        "gemini-embedding-001":   {"input": 0.15, "output": 0.0},
+        "gemini-embedding-2":     {"input": 0.20, "output": 0.0},
         # Anthropic Claude
         # v0.3.3: corrected Opus 4.5+ pricing. Anthropic dropped the price
         # of Opus 4.5/4.6/4.7 to $5/$25 per MTok (verified against
         # platform.claude.com/docs pricing 2026-05-06). Opus 4.1 and
-        # earlier remain at the original $15/$75. Our cost tracker had
-        # been overstating Opus 4.5 spend by 3x since profile build was
-        # introduced.
+        # earlier remain at the original $15/$75.
         "claude-opus-4-7":          {"input":  5.00, "output": 25.00},
         "claude-opus-4-6":          {"input":  5.00, "output": 25.00},
         "claude-opus-4-5":          {"input":  5.00, "output": 25.00},
@@ -261,6 +372,10 @@ class Config:
         "claude-3-5-sonnet-latest": {"input": 3.00,  "output": 15.00},
         "claude-haiku-4-5":         {"input": 1.00,  "output":  5.00},
     }
+
+    # v0.3.15: Pro long-context tier threshold (Google's pricing breakpoint).
+    # Calls with input_tokens > this value are billed at the higher rate.
+    PRO_LONG_CONTEXT_THRESHOLD: int = 200_000
 
     # Paths
     PROJECT_ROOT: Path = PROJECT_ROOT

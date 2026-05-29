@@ -15,6 +15,7 @@ import time
 import uuid
 from typing import Callable, Optional
 
+from backend.config import config
 from backend.models import CandidateProfile, Role, RunSummary, score_to_tier, Tier
 from backend.scoring import cost_tracker
 from backend.scoring.embedding_filter import filter_roles_by_embedding
@@ -152,7 +153,12 @@ async def score_roles(
     # 500-max cap will fire to keep cost bounded.
     embed_keep_fraction: float = 0.55,
     embed_max_roles: int = 500,
-    stage3_skip_above: int = 101,
+    # Wave-1 (2026-05-11): lowered 101 → 88 per Section 14.11.4 empirical
+    # validation: 41/41 saved STRONGs in the 18-audit corpus were preserved
+    # at threshold 88 (0 quality loss). Roles with stage2 ≥ 88 are clear
+    # winners and don't need Stage 3 to confirm. Saves ~2-3 Stage 3 calls
+    # per run at $0.014/call = ~$0.03-0.04/run.
+    stage3_skip_above: int = 88,
     stage3_skip_below: int = 55,
     # v0.3.9: bumped 100 → 200 per peer review. v3.7 audit showed 154
     # roles in the [55, 100] Stage 2 band, but only 80 got Stage 3
@@ -299,6 +305,56 @@ async def score_roles(
         if r.stage2_score is not None
         and effective_skip_below <= r.stage2_score < stage3_skip_above
     )
+    # Wave-1 Path B (2026-05-11): pre-Stage-3 LightGBM gate.
+    # When PATH_B_GATE_ENABLED=True, the gate predicts likely Stage 3 score
+    # for low-band roles (s2 in [55, 60)) and skips them if the model is
+    # confidently LOW. ZERO STRONG loss on 18-audit corpus. Ships disabled
+    # by default for Wave-1 launch; enable per-tester after Phase 1.5.
+    path_b_skipped = 0
+    if getattr(config, "PATH_B_GATE_ENABLED", False):
+        try:
+            from backend.scoring.path_b_gate import load_default_or_none
+            _gate = load_default_or_none()
+        except Exception as e:
+            print(f"[path_b] load failed at runtime ({type(e).__name__}); gate disabled this run")
+            _gate = None
+        if _gate is not None:
+            for r in scored:
+                if r.stage2_score is None:
+                    continue
+                if not (effective_skip_below <= r.stage2_score < stage3_skip_above):
+                    continue
+                try:
+                    decision = _gate.decide(r, profile)
+                except Exception as e:
+                    print(f"[path_b] decide failed for {r.job_title[:40]} ({type(e).__name__}); keeping role")
+                    continue
+                # Attach telemetry — these fields are best-effort, only
+                # written if the Role model accepts them (Pydantic ignores
+                # extras when extra='allow')
+                try:
+                    r.path_b_prediction = decision.predicted_score
+                    r.path_b_confidence = decision.confidence
+                    r.path_b_skipped = decision.skip
+                    r.path_b_reason = decision.reason
+                except Exception:
+                    pass
+                if decision.skip and decision.reason not in ("confident_strong_band",):
+                    # confident_strong_band roles are already gated by
+                    # stage3_skip_above (88). Only gate the LOW band here.
+                    # We mark the role as having stage2 as final by setting
+                    # stage3 fields to None and letting effective_skip_below
+                    # ignore it. Simpler: just count and let the in-band
+                    # filter inside stage3_deep_eval skip these via stage2.
+                    # But the cleanest implementation is to bump their
+                    # stage2_score temporarily out of band. We don't want
+                    # to mutate scores; instead, set a transient flag and
+                    # the needs_stage3 helper can read it.
+                    r.path_b_gate_skip = True
+                    path_b_skipped += 1
+            if path_b_skipped:
+                print(f"[path_b] gated {path_b_skipped} low-band roles out of Stage 3")
+
     _emit(80, "Scoring with AI cascade", 5, f"Stage 3 deep evaluation on {s2_in_band} top-tier roles (Pro, ~5-10s each)...")
     scored = await stage3_deep_eval(
         profile=profile,
@@ -329,13 +385,25 @@ async def score_roles(
     qualifying = [r for r in scored if (r.final_score or 0) >= 40]
     qualifying.sort(key=lambda r: r.final_score or 0, reverse=True)
 
-    # ---- 5b. Persist newly-scored roles to JD score cache (v0.3.9) ----
-    # Skip cache hits (already in cache). Only store roles that went
-    # through Stage 2/3 this run.
+    # ---- 5b. Persist newly-scored roles to JD score cache ----
+    # v0.3.15 (P1.7): cache ALL scored roles, not just qualifying. Prior
+    # behavior cached only `final_score >= 40` — meaning rejects (SKIP/
+    # STRETCH below the floor) got re-evaluated through embedding + Stage 1
+    # + Stage 2 on every rerun. At ~420 rejected roles/run × $0.001/role
+    # of pipeline cost, that's ~$0.42/run wasted on duplicate-rejection
+    # processing for any user who reruns. Now: cache hit on a known-reject
+    # short-circuits the cascade.
+    #
+    # Skip cache hits (already in cache, hydrated at Phase 0).
+    # Skip roles with final_score=None (unscored due to errors — incomplete records).
     cache_hit_keys = {id(r) for r in cache_hits}
     cache_stored = 0
-    for r in qualifying:
+    cache_skipped_unscored = 0
+    for r in scored:
         if id(r) in cache_hit_keys:
+            continue
+        if r.final_score is None:
+            cache_skipped_unscored += 1
             continue
         try:
             jd_score_cache.store(prof_hash, r)
@@ -343,7 +411,10 @@ async def score_roles(
         except Exception:
             pass  # cache failures shouldn't break the run
     if log and cache_stored:
-        print(f"[orchestrator] cached {cache_stored} new role scores for cross-run reuse")
+        print(
+            f"[orchestrator] cached {cache_stored} role scores for cross-run reuse "
+            f"(qualifying + rejects; skipped {cache_skipped_unscored} unscored)"
+        )
 
     # ---- Build run summary ----
     duration = int(time.perf_counter() - started_at)

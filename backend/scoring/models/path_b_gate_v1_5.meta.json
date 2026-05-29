@@ -1,0 +1,123 @@
+{
+  "model_version": "path_b_gate_v1_5",
+  "trained_at": "2026-05-11T00:46:44",
+  "training_rows": 3437,
+  "training_runs": 18,
+  "feature_count": 36,
+  "feature_names": [
+    "emb_high",
+    "emb_low",
+    "embedding_sim",
+    "excluded_pattern_violations",
+    "has_full_jd",
+    "headline_token_in_jd_pct",
+    "headline_token_in_title_pct",
+    "jd_len_chars",
+    "jd_word_count",
+    "loc_hybrid",
+    "loc_onsite",
+    "loc_remote",
+    "profile_keyword_match_count",
+    "salary_disclosed",
+    "salary_gap_pct",
+    "salary_log",
+    "salary_max",
+    "salary_meets_user_minimum",
+    "salary_min",
+    "src_is_googlejobs",
+    "src_is_greenhouse",
+    "src_is_indeed",
+    "src_is_lever",
+    "src_is_linkedin",
+    "src_is_workday",
+    "stage1_reason_len",
+    "stage2_reasoning_len",
+    "stage2_score",
+    "stage2_score_missing",
+    "target_function_overlap_jd",
+    "target_function_overlap_title",
+    "title_len_chars",
+    "title_seniority_jr",
+    "title_seniority_lead",
+    "title_seniority_manager",
+    "title_word_count"
+  ],
+  "lightgbm_params": {
+    "objective": "regression",
+    "metric": "rmse",
+    "learning_rate": 0.05,
+    "num_leaves": 31,
+    "max_depth": -1,
+    "min_data_in_leaf": 20,
+    "feature_fraction": 0.85,
+    "bagging_fraction": 0.85,
+    "bagging_freq": 5,
+    "lambda_l1": 0.1,
+    "lambda_l2": 0.1,
+    "verbose": -1
+  },
+  "num_boost_round": 300,
+  "top_features_by_gain": [
+    {
+      "name": "stage2_score",
+      "gain": 8101159.429462433
+    },
+    {
+      "name": "embedding_sim",
+      "gain": 688304.5112514496
+    },
+    {
+      "name": "salary_gap_pct",
+      "gain": 316892.95920944214
+    },
+    {
+      "name": "headline_token_in_jd_pct",
+      "gain": 285079.5962963104
+    },
+    {
+      "name": "salary_max",
+      "gain": 281610.55826187134
+    },
+    {
+      "name": "jd_len_chars",
+      "gain": 267747.8199043274
+    },
+    {
+      "name": "jd_word_count",
+      "gain": 247556.79405403137
+    },
+    {
+      "name": "title_len_chars",
+      "gain": 245750.47370529175
+    },
+    {
+      "name": "target_function_overlap_jd",
+      "gain": 234347.360912323
+    },
+    {
+      "name": "salary_log",
+      "gain": 194807.72073173523
+    },
+    {
+      "name": "headline_token_in_title_pct",
+      "gain": 166799.44408226013
+    },
+    {
+      "name": "loc_remote",
+      "gain": 102643.30556678772
+    },
+    {
+      "name": "target_function_overlap_title",
+      "gain": 91080.86571502686
+    },
+    {
+      "name": "salary_min",
+      "gain": 82580.35449028015
+    },
+    {
+      "name": "title_word_count",
+      "gain": 76607.95816230774
+    }
+  ],
+  "target": "final_score (Pro Stage 3 score, else Stage 2 fallback)"
+}

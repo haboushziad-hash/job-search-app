@@ -233,24 +233,6 @@ disqualifying factor named. Either the analysis is wrong (and should
 be revised) or the score is wrong (and should be recomputed). The
 JUSTIFY-LOW-SCORES constraint forces resolution of the disagreement.
 
-[Section removed in v0.3.9]
-
-The v0.3.8 RESOLVE-MAYBE-CONTRADICTIONS prompt-level constraint was
-removed in v0.3.9 because peer-Claude review identified it as
-architecturally unsound: autoregressive generation moves forward only,
-so the model cannot retroactively check its own analysis against its
-own score mid-generation. Production data confirmed: contradictions
-went from 12 (v3.7) to 24 (v3.8) despite the constraint, while adding
-$0.18/run in cost from longer prompts + more thinking tokens.
-
-Replaced with a POST-PROCESSING contradiction detector in the
-orchestrator: after Stage 3 returns, programmatically check whether
-the analysis text contains positive-fit language while score is
-40-69. If so, force a second Stage 3 call with explicit "you scored
-this 57 but wrote 'aligns perfectly' — re-evaluate" framing. Cost:
-~$0.16/run (vs $0.18 for the failed prompt-only approach), but
-contradictions actually get resolved this time.
-
 GRADUATED TITLE-HEADLINE OVERLAP FLOOR (replaces v0.2.0's binary 3-word
 floor — that rule was failing on 1-2 word matches like "Operations
 Manager" for an Operations-headline candidate, leaving them to land at
@@ -386,6 +368,131 @@ _RESPONSE_SCHEMA = {
 }
 
 
+# ============================================================
+# Wave-1 (2026-05-11): PAIR_B variants of prompt and schema
+# ============================================================
+# PAIR_B drops `concerns` from output schema AND strips 3 sections from
+# system prompt (AVOID_CLUSTERING, SCORE_ANCHORS_HISTORY, POOR_FIT_BAND).
+# Validated at ρ=0.963 vs full-prompt + thinking=1024 baseline (Round 8
+# pair-stacking test). When PAIR_B_ENABLED=True, also drop thinking budget
+# to 768 (Round 9 Test 3 validated ρ=0.984 at this combination).
+#
+# Rollback: flip config.PAIR_B_ENABLED to False; full prompt + schema
+# resume on next call.
+
+
+def _build_stage3_system_prompt_pair_b() -> str:
+    """Apply 3-section ablation to STAGE3_SYSTEM_PROMPT (PAIR_B variant).
+
+    Strips ~221 tokens. Each strip pattern matches an exact text block from
+    the production prompt; raises at import time if a marker is missing
+    (guards against silent prompt drift).
+    """
+    p = STAGE3_SYSTEM_PROMPT
+
+    # 1. AVOID_CLUSTERING (53 tokens) — strip the "Avoid clustering at round
+    #    numbers" directive. Pro doesn't need anti-clustering language; it
+    #    self-spreads at thinking=768.
+    target_avoid = (
+        "Score from 0 to 100. Use the FULL range — pick the specific score that\n"
+        "matches your read of the role (47, 63, 81, etc.). Avoid clustering at round\n"
+        "numbers (45, 55, 68, 78, 88, 92) — those are stale tier-band midpoints, not\n"
+        "signals."
+    )
+    if target_avoid not in p:
+        raise RuntimeError(
+            "PAIR_B prompt build failed: AVOID_CLUSTERING marker not found. "
+            "Either prompt was edited or the marker drifted; manually re-anchor."
+        )
+    p = p.replace(target_avoid, "Score from 0 to 100.")
+
+    # 2. SCORE_ANCHORS_HISTORY (128 tokens) — strip the v0.3.3 history
+    #    explanation. The anchors themselves stay; just the historical
+    #    rationale paragraph is removed.
+    start_marker = (
+        "SCORE ANCHORS — what each band MEANS in concrete terms (v0.3.3, added"
+    )
+    end_marker = "score):"
+    s = p.find(start_marker)
+    if s < 0:
+        raise RuntimeError("PAIR_B prompt build failed: SCORE_ANCHORS_HISTORY start marker missing")
+    e = p.find(end_marker, s)
+    if e < 0:
+        raise RuntimeError("PAIR_B prompt build failed: SCORE_ANCHORS_HISTORY end marker missing")
+    e_end = e + len(end_marker)
+    p = p[:s] + "SCORE ANCHORS — what each band MEANS in concrete terms:" + p[e_end:]
+
+    # 3. POOR_FIT_BAND (41 tokens) — strip the 0-39 anchor block.
+    #    Rarely activated since Stage 3 triages roles in 55-87 band.
+    target_poor = (
+        "  0-39    POOR FIT. Genuinely wrong function, wrong industry without\n"
+        "          translation path, or hard requirements the candidate clearly\n"
+        "          doesn't meet."
+    )
+    if target_poor not in p:
+        raise RuntimeError("PAIR_B prompt build failed: POOR_FIT_BAND marker not found")
+    p = p.replace(target_poor, "")
+
+    return p
+
+
+# Build the PAIR_B prompt at import time. If any marker is missing (prompt
+# drift), this raises and the import fails loudly — better than silent
+# fallback to the full prompt.
+STAGE3_SYSTEM_PROMPT_PAIR_B = _build_stage3_system_prompt_pair_b()
+
+
+# PAIR_B schema: same as full but with `concerns` dropped.
+# Saves ~30 output tokens per call (concerns field was averaging 30-50 tokens
+# of array contents per role).
+_RESPONSE_SCHEMA_PAIR_B = {
+    "type": "object",
+    "properties": {
+        k: v for k, v in _RESPONSE_SCHEMA["properties"].items() if k != "concerns"
+    },
+    "required": _RESPONSE_SCHEMA["required"],  # concerns wasn't required, so list unchanged
+}
+
+
+def _active_prompt_and_schema() -> tuple[str, dict]:
+    """Returns (system_prompt, json_schema) based on Wave-1 feature flags.
+
+    Two independent flags:
+      - PAIR_B_ENABLED: drops `concerns` field from response schema (Wave-1
+        ships True; saves ~$0.05/run; cross-batch-noise-safe)
+      - STAGE3_PROMPT_COMPRESSION_ENABLED: strips 3 sections from prompt
+        (Wave-1 ships False; failed 16K-baseline retest at ρ=0.959)
+
+    Combinations:
+      (False, False)  → full prompt + full schema (pre-Wave-1 production)
+      (True,  False)  → full prompt + drop_concerns (Wave-1 default)
+      (False, True)   → compressed prompt + full schema (not recommended)
+      (True,  True)   → compressed prompt + drop_concerns (8K-validated; 16K fail)
+    """
+    prompt = (
+        STAGE3_SYSTEM_PROMPT_PAIR_B
+        if config.STAGE3_PROMPT_COMPRESSION_ENABLED
+        else STAGE3_SYSTEM_PROMPT
+    )
+    schema = (
+        _RESPONSE_SCHEMA_PAIR_B
+        if config.PAIR_B_ENABLED
+        else _RESPONSE_SCHEMA
+    )
+    return prompt, schema
+
+
+def _active_thinking_budget() -> int:
+    """Returns the Stage 3 thinking budget for the active config.
+
+    PAIR_B_ENABLED=True: t=768 (validated Round 9 ρ=0.984 with PAIR_B prompt)
+    PAIR_B_ENABLED=False: t=1024 (full-prompt baseline)
+    """
+    if config.PAIR_B_ENABLED:
+        return config.STAGE3_THINKING_BUDGET_PAIR_B
+    return config.STAGE3_THINKING_BUDGET_FULL
+
+
 def _profile_block(profile: CandidateProfile) -> str:
     parts = []
     if profile.headline:
@@ -465,12 +572,19 @@ def _role_block(role: Role, jd_max_chars: int = 16000) -> str:
 def needs_stage3(
     role: Role,
     *,
-    skip_above: int = 101,
+    skip_above: int = 88,
     primary_min: int = 55,
     second_look_min: int = 35,
     second_look_max: int = 54,
     second_look_confidence_max: float = 0.8,
 ) -> bool:
+    # Wave-1 Path B (2026-05-11): the orchestrator may set path_b_gate_skip=True
+    # on roles the LightGBM gate predicted as confidently-LOW. Honor that flag
+    # here. Defensive: only respect the flag for roles in [55, 60) low band —
+    # never let Path B skip roles in the [60, 88) protected band.
+    if getattr(role, "path_b_gate_skip", False):
+        if role.stage2_score is not None and 55 <= role.stage2_score < 60:
+            return False
     """Decide whether a role's Stage 2 score warrants Stage 3 evaluation.
 
     Two paths to Stage 3:
@@ -506,7 +620,16 @@ async def _score_one(
     client: LLMClient,
     semaphore: asyncio.Semaphore,
     thinking_budget: Optional[int] = 1024,
+    *,
+    system_prompt: Optional[str] = None,
+    response_schema: Optional[dict] = None,
+    cached_handle: Any = None,
 ) -> Role:
+    # Wave-1 (2026-05-11): support feature-flagged PAIR_B variant + context cache.
+    # When cached_handle is non-None, system=None and cached_content=cached_handle —
+    # Gemini SDK reads the system prompt from the cache (90% input discount).
+    active_prompt = system_prompt if system_prompt is not None else STAGE3_SYSTEM_PROMPT
+    active_schema = response_schema if response_schema is not None else _RESPONSE_SCHEMA
     async with semaphore:
         prompt = (
             f"CANDIDATE PROFILE:\n{profile_text}\n\n"
@@ -515,7 +638,8 @@ async def _score_one(
         try:
             response = await client.complete(
                 model=config.STAGE3_MODEL,
-                system=STAGE3_SYSTEM_PROMPT,
+                system=None if cached_handle else active_prompt,
+                cached_content=cached_handle,
                 user=prompt,
                 # Stage 3 emits a 7-field JSON with a multi-sentence
                 # match_analysis + application_strategy. 1024 was hitting the
@@ -527,7 +651,7 @@ async def _score_one(
                 # is noise, not insight. Structured JSON output doesn't
                 # benefit from creative sampling.
                 temperature=0.0,
-                json_schema=_RESPONSE_SCHEMA,
+                json_schema=active_schema,
                 thinking_budget=thinking_budget,
             )
             data = response.parsed_json
@@ -592,7 +716,7 @@ async def stage3_deep_eval(
     roles: list[Role],
     client: Optional[LLMClient] = None,
     concurrency: int = int(os.environ.get("STAGE3_CONCURRENCY", "3")),
-    skip_above: int = 101,
+    skip_above: int = 88,
     skip_below: int = 55,
     run_id: Optional[str] = None,
     thinking_budget: Optional[int] = 1024,
@@ -620,8 +744,35 @@ async def stage3_deep_eval(
     if not targets:
         return roles
 
+    # Wave-1 (2026-05-11): pick active prompt/schema/thinking-budget per
+    # PAIR_B feature flag, AND create context cache once per run so all
+    # subsequent Stage 3 calls get 90% input discount on system prompt.
+    active_prompt, active_schema = _active_prompt_and_schema()
+    active_budget = thinking_budget if thinking_budget is not None else _active_thinking_budget()
+    cached_handle: Any = None
+    if config.PRO_CONTEXT_CACHING_ENABLED:
+        try:
+            cached_handle = await client.create_cache(
+                model=config.STAGE3_MODEL,
+                system=active_prompt,
+                ttl_seconds=config.PRO_CONTEXT_CACHE_TTL_SECONDS,
+            )
+            if cached_handle is None:
+                print("[stage3] context cache unavailable; falling back to inline system prompt")
+            else:
+                print(f"[stage3] context cache active; {len(targets)} Stage 3 calls will share cache")
+        except Exception as e:
+            print(f"[stage3] cache create failed ({type(e).__name__}): falling back to inline prompt")
+            cached_handle = None
+
     tasks = [
-        _score_one(r, profile_text, client, semaphore, thinking_budget=thinking_budget)
+        _score_one(
+            r, profile_text, client, semaphore,
+            thinking_budget=active_budget,
+            system_prompt=active_prompt,
+            response_schema=active_schema,
+            cached_handle=cached_handle,
+        )
         for r in targets
     ]
     await asyncio.gather(*tasks)

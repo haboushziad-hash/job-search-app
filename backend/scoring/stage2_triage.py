@@ -413,6 +413,74 @@ def _profile_block(profile: CandidateProfile) -> str:
     return "\n".join(parts)
 
 
+# Wave-1 Section 14.4 (2026-05-11): JD section-aware regex compression.
+# Strips boilerplate sections (EEO statement, benefits enumeration, "About
+# us"-style company paragraphs, perks) while preserving Requirements,
+# Qualifications, Responsibilities, and salary text. Saves $0.02-0.07/run
+# on Stage 2 input tokens per Section 14.4 measurement.
+
+_JD_BOILERPLATE_PATTERNS = [
+    # EEO / Equal Opportunity statements — common opening phrases.
+    # Strips from the EEO opener to the next blank line or end-of-text.
+    (
+        r"(?is)\b(we\s+are\s+an\s+equal\s+opportunity"
+        r"|equal\s+opportunity\s+(employer|workplace|statement)"
+        r"|all\s+qualified\s+applicants\s+will\s+receive\s+consideration"
+        r"|EEO\s+statement)"
+        r".*?(?=\n\s*\n|\Z)",
+        "[EEO]",
+    ),
+    # Benefits enumeration — section header on its own line, content until blank line
+    (
+        r"(?is)\n\s*\n\s*(BENEFITS|OUR\s+BENEFITS|WHAT\s+WE\s+OFFER|PERKS"
+        r"|PERKS\s+AND\s+BENEFITS|COMPENSATION\s+AND\s+BENEFITS"
+        r"|TOTAL\s+REWARDS|WHY\s+JOIN\s+US)\s*\n"
+        r".*?(?=\n\s*\n|\Z)",
+        "[BENEFITS]",
+    ),
+    # "About the company" / marketing intro section headers
+    (
+        r"(?is)\n\s*\n\s*(ABOUT\s+US|ABOUT\s+THE\s+COMPANY"
+        r"|WHO\s+WE\s+ARE|OUR\s+STORY|OUR\s+MISSION"
+        r"|OUR\s+COMPANY|COMPANY\s+OVERVIEW)\s*\n"
+        r".*?(?=\n\s*\n|\Z)",
+        "[ABOUT]",
+    ),
+    # Application instructions / recruiter accommodation language
+    (
+        r"(?is)\b(if\s+you\s+have\s+a\s+disability"
+        r"|to\s+apply\s+for\s+this\s+(role|position)"
+        r"|please\s+submit\s+your\s+application"
+        r"|how\s+to\s+apply"
+        r"|reasonable\s+accommodation)"
+        r".*?(?=\n\s*\n|\Z)",
+        "[APPLY]",
+    ),
+]
+_JD_BOILERPLATE_COMPILED = [
+    (__import__("re").compile(pat), tag) for pat, tag in _JD_BOILERPLATE_PATTERNS
+]
+
+
+def _compress_jd_for_stage2(jd: str) -> str:
+    """Strip boilerplate sections from a JD body, preserving substantive content.
+
+    Returns compressed JD body. If compression would reduce content below a
+    safety threshold (200 chars or 70% of original), returns the original
+    JD to guard against over-stripping. Section 14.4 spec, Wave-1.
+    """
+    if not jd or len(jd) < 400:
+        return jd  # too short to bother
+    compressed = jd
+    for pattern, tag in _JD_BOILERPLATE_COMPILED:
+        compressed = pattern.sub(f"\n{tag}\n", compressed)
+    # Safety check: if compression removed >70% of content or below 200 chars,
+    # something is wrong with the regex — fall back to original.
+    if len(compressed) < 200 or len(compressed) < len(jd) * 0.30:
+        return jd
+    return compressed
+
+
 def _role_block(role: Role, jd_max_chars: int = 16000) -> str:
     parts = [
         f"TITLE: {role.job_title}",
@@ -430,6 +498,12 @@ def _role_block(role: Role, jd_max_chars: int = 16000) -> str:
         parts.append(f"INDUSTRY: {role.industry}")
     jd = role.job_description_essence or role.job_description_full or ""
     if jd:
+        # Wave-1 Section 14.4: regex-strip boilerplate before truncation.
+        # When STAGE2_JD_COMPRESSION_ENABLED=False, the function is a no-op
+        # via the conditional below (defensive — _compress_jd_for_stage2 is
+        # also safe to call on any input).
+        if config.STAGE2_JD_COMPRESSION_ENABLED:
+            jd = _compress_jd_for_stage2(jd)
         parts.append(f"JOB_DESCRIPTION:\n{jd[:jd_max_chars]}")
     else:
         parts.append("JOB_DESCRIPTION: (not retrieved)")
@@ -762,16 +836,22 @@ async def stage2_triage(
 
     cached_content = None
     if use_cache:
-        # Try to create a context cache; fall back to inline system prompt
-        # v0.3.9: TTL bumped 3600s (1h) → 86400s (24h) per peer review.
-        # Same-day re-runs reuse the cache without paying creation cost
-        # again. Saves $0.03-0.05 per subsequent same-day run. The cache
-        # is keyed on profile (which rarely changes intra-day), so this
-        # is safe.
+        # Try to create a context cache; fall back to inline system prompt.
+        #
+        # v0.3.15 (P1.9): TTL CUT BACK from 86400s (24h) → 3600s (1h).
+        # The 24h TTL was added in v0.3.9 to enable same-day rerun cache
+        # hits, but the audit found the storage cost ($1/MTok-hour for
+        # Flash-family) was paying for 23 hours we didn't use — a typical
+        # search completes in ~20 minutes. At ~14K cached prompt tokens,
+        # 24h TTL costs ~$0.34/run in storage; 1h TTL costs ~$0.014.
+        # Within-run cache hits are unaffected (run finishes well under 1h).
+        # Same-day reruns lose the cache benefit but profile-build cache
+        # (P1.12) and JD score cache (P1.6) cover the cross-run reuse case
+        # at the role level, which is more directly tied to actual savings.
         cached_content = await client.create_cache(
             model=config.STAGE2_MODEL,
             system=system_prompt,
-            ttl_seconds=86400,
+            ttl_seconds=3600,
         )
 
         # PRE-WARM (v0.3.5.2): force Gemini to validate + propagate the cache

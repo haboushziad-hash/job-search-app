@@ -266,7 +266,7 @@ export default function Running() {
           <>
             <p className="text-sm text-base-400 mb-7">
               {progress < 100
-                ? "This will take 10–20 minutes. You can leave this screen open."
+                ? "This will take 20–30 minutes. You can leave this screen open."
                 : 'Done! Loading your results...'}
             </p>
 

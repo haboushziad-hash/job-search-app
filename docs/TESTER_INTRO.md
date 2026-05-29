@@ -11,9 +11,9 @@ proxy run audit + final smoke test.
 ```
 Hey — built a job-search tool I want you to try.
 
-You drop in your resume, it searches 16 job boards, scores every role
+You drop in your resume, it searches 24 job boards, scores every role
 1-100 against your background using GPT-class AI, and shows you which
-ones to actually apply to. Takes ~10 min per search.
+ones to actually apply to. Takes ~20-30 min per search.
 
 Free for you — no sign-up, no API keys, nothing to install except the
 app itself. I'm covering the AI cost during the pilot.
@@ -61,8 +61,8 @@ Every role gets scored 1-100 by a 4-stage AI cascade (embedding pre-filter
 a dashboard with STRONG / GOOD / MAYBE / STRETCH tiers, salary, location,
 and the LLM's reasoning for each role's score.
 
-Typical run: {TBD: 8-12} minutes, {TBD: 100-180} qualifying roles surfaced
-from {TBD: 3500-5000} scraped, {TBD: 25-35} STRONG matches.
+Typical run: 20-30 minutes, 130-280 qualifying roles surfaced
+from 3,700-4,600 scraped, 15-30 STRONG matches.
 
 What's free vs paid for you:
 
@@ -93,7 +93,7 @@ Heads up:
   - Updates apply automatically. You'll see a quick toast on next launch
     when I ship a fix.
 
-That's it. Should take ~5 minutes to install and ~10 minutes to run your
+That's it. Should take ~5 minutes to install and ~20-30 minutes to run your
 first search. Let me know what breaks.
 
 — Ziad

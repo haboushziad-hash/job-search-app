@@ -37,6 +37,8 @@ hidden_imports = [
     "httpx",
     "pydantic",
     "pydantic_core",
+    "multipart",            # python-multipart — required by FastAPI for Form() params (e.g., /profile/build)
+    "python_multipart",     # newer name some FastAPI versions look for
 ]
 
 # Bundle data files for packages that need them at runtime

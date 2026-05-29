@@ -253,7 +253,15 @@ async def profile_build(
     if arr_excluded:
         user_preferences["excluded_locations"] = arr_excluded
     if extra_context.strip():
-        user_preferences["freeform_context"] = extra_context.strip()
+        # v0.3.16-wave2a: cap freeform at 5000 chars (~750 words) so a user
+        # pasting 10 long JDs can't blow the prompt budget or distort the
+        # word-count tier in the system prompt. 5K leaves room for several
+        # pasted JDs plus targeting commentary; anything beyond that is
+        # truncated with an explicit marker so the LLM knows it's clipped.
+        _ff = extra_context.strip()
+        if len(_ff) > 5000:
+            _ff = _ff[:5000] + "\n[... freeform truncated at 5000 chars ...]"
+        user_preferences["freeform_context"] = _ff
 
     # Kick off the build asynchronously and return a build_id immediately.
     # The React frontend polls /profile/status/{id} for progress.
@@ -869,6 +877,159 @@ async def set_application_status(req: ApplicationStatusRequest) -> dict[str, Any
         notes=req.notes,
     )
     return {"ok": True, "role_id": role_id}
+
+
+# ============================================================================
+# v0.3.15 (P1.11) — Role event logging (behavioral signals)
+# ============================================================================
+# Append-only timeline of user interactions with role cards. Distinct from
+# /applications/status, which is the persistent "user's current relationship"
+# flag (saved/applied/hidden) that the app reads back later. This endpoint
+# captures the EVENT — the moment the click happened — even when status
+# toggles back to a prior state.
+#
+# Why both? The status change tells you the current relationship. The event
+# log tells you the SEQUENCE: did the user click visit_link before mark_applied?
+# Did they save first, then apply? Did they hide and then unhide? That sequence
+# is what enables the 70-application ground-truth validation referenced in
+# CUSTOM_MODEL_EXPLORATION.md.
+#
+# Event types fall into THREE categories. Only the first two are usable
+# signals for fit-quality analysis. Toggle-off events ("un-X") look like
+# negatives but conflate distinct scenarios — log them for sequence
+# integrity, do NOT treat them as analytical signals.
+#
+# === USABLE POSITIVE SIGNALS (for fit-quality validation) ===
+#   mark_applied      — STRONGEST    — user went through the apply flow AND came
+#                                      back to mark it. Multi-step commitment;
+#                                      highest action cost. Closest thing to
+#                                      ground-truth "good fit" the system has.
+#   visit_link        — MEDIUM-STRONG — user opened the posting. Genuine
+#                                      interest OR confirmation-of-disinterest
+#                                      OR curiosity. Lower commitment cost than
+#                                      mark_applied — visiting and then NOT
+#                                      applying is a common rejection pattern.
+#   save              — MEDIUM       — bookmarked for later. Explicit but
+#                                      uncommitted; many saves never convert.
+#
+# === USABLE OUTCOME SIGNALS (for application-pipeline tracking, NOT fit) ===
+#   update_app_stage  — implies prior mark_applied. Tells you what HAPPENED
+#                       after applying (interview / offer / rejected /
+#                       ghosted / withdrew). Useful for response-rate and
+#                       outcome analysis, but the stage is downstream of
+#                       fit — a STRONG-fit role can still get rejected, and
+#                       a STRETCH-fit role can still convert.
+#
+# === NOISE / DO NOT USE FOR ANALYSIS ===
+# These look like negatives but they conflate multiple scenarios:
+#   unmark_applied    — Could be: (a) genuine retraction of a misclick,
+#                       (b) post-rejection cleanup ("got denied, removing
+#                       from tracker"), (c) post-withdrawal cleanup, or
+#                       (d) post-acceptance cleanup. The dominant case is
+#                       probably (b)–(d), which say NOTHING about whether
+#                       the role was a good fit when it appeared.
+#   unsave            — Mind change after save. Could be lost interest OR
+#                       already-applied-cleanup OR dashboard hygiene.
+#   unhide            — Mind change after hide. Same conflation.
+#   hide              — AMBIGUOUS in the other direction: bad fit OR
+#                       already-rejected OR already-applied-elsewhere OR
+#                       seen-on-dashboard fatigue.
+#
+# These four event types ARE logged for sequence completeness — if the
+# downstream code wants to reconstruct "what state is this role in right
+# now?" it needs the full event timeline. But analytical/training pipelines
+# should EXCLUDE them when computing fit-quality signals.
+#
+# Stacking patterns (for 70-application validation and similar analyses):
+# Group events by role_url. Use only the USABLE signals above. Read the
+# sequence as a confidence ladder:
+#   saved only                          → weakest positive ("might apply later")
+#   visited only                        → ambiguous ("looked at it")
+#   saved + visited                     → stronger ("seriously considered")
+#   saved + visited + mark_applied      → STRONGEST positive (full funnel)
+#   mark_applied without prior visit    → applied via referral / external link
+#   visited + (no apply) + extended gap → ambiguous (could be lost interest
+#                                         OR genuine reject — can't tell)
+# Note: do NOT add unmark_applied / unsave to these patterns. They're noise.
+#
+# Persists to archive/role_events.jsonl (append-only). Each event is one
+# JSON line so the file is portable, greppable, and join-friendly.
+
+VALID_EVENT_TYPES = {
+    "visit_link",
+    "mark_applied",
+    "unmark_applied",
+    "save",
+    "unsave",
+    "hide",
+    "unhide",
+    "update_app_stage",
+}
+
+
+class RoleEventRequest(BaseModel):
+    event_type: str
+    role_url: str
+    role_id: Optional[int] = None
+    run_id: Optional[str] = None
+    profile_hash: Optional[str] = None
+    company: Optional[str] = None
+    job_title: Optional[str] = None
+    final_score: Optional[int] = None
+    final_tier: Optional[str] = None
+    stage2_score: Optional[int] = None
+    stage3_score: Optional[int] = None
+    application_stage: Optional[str] = None  # only used for update_app_stage
+    source: Optional[str] = None  # 'role_card' / 'detail_view' / 'list' / etc.
+
+
+@app.post("/applications/event")
+async def log_role_event(req: RoleEventRequest) -> dict[str, Any]:
+    """Log a role-interaction event to archive/role_events.jsonl.
+
+    Fire-and-forget by design: failures MUST NOT block the user's flow.
+    Returns ok=True even on write failure (with a flag the frontend can
+    optionally surface as a soft warning).
+    """
+    import json as _json
+    import time as _time
+
+    if req.event_type not in VALID_EVENT_TYPES:
+        # Don't reject — log it as 'unknown' with the value preserved so we
+        # can audit what the frontend tried to send.
+        event_type = f"unknown:{req.event_type[:64]}"
+    else:
+        event_type = req.event_type
+
+    event = {
+        "event_type": event_type,
+        "timestamp": _time.time(),
+        "iso_time": _time.strftime("%Y-%m-%dT%H:%M:%SZ", _time.gmtime()),
+        "role_url": req.role_url,
+        "role_id": req.role_id,
+        "run_id": req.run_id,
+        "profile_hash": req.profile_hash,
+        "company": req.company,
+        "job_title": req.job_title,
+        "final_score": req.final_score,
+        "final_tier": req.final_tier,
+        "stage2_score": req.stage2_score,
+        "stage3_score": req.stage3_score,
+        "application_stage": req.application_stage,
+        "source": req.source,
+    }
+
+    try:
+        from backend.config import config as _cfg
+        events_path = _cfg.ARCHIVE_DIR / "role_events.jsonl"
+        events_path.parent.mkdir(parents=True, exist_ok=True)
+        with events_path.open("a", encoding="utf-8") as f:
+            f.write(_json.dumps(event, default=str))
+            f.write("\n")
+        return {"ok": True}
+    except Exception as e:
+        # Don't fail the click — just note the write failure
+        return {"ok": True, "logged": False, "error": str(e)[:200]}
 
 
 # ============================================================================

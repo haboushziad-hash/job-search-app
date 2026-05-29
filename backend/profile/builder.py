@@ -22,6 +22,7 @@ from typing import Any, Callable, Optional
 
 from backend.config import config
 from backend.models import CandidateProfile, Keyword, ResumeMetadata
+from backend.profile import profile_cache
 from backend.profile.resume_parser import parse_resume
 from backend.scoring.llm_client import LLMClient, get_llm_client
 
@@ -29,6 +30,119 @@ from backend.scoring.llm_client import LLMClient, get_llm_client
 # Progress reporting — called from inside build_profile_from_resumes
 # at each meaningful stage. callback(percent: int, stage: str) → None.
 ProgressCallback = Callable[[int, str], None]
+
+
+# Wave-2A specialized-sampling directives (v0.3.16-wave2a-r4, 2026-05-29):
+# Each of the 3 Gemini draft samples reads the FULL resume + freeform but
+# produces keywords through a different analytical lens. Designed so that
+# every sample sees EVERY section (summary, experience, skills, education,
+# projects, certifications) — only the OUTPUT ANGLE differs. No information
+# is excluded from any sample. The merge step (Opus) sees all 3 lenses and
+# synthesizes the union. Replaces the prior "3 identical samples at temp
+# 0.5" random-diversity design with deliberate cognitive-frame diversity.
+
+PROFILE_LENS_DIRECTIVES = [
+    # Sample 1: Identity & Trajectory
+    """LENS FOR THIS GENERATION — IDENTITY & TRAJECTORY:
+You have just read the candidate's ENTIRE resume (summary, experience,
+skills, education, projects, certifications) plus any freeform context.
+For this generation, produce the keyword set through the lens of WHO THIS
+PERSON IS PROFESSIONALLY. Anchor on:
+  • Current job title + sustained career theme across roles
+  • The broadest accurate description of what they do day to day
+  • Years of relevant experience and seniority pattern
+  • Career-pivoter handling — if the candidate has multiple distinct
+    careers in their history (e.g., changed industries or functions),
+    weight the most recent 2-3 roles MUCH more heavily than earliest
+    role or original degree. Example: a Business graduate now consulting
+    in AI targets AI Strategy / AI Enablement roles, NOT generic Business
+    Analyst roles. Their degree is not predictive of their next role.
+  • Education weighting — matters MORE for recent grads (under ~3 years
+    of work experience) and LESS for mid-career professionals with
+    established trajectories. Do not derive keywords from a stale degree.
+This lens produces identity-anchored, function-core OUTPUT. Not edge
+cases, not directional guesses — the central spine of who they are.
+
+APPLY TO BOTH LISTS:
+  • Tier 1/2/3 keywords: identity-anchored job titles (e.g.,
+    "AI Strategy Consultant", "Senior Consultant, AI Strategy",
+    "Management Consultant, AI", "AI Enablement Lead").
+  • search_terms (the broad upstream-API phrases): the lowercase
+    concept phrases that describe the candidate's core function
+    (e.g., "AI strategy", "AI enablement", "AI consulting",
+    "change management", "management consulting"). Aim for 5-7
+    search_terms from this lens.""",
+
+    # Sample 2: Specialization & Expertise
+    """LENS FOR THIS GENERATION — SPECIALIZATION & EXPERTISE:
+You have just read the candidate's ENTIRE resume (summary, experience,
+skills, education, projects, certifications) plus any freeform context.
+For this generation, produce the keyword set through the lens of UNIQUE
+TECHNICAL OR DOMAIN EXPERTISE that distinguishes this candidate from
+others with the same job title. Anchor on:
+  • Named tools, frameworks, languages, platforms (Python, NIST AI RMF,
+    Power Automate, Tableau, specific cloud platforms, etc.)
+  • Certifications and named training programs
+  • Domain knowledge that's specifically named (regulated industries,
+    specific compliance frameworks, sector specializations)
+  • UNIQUE COMBINATIONS of skills that make this candidate rare in market
+    — e.g., "Python + AI Governance + Federal" is a much rarer profile
+    than any of those alone, and that combination opens specialized
+    keyword variants others would miss
+  • Specialized methods, named projects, research contributions
+This lens produces specialization-anchored OUTPUT. Niche role variants
+and combo-skill roles others won't surface. Not generic role titles, not
+broad career anchors — the things that make this candidate stand out.
+
+APPLY TO BOTH LISTS:
+  • Tier 1/2/3 keywords: specialization-anchored job titles (e.g.,
+    "M365 Copilot Lead", "GenAI Program Manager", "AI Risk
+    Management Specialist", "Federal AI Strategy Consultant",
+    "NIST AI RMF Analyst", "Responsible AI Lead").
+  • search_terms (the broad upstream-API phrases): the lowercase
+    tool/framework/specialization phrases that capture rare combos
+    (e.g., "Copilot enablement", "NIST AI RMF", "GenAI strategy",
+    "responsible AI", "AI risk management", "federal AI"). Aim for
+    4-6 search_terms from this lens — these catch roles that broader
+    function-phrases would miss.""",
+
+    # Sample 3: Direction & Intent
+    """LENS FOR THIS GENERATION — DIRECTION & INTENT:
+You have just read the candidate's ENTIRE resume (summary, experience,
+skills, education, projects, certifications) plus any freeform context.
+For this generation, produce the keyword set through the lens of WHERE
+THIS CANDIDATE IS STEERING NEXT. Anchor on:
+  • Compare recent jobs vs earlier jobs — what direction is the
+    trajectory pointing?
+  • What does the resume SUMMARY section explicitly emphasize as
+    "focus" or "expertise"?
+  • What does the FREEFORM context (if present) state explicitly about
+    target roles, target industries, or stated preferences?
+  • Recent education or research projects often signal pivot intent
+    (a Master's in progress = likely targeting that field)
+  • Transition language in the resume: "expanding into", "pivoting to",
+    "now focused on", "leading initiatives in", "pursuing", "specializing
+    in" — explicitly states direction. Heavily weight these signals.
+  • Negative signals in freeform ("avoid X", "moving away from Y") —
+    always respected at full strength regardless of length
+This lens produces forward-looking OUTPUT matching the FUTURE state
+being targeted, not just the past being described. Bias toward where
+they're going, not where they've been.
+
+APPLY TO BOTH LISTS:
+  • Tier 1/2/3 keywords: forward-looking, pivot-aware job titles
+    (e.g., "Director of AI Strategy" — if trajectory points there,
+    "AI Transformation Lead", "AI Advisor", "Head of AI Enablement",
+    "Principal Consultant, AI").
+  • search_terms (the broad upstream-API phrases): the lowercase
+    pivot/direction phrases captured from summary emphasis + freeform
+    + recent transitions (e.g., "AI transformation", "AI program
+    management", "AI governance lead", "AI policy", "AI advisor",
+    "technology adoption"). Aim for 4-6 search_terms from this lens.
+
+NEGATIVE SIGNALS in freeform context ("avoid X", "moving away from Y")
+are RESPECTED ACROSS BOTH LISTS at full strength regardless of length.""",
+]
 
 
 PROFILE_BUILDER_PROMPT = """\
@@ -52,35 +166,200 @@ roles they're TARGETING are titled "AI Enablement Lead" and "AI Adoption
 Manager," generate the latter — not the former.
 
 ============================================================
-INPUT TYPES — HOW TO USE EACH
+INPUT TYPES — HOW TO WEIGHT EACH
 ============================================================
 
-1. RESUME(S) — "Who they are"
-   Use ONLY for: technical_skills, domain_expertise, years_experience,
-   headline, soft_skills. NOT for keyword generation directly.
+1. RESUME(S) — IDENTITY BASE (primary keyword signal)
+   Read the FULL resume. Multiple sections each contribute meaningfully
+   to keyword generation. Weight them together — do NOT over-anchor on
+   any one part:
+
+   • SUMMARY / HEADLINE at top: ONE strong signal for how the candidate
+     presents themselves. Treat it as one anchor among several — NOT
+     the sole source of truth. A summary's word choice is style; the
+     body bullets describe reality.
+   • CURRENT JOB TITLE + EMPLOYER: strongest single signal for what
+     employers will offer them at market. A "Senior Consultant at Booz
+     Allen (Defense Division)" anchors the employer-vocabulary baseline.
+   • BODY BULLETS describing actual work: drives keyword authenticity.
+     If body says "led AI enablement program from scratch," that is at
+     LEAST as strong as summary phrasing — often stronger.
+   • SKILLS SECTIONS (technical, domain, AI Enablement, certifications):
+     named anchors. A "Domain Knowledge: AI governance, NIST AI RMF,
+     federal policy" line is direct keyword fuel.
+   • EDUCATION + RESEARCH PROJECTS: secondary anchors that fill in
+     specialization gaps the body may not cover.
+
+   ALL OF THESE TOGETHER drive the keyword set. Resumes from the same
+   candidate framed differently should still produce ≥80% overlapping
+   keywords — because identity is in the BODY, not the summary phrasing.
+
    Multiple resumes are different framings of the same candidate; UNION
    the targets, don't average.
 
-2. USER PREFERENCES — "Hard requirements"
-   Filter criteria: salary, locations, work arrangements. Not signals.
+2. USER PREFERENCES — HARD REQUIREMENTS (filters, not signals)
+   Filter criteria: salary, locations, work arrangements. Apply as
+   constraints; do NOT use these as keyword inputs.
 
-3. USER FREEFORM CONTEXT — "What roles they ACTUALLY WANT" (HIGHEST WEIGHT)
-   This is where keywords come from. Specifically:
+3. USER FREEFORM CONTEXT — DIRECTIONAL REFINEMENT (effort-proportional)
+   When provided, freeform context steers what the candidate is actively
+   targeting NOW. It refines the resume-based identity; it does NOT
+   replace it. A short freeform should never erase the resume's job title
+   or established skills.
 
-   a) Stated targets ("I'm targeting X" / "I want roles like Y") → Tier 1.
-   b) Pasted JDs ("I love roles like this") → extract title patterns + put
-      Tier 1 variants in keywords. Use the JD's emphasis to seed
-      target_functions.
-   c) "Avoid X" / "moving away from Y" → negative_signals. NEVER tier those
-      areas as Tier 1, even if the resume describes them.
-   d) Industry/seniority/company-size preferences → target_industries,
-      target_seniority.
+   WEIGHTING BY EFFORT — use the [Word count: N] header on the freeform
+   block to decide:
 
-   FREEFORM CONTEXT OVERRIDES RESUME for keyword generation.
+   • SHORT/VAGUE (<15 words, e.g. "AI roles" or "consulting jobs"):
+     Treat as a HINT. Resume remains the primary keyword source. Use
+     freeform to nudge tier ordering by 10-20% at most. DO NOT let
+     a 3-word freeform dominate a 4,000-character resume.
+
+   • MEDIUM EFFORT (15-50 words, names role types or industries):
+     Treat as STRONG REFINEMENT. Freeform should drive ~30-40% of the
+     keyword set. Resume identity drives the remaining ~60-70%.
+
+   • HIGH EFFORT (50+ words, names specific titles / companies, or
+     includes pasted JDs): Treat as PRIMARY TARGETING. Freeform drives
+     ~50-60% of keywords. Resume provides confirming context and
+     skill-set grounding.
+
+   NEGATIVE SIGNALS in freeform ("avoid X", "moving away from Y",
+   "not interested in Z"): ALWAYS respected at full strength regardless
+   of length. A single "avoid sales roles" sentence excludes sales
+   keywords entirely.
+
+   PASTED JOB DESCRIPTIONS in freeform — DETECT AND HANDLE SEPARATELY:
+
+   A JD pasted in freeform represents ONE specific role the candidate
+   liked, NOT their full targeting strategy. Inflating it to "primary
+   targeting" via raw word count would skew the keyword set toward one
+   company/team/role and bury the candidate's broader identity.
+
+   DETECTION — treat the freeform as containing a pasted JD if you see
+   ANY of these markers:
+     • Section headers: "Responsibilities:", "Qualifications:", "What
+       You'll Do:", "What You'll Bring:", "About the Role:", "About
+       Us:", "About [Company]:", "Requirements:", "Preferred Skills:"
+     • Compliance phrases: "Equal Opportunity Employer", "EEO", "drug
+       test", "background check required"
+     • Compensation phrases: "salary range", "$XXX,XXX - $XXX,XXX",
+       "competitive salary and benefits"
+     • Years-of-experience requirements: "X+ years of experience in",
+       "Bachelor's degree required"
+     • Bulleted skill lists that look extracted vs. authored
+
+   WHEN DETECTED — handle like this:
+     1) TREAT THE JD AS A ROLE EXAMPLE, NOT AUTHORITATIVE DIRECTION.
+        The candidate likes the role TYPE; they are not pivoting their
+        entire identity to that exact company/team.
+     2) EXTRACT THE JD'S TITLE → generate Tier 1 variants of that title
+        and related concept variants (a "Customer Success Manager"
+        pasted JD → Tier 1: Customer Success Manager, Customer Success
+        Lead, Senior Customer Success Manager).
+     3) EXTRACT KEY REQUIRED-SKILL VOCABULARY → add as Tier 2 keywords
+        only if they align with the resume's existing skill set.
+     4) IGNORE company-specific framing (team name, internal jargon,
+        product names) — these are noise, not keyword signals.
+     5) DO NOT let JD content override the candidate's resume-derived
+        identity. If the resume shows a Senior AI Strategist and the
+        pasted JD is for a Junior Marketing Coordinator, the candidate
+        is curious about that role but their identity is still the AI
+        Strategist — generate BOTH keyword clusters, weight by their
+        resume identity primarily.
+     6) FOR WORD-COUNT TIER WEIGHTING — subtract estimated JD length
+        (typically 300-800 words) from the freeform total before
+        applying the short/medium/long tier rule. If the ONLY content
+        after subtracting JDs is short/vague, treat as the SHORT tier.
+
+   MULTIPLE PASTED JDs — extract the COMMON title pattern across them.
+   If all 3 pasted JDs are "Customer Success Manager" at different
+   companies, the candidate clearly wants that role family — generate
+   the full variant set. If JDs span unrelated roles, the candidate is
+   exploring; weight each less.
+
+   ANNOTATED EXAMPLE:
+     Freeform input (450 words):
+       "I really like roles like this:
+        About PagerDuty: PagerDuty is a global leader...
+        Responsibilities: Lead onboarding for enterprise customers...
+        Qualifications: 5+ years in Customer Success...
+        Equal Opportunity Employer"
+
+     Word-count raw: 450 → would naively → "primary targeting" tier
+     JD detected (4 markers): YES
+     Subtract JD length (~430 words) → effective freeform: ~20 words
+     ("I really like roles like this:")
+     Apply: SHORT/HINT tier weighting on the candidate's overall
+     direction + extract Tier 1 keywords for "Customer Success Manager"
+     family ONLY.
+
+   Summary of intent: freeform REFINES the resume. Resume REMAINS the
+   identity base. A user with a great resume and empty freeform should
+   still get a great keyword set.
 
 ============================================================
 KEYWORD GENERATION PRINCIPLES
 ============================================================
+
+PRINCIPLE 0: KEYWORDS ARE SEARCH QUERIES — THINK LIKE THE SEARCHER
+
+Every keyword you generate will be sent to job-board search APIs
+(LinkedIn, Indeed, Google Jobs, Greenhouse, Workday, etc.). Job
+postings the candidate would actually want and qualify for ONLY enter
+the scoring pipeline if a keyword surfaces them. Keywords are the
+funnel — too narrow and the candidate sees nothing; too broad and
+the funnel is wasted on noise.
+
+For EACH keyword you propose, mentally simulate typing it into a job
+board's search bar. Ask three questions:
+
+  (a) QUALIFY — would the top 30 results be roles this candidate could
+      actually get an interview for? (right seniority, right skill
+      set, right industry, right years of experience?)
+
+  (b) WANT — would the top 30 results be roles this candidate would
+      actively apply to? (matches target_functions, target_industries,
+      salary minimum, location, work arrangement, negative signals?)
+
+  (c) VOLUME — is the result count in a usable range?
+      • Too few (<10 results on a major board) → keyword too narrow,
+        won't surface enough variants
+      • Too many (>500 results, mostly off-target) → keyword too broad,
+        wastes scoring budget on noise
+      • Sweet spot: 30-200 candidate-relevant results per keyword
+
+If keyword passes ALL THREE → include at appropriate tier.
+If keyword fails (a) → drop, or refine to candidate's seniority level.
+If keyword fails (b) → drop, or replace with closer variant.
+If keyword fails (c) too narrow → broaden naming variant ("AI Lead"
+  may be too narrow; add "AI Enablement Lead", "AI Strategy Lead").
+If keyword fails (c) too broad → add a qualifier ("Consultant" alone
+  is too broad; "Federal AI Consultant" narrows it usefully).
+
+TENSION WITH BROAD-NOISE SUPPRESSION (PRINCIPLE 3) — resolve as follows:
+A keyword can be SPECIFIC (low ambiguity) yet still SURFACE GOOD VOLUME.
+Those are PRECISION KEYWORDS — keep them. Examples:
+  • "M365 Copilot Lead" — narrow naming but pulls 30-50 high-relevance
+    Microsoft-shop roles. KEEP. Not "broad noise."
+  • "GenAI Program Manager" — specific naming convention some employers
+    use instead of "AI Program Manager." Different result set. KEEP.
+  • "AI Enablement Specialist" — IC-level variant of "AI Enablement
+    Lead." Different employer naming. Different result set. KEEP.
+  • "Federal AI Consultant" — narrows the broad "Consultant" by
+    qualifier. KEEP.
+
+"Broad noise" only applies to keywords that match many WRONG-FUNCTION
+roles (Innovation Manager pulls R&D + product + marketing + sales);
+NOT to keywords that match few but highly-targeted roles.
+
+TENSION WITH COVERAGE BREADTH — for each Tier 1 concept the candidate
+clearly targets, the keyword set should include the 3-4 main employer
+naming variants (Lead / Manager / Specialist / Consultant + senior
+variants where seniority fits). Different boards return different
+result sets for different variants — "AI Enablement Lead" and "AI
+Enablement Specialist" surface DIFFERENT JOBS. Coverage of variants
+multiplies funnel volume without losing relevance.
 
 PRINCIPLE 1: TITLE-NAMING VARIATIONS
 For each target concept, generate the realistic naming variations employers
@@ -101,6 +380,26 @@ actually use. Most concepts have 3-5 variants:
 
 DO NOT just pick one variant — coverage matters. "AI Enablement Specialist"
 and "AI Enablement Lead" are different searches with different result sets.
+
+PRINCIPLE 1.5: SECTION-HEADING INDIFFERENCE (resume robustness)
+Skill content carries the same weight regardless of which section header
+it appears under. A candidate whose AI enablement skills are listed under
+"AI & Automation" on one resume and under "Process & Delivery" on another
+is the SAME candidate with the SAME identity — extract the same keywords.
+
+  - Do NOT under-weight skills just because their section header is
+    generic ("Tools") or missing entirely.
+  - Do NOT over-weight skills just because they have a dedicated heading
+    ("AI Enablement & Change"). The heading is presentation; the content
+    is identity.
+  - If two resumes from the same candidate have different section
+    structures, generate ≥80% overlapping keywords. Headers shift; the
+    underlying skills and job history do not.
+
+This rule prevents a renamed/merged section heading from silently dropping
+keywords. (Addresses observed regression where removing "Research &
+Consulting" as a section heading caused all consultant-anchored keywords
+to disappear, even though the candidate is still a consultant.)
 
 PRINCIPLE 2: USE EMPLOYER VOCABULARY
 Common employer-side title patterns:
@@ -131,7 +430,39 @@ or resume explicitly names them as a target:
   - "ML Engineer" / "Machine Learning Engineer"
   - "Data Engineer" / "Data Scientist"
   - "Workflow Optimization Specialist" / "Process Improvement"
+  - "Business Transformation Lead" / "Business Transformation Consultant"
+    (matches huge non-AI consulting populations; only include if user's
+    resume body or freeform explicitly names "business transformation"
+    as a target FUNCTION, not just adjacent vocabulary)
+  - "Digital Transformation Lead" / "Digital Transformation Manager"
+    (pulls thousands of generic IT-modernization roles; only include
+    if user's resume body or freeform explicitly names "digital
+    transformation" as a target FUNCTION — not just an adjacent skill)
+  - "Innovation Manager" / "Innovation Lead" / "Innovation Consultant"
+    (matches R&D, product innovation, marketing innovation — all
+    different functions; only include if user is explicitly an
+    innovation specialist by current job title or stated target)
+  - "AI Communication Lead" / "AI Communications Manager" / similar
+    "AI + Communications" combos
+    (typically employers post the same work as "AI Enablement Manager"
+    or "AI Adoption Lead", which describe it more concretely; only
+    include if the candidate has explicit communications-focused
+    experience in their resume AND the freeform context or recent role
+    titles name communications-AI as a target. A general AI-strategy
+    candidate should get the Enablement/Adoption variants instead;
+    a comms-focused candidate pivoting to AI should get this term.)
   - Single-word generics: "AI", "consultant", "manager", "engineer"
+
+NOTE ON THE BLACKLIST — NO ENTRY IS UNIVERSALLY FORBIDDEN. Every entry
+above is subject to the "INCLUDE THEM IF" rule below. The blacklist
+encodes "noise-prone by default for the typical candidate" — not
+"never generate this term for anyone." A Data Engineer targeting Data
+Engineer roles SHOULD get that keyword in Tier 1; a Director of
+Business Transformation SHOULD get "Business Transformation Lead" in
+Tier 1; a Comms Director pivoting to AI SHOULD get "AI Communication
+Lead." Apply the conditional logic carefully — the blacklist exists to
+protect candidates from off-target noise, not to suppress legitimate
+career targeting.
 
 INCLUDE THEM if any of these is true:
   - The candidate's freeform context names the role explicitly
@@ -937,6 +1268,33 @@ async def build_profile_from_resumes(
     if not parsed_resumes:
         raise ValueError("No readable resume content. Check file paths and formats.")
 
+    # v0.3.15 (P1.12): cache lookup BEFORE any LLM calls. Profile build runs
+    # 3 Gemini Pro samples + 1 Claude Opus = ~$0.50-0.92 per build. If the
+    # user rebuilds with identical resume + preferences (common during
+    # testing iteration), there's no value in regenerating from scratch.
+    # Cache key includes resume text + prefs + prompt version + model
+    # versions, so any meaningful input change automatically invalidates.
+    try:
+        _cache_key = profile_cache.compute_cache_key(
+            parsed_resumes=parsed_resumes,
+            user_preferences=user_preferences,
+        )
+        _cached = profile_cache.lookup(_cache_key)
+        if _cached:
+            _report(95, "Reusing cached profile (no inputs changed)")
+            try:
+                cached_profile = CandidateProfile.model_validate(_cached)
+                _report(100, "Profile ready (cache hit)")
+                return cached_profile
+            except Exception:
+                # Cached dict couldn't deserialize — schema drift likely.
+                # Fall through to fresh build; the new result will REPLACE
+                # the stale cache entry below.
+                pass
+    except Exception:
+        # Cache lookup must never fail the build path.
+        _cache_key = None
+
     _report(8, "Resumes parsed — preparing AI generations")
 
     # 2. Build the prompt
@@ -949,10 +1307,28 @@ async def build_profile_from_resumes(
         excerpt = text[:8000]
         user_message_parts.append(f"=== RESUME {i}: {filename} ===\n{excerpt}\n")
 
+    # Wave-2A profile-builder stability (2026-05-29):
+    # Separate freeform_context from hard-requirement preferences so the LLM
+    # treats them at different weights per the system-prompt's INPUT TYPES
+    # section. Lumping them together previously made freeform indistinguish-
+    # able from `salary_minimum: 130000` to the model. Now freeform gets its
+    # own labeled section + a [Word count: N] header the prompt uses for
+    # effort-proportional weighting (short = hint, medium = refinement,
+    # long = primary targeting).
     if user_preferences:
-        user_message_parts.append("\n=== USER PREFERENCES ===")
-        for k, v in user_preferences.items():
-            user_message_parts.append(f"  {k}: {v}")
+        _prefs_copy = dict(user_preferences)  # do NOT mutate caller's dict
+        _freeform = _prefs_copy.pop("freeform_context", None)
+
+        if _prefs_copy:
+            user_message_parts.append("\n=== HARD REQUIREMENTS (filters, not signals) ===")
+            for k, v in _prefs_copy.items():
+                user_message_parts.append(f"  {k}: {v}")
+
+        if _freeform:
+            _wc = len(str(_freeform).split())
+            user_message_parts.append("\n=== USER FREEFORM CONTEXT (directional refinement) ===")
+            user_message_parts.append(f"[Word count: {_wc}]")
+            user_message_parts.append(str(_freeform))
 
     # Inject closed-loop market intelligence (sibling-folder + own past runs).
     # Empty string for first-time users; a block of "real titles seen for
@@ -1071,6 +1447,15 @@ async def build_profile_from_resumes(
         search_terms=search_terms,
         resumes=resume_meta,
     )
+
+    # v0.3.15 (P1.12): persist to profile-build cache so an identical
+    # rebuild is free next time. Key was computed at the top of this
+    # function from inputs that haven't changed during the build.
+    if _cache_key:
+        try:
+            profile_cache.store(_cache_key, profile.model_dump(mode="json"))
+        except Exception:
+            pass  # cache write failures shouldn't fail the build
 
     return profile
 
@@ -1248,15 +1633,22 @@ async def _stage1_diversity_sampling(
     tasks: list[Any] = []
     labels: list[str] = []
 
-    # 3 Gemini Pro samples at temp 0.5 for diversity
+    # 3 Gemini Pro samples — each reads the full resume + freeform but
+    # produces keywords through a different analytical lens (Identity /
+    # Specialization / Direction). Diversity is DESIGNED, not random:
+    # each sample's $0.05 buys complementary signal rather than redundant
+    # output. The merge step (Opus) unions the 3 lens outputs.
+    _lens_labels = ["Identity", "Specialization", "Direction"]
     for i in range(config.PROFILE_BUILD_SAMPLES):
+        lens_directive = PROFILE_LENS_DIRECTIVES[i % len(PROFILE_LENS_DIRECTIVES)]
         tasks.append(
             _gemini_sample(
                 gemini_client, prompt, sample_idx=i,
                 cached_content=cached_handle,
+                lens_directive=lens_directive,
             )
         )
-        labels.append(f"Gemini-Pro-{i + 1}")
+        labels.append(f"Gemini-Pro-{i + 1}-{_lens_labels[i % 3]}")
 
     # 1 Claude Opus sample (cross-model). Anthropic caching is a separate
     # mechanism — not piggybacking on Gemini's cache handle.
@@ -1291,24 +1683,45 @@ async def _gemini_sample(
     prompt: str,
     sample_idx: int = 0,
     cached_content: Any = None,
+    lens_directive: Optional[str] = None,
 ) -> Optional[dict]:
     """Single Gemini Pro generation at the configured temperature.
 
     cached_content (v0.3.5): when provided, the system prompt is served from
     Gemini's context cache (~50% input-token discount) instead of being sent
     inline on every call. Pass None to disable caching for this call.
+
+    lens_directive (v0.3.16-wave2a-r4): optional analytical lens appended to
+    the user message so this sample produces keywords through a specific
+    cognitive frame (Identity, Specialization, or Direction). The base
+    system prompt stays cached and shared across samples — only the user
+    message changes per sample, preserving the 90% input discount on the
+    cached system prompt while still producing diverse output.
     """
     try:
         # Each sample uses its own current_stage tag for cost-tracker visibility
         original_stage = getattr(client, "current_stage", "profile_build")
         client.current_stage = f"profile_build_gemini_{sample_idx + 1}"  # type: ignore[attr-defined]
+
+        # Append the lens directive to the user message (not the system
+        # prompt) so the cached system prompt stays shared across all 3
+        # samples. Each sample's directive becomes the LAST thing the model
+        # sees before generating — strong attention weight on the lens.
+        effective_prompt = prompt
+        if lens_directive:
+            effective_prompt = (
+                f"{prompt}\n\n"
+                f"{'=' * 60}\n"
+                f"{lens_directive}"
+            )
+
         response = await client.complete(
             model=config.PROFILE_BUILD_MODEL,
             # When the cache is in play, drop the inline system instruction —
             # the cache handle already carries it. (Mirrors the stage2_triage
             # pattern for the same reason.)
             system=None if cached_content else PROFILE_BUILDER_PROMPT,
-            user=prompt,
+            user=effective_prompt,
             max_output_tokens=8192,
             temperature=config.PROFILE_BUILD_TEMPERATURE,
             json_schema=_RESPONSE_SCHEMA,
@@ -1363,19 +1776,72 @@ async def _claude_sample(gemini_client, prompt: str) -> Optional[dict]:
 
 PROFILE_SYNTHESIS_PROMPT = """\
 You are the senior reviewer synthesizing multiple expert keyword lists for
-the same candidate. You will receive 3-4 independently-generated drafts
-(some from Gemini Pro at varied temperatures, one from Claude Opus). Your
-job is to merge them into the SINGLE BEST final list.
+the same candidate. You will receive 3-4 independently-generated drafts.
+
+DRAFT STRUCTURE (v0.3.16-wave2a-r4):
+  - The 3 Gemini drafts are produced through DIFFERENT ANALYTICAL LENSES:
+      * Sample 1 — IDENTITY & TRAJECTORY lens: who they are professionally,
+        their career-core function and identity. Anchored on current title
+        and sustained theme. (Career-pivoter aware — weights recent roles
+        heavier than original degree.)
+      * Sample 2 — SPECIALIZATION & EXPERTISE lens: unique technical and
+        domain expertise. Named tools, certifications, rare skill
+        combinations. Distinguishing depth.
+      * Sample 3 — DIRECTION & INTENT lens: where they're steering NEXT.
+        Recent trajectory, summary emphasis, freeform statements, transition
+        language. Forward-looking.
+  - The 1 Claude Opus draft is produced WITHOUT a lens directive — a holistic
+    independent read.
+  - Each draft READ THE FULL RESUME — they differ only in OUTPUT ANGLE,
+    not in input coverage. None of them missed sections because of narrow
+    input.
+
+HOW THE LENSES SHOULD INFORM YOUR MERGE (applies to BOTH keywords AND
+search_terms — each lens contributes to both lists):
+  - Identity lens shows the SPINE: core function keywords + core function
+    search_terms. Almost certain to be right. Heavy weight.
+  - Specialization lens fills in the NICHE: combo-skill role variants in
+    keywords + tool/framework/specialization phrases in search_terms.
+    Use to expand coverage at Tier 1-2 keywords AND extend search_terms
+    with terms broad concept phrases miss (e.g., "Copilot enablement"
+    vs broader "AI enablement" — both belong in search_terms).
+  - Direction lens captures the FUTURE state: pivot-aware job titles in
+    keywords + forward-state phrases in search_terms. Critical when
+    candidate is pivoting — Identity lens shows "what they were",
+    Direction lens shows "what they want next." Union both.
+  - Claude Opus draft is the independent sanity check — when Opus disagrees
+    with all 3 Geminis on a keyword OR search_term, take that signal
+    seriously.
+
+SEARCH_TERMS MERGE SPECIFICALLY:
+  - search_terms is the upstream-API funnel mouth for 24+ scrapers.
+    Coverage breadth matters more than tight curation here.
+  - UNION search_terms across all 3 lenses + Opus. Aim for 14-18 total
+    search_terms in the final output (vs 8-12 originally specified) —
+    this accommodates the 3-lens architecture producing complementary
+    phrases.
+  - Deduplicate semantically equivalent phrases ("AI strategy" and "AI
+    strategic" → keep one). Keep variants that surface different result
+    sets ("AI enablement" and "Copilot enablement" are NOT duplicates —
+    keep both).
+  - search_terms should cover: core function (Identity lens), tool +
+    specialization phrases (Specialization lens), and direction phrases
+    (Direction lens). If the final list is missing any of these three
+    angles, pull from the contributing lens draft.
 
 ============================================================
 SYNTHESIS PRINCIPLES
 ============================================================
 
 1. CONSENSUS = HIGH CONFIDENCE
-   Keywords appearing in 3+ drafts are almost certainly correct. KEEP.
-   Keywords appearing in 2 drafts are likely correct. KEEP at appropriate tier.
-   Keywords in only 1 draft — judge case-by-case using all the principles
-   below.
+   Keywords appearing in 3+ drafts (or in 2 drafts including Opus) are
+   almost certainly correct. KEEP at Tier 1.
+   Keywords appearing in 2 Gemini drafts are likely correct. KEEP at
+   appropriate tier.
+   Keywords in only 1 draft — judge using lens context: a Direction-lens
+   keyword absent from Identity may still be RIGHT if it's a future
+   targeting signal; a Specialization-lens keyword absent from Direction
+   may still be RIGHT for the candidate's depth signal.
 
 2. MISSING TITLE-NAMING VARIANTS — FILL THEM IN
    For each Tier 1 concept (e.g., "AI Enablement"), ensure ALL reasonable
@@ -1540,6 +2006,115 @@ SYNTHESIS PRINCIPLES
    best information across drafts. Don't just pick one. Where drafts
    disagree, pick the version that most matches the candidate's stated
    freeform context.
+
+============================================================
+ADDITIONAL MERGE PRINCIPLES (v0.3.16-wave2a-r8) — IMPORT FROM BUILDER PROMPT
+============================================================
+
+Apply each of these at merge time. The Gemini drafts were generated under
+these principles; do not relax them when synthesizing.
+
+9. SEARCH-QUERY EMPATHY (Builder Prompt PRINCIPLE 0)
+   For every keyword AND every search_term you include in the final output,
+   mentally simulate sending it to a job-board search API. Ask:
+     (a) QUALIFY — would top 30 results be roles this candidate could get?
+     (b) WANT — would top 30 results be roles this candidate would apply to?
+     (c) VOLUME — is the result count 30-200 candidate-relevant roles?
+   If a keyword from any draft fails all three, drop it. If multiple drafts
+   agreed on a keyword but it fails the search-empathy test, still drop it
+   — consensus on a bad keyword doesn't make it good.
+
+   PRECISION KEYWORDS ARE NOT NOISE. A keyword that's narrow but returns
+   30-50 high-relevance roles (e.g., "M365 Copilot Lead", "Federal AI
+   Consultant", "GenAI Program Manager", "NIST AI RMF Specialist") is
+   GOOD coverage, not noise. Keep these even if they only appeared in 1
+   draft. Variant coverage multiplies funnel volume without losing
+   relevance.
+
+10. SECTION-HEADING INDIFFERENCE (Builder Prompt PRINCIPLE 1.5)
+    Skill content carries equal weight regardless of which section header
+    a draft sourced it from. Do not down-weight a keyword because one
+    draft put it under "Process & Delivery" instead of "AI Enablement".
+    Identity comes from CONTENT, not heading presentation.
+
+11. UPDATED BROAD-BY-DEFAULT BLACKLIST — CONDITIONAL, NOT ABSOLUTE
+    The builder prompt's PRINCIPLE 3 has been extended. Suppress UNLESS
+    user explicitly targets:
+      • "Management Consultant" (unless MBB target)
+      • "ML Engineer" / "Data Engineer" / "Data Scientist" (unless target)
+      • "BI Developer" / "Analytics Consultant" (unless target)
+      • "Solutions Architect" (unless target)
+      • "Workflow Optimization Specialist" (unless target)
+      • "Business Transformation Lead" / "Business Transformation Consultant"
+        (unless resume body or freeform explicitly names "business
+        transformation" as a target FUNCTION, not adjacent skill)
+      • "Digital Transformation Lead" / "Digital Transformation Manager"
+        (unless resume/freeform explicitly names "digital transformation"
+        as a target function)
+      • "Innovation Manager" / "Innovation Lead" / "Innovation Consultant"
+        (unless user is explicitly an innovation specialist by current
+        title or stated target)
+      • "AI Communication Lead" / "AI Communications Manager"
+        (unless candidate has explicit communications-focused experience
+        AND freeform names communications-AI as a target — for a general
+        AI-strategy candidate, prefer "AI Enablement Manager" or
+        "AI Adoption Lead" instead. A comms-focused candidate pivoting
+        to AI SHOULD get this term.)
+
+    NOTE — NO ENTRY IS UNIVERSALLY FORBIDDEN. The blacklist encodes
+    "noise-prone by default for the typical candidate," not "never
+    generate this for anyone." A Data Engineer targeting Data Engineer
+    roles SHOULD get that keyword in Tier 1; a Director of Business
+    Transformation SHOULD get "Business Transformation Lead." Apply
+    the conditional logic carefully — protect candidates from off-target
+    noise without suppressing legitimate career targeting.
+
+12. RESPECT JD-DETECTION HANDLING IN DRAFTS
+    If the user's freeform contained a pasted job description (markers:
+    "Responsibilities:", "Qualifications:", "Equal Opportunity Employer",
+    salary range bracket, "Years of experience required:", etc.), the
+    drafts should have treated the JD as a ROLE EXAMPLE, not authoritative
+    direction. At merge time:
+      • Do NOT inflate a pasted JD's specific title to dominate the
+        keyword set. The candidate liked the role TYPE, not necessarily
+        that exact role at that exact company.
+      • DO include 2-3 Tier 1 variants of the JD's role title family
+        (if Customer Success Manager pasted → CSM, Senior CSM, CS Lead).
+      • Do NOT let the JD's company-specific framing (team names,
+        internal jargon, product names) become keywords.
+      • If a draft over-weighted the pasted JD's vocabulary, REBALANCE
+        toward the candidate's resume identity. Resume remains primary.
+
+13. RESPECT EFFORT-PROPORTIONAL FREEFORM WEIGHTING
+    The user message labels freeform with `[Word count: N]`. Drafts use
+    this for tier weighting:
+      • Short freeform (<15 words after subtracting any pasted JDs):
+        Treat as HINT only. Resume drives ~80-90% of keywords.
+      • Medium freeform (15-50 words):
+        Strong refinement, ~30-40% influence.
+      • Long freeform (50+ words, not mostly pasted JDs):
+        Primary targeting, ~50-60% influence.
+
+    At merge: if a single draft over-weighted short freeform (e.g., a
+    3-word freeform produced 8 directly-derived keywords), trim those
+    contributions to match the tier rule. Negative signals ("avoid X",
+    "not interested in Y") are ALWAYS respected at full strength
+    regardless of length.
+
+14. RESPECT THE 3-LENS CONTRACT
+    The 3 Gemini drafts each operated under a specific lens. When you
+    see a keyword in only one draft, judge based on lens context:
+      • Identity-lens keyword absent from Direction lens may still be
+        RIGHT if it captures the core function (e.g., "Senior Consultant,
+        AI Strategy" — a literal job-title variant the candidate holds).
+      • Specialization-lens keyword absent from Identity may still be
+        RIGHT for combo-skill or tool-specific roles (e.g., "Federal AI
+        Strategy Consultant", "M365 Copilot Lead").
+      • Direction-lens keyword absent from Identity may still be RIGHT
+        for pivot/future-state targeting (e.g., "AI Advisor", "AI
+        Transformation Consultant" for a pivoting candidate).
+    Do NOT demand 3-of-3 consensus to include a keyword. The lens
+    diversity is by design — each lens reveals what others would miss.
 
 ============================================================
 OUTPUT

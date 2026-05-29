@@ -99,32 +99,51 @@ async def filter_roles_by_embedding(
     profile_emb = np.array(profile_emb_list[0], dtype=np.float32)
 
     # Embed roles in batches.
-    # We pace the calls to stay under Gemini embedding RPM limits — the API
-    # rate-limits per-key, and a tight loop of ~10 batches will trip 429.
-    # 1.5s between batches = 40 RPM ceiling, comfortably under any tier.
+    # We pace the calls to stay under Gemini embedding RPM limits. The
+    # AI Studio dashboard shows a 5K RPM ceiling on gemini-embedding-001,
+    # but the *actual* enforced quota is
+    # `BatchEmbedContentsRequestsPerMinutePerProjectPerRegion` — much
+    # tighter (~15-200 RPM, regional, undocumented in the dashboard, but
+    # confirmed via Google AI Developer Forum reports + repeated 429s in
+    # our own audits on 600+ role runs). 5s between batches = 12 RPM,
+    # safely under the regional cap. On 429, retry up to 3 times with
+    # 65s / 130s / 195s exponential backoff before raising.
     all_role_embeddings: list[list[float]] = []
     n_batches = (len(roles) + batch_size - 1) // batch_size
     for batch_idx, i in enumerate(range(0, len(roles), batch_size)):
         if batch_idx > 0:
-            await asyncio.sleep(1.5)  # throttle between batches
+            await asyncio.sleep(5.0)  # 12 RPM — under regional batchEmbed cap
         batch_texts = [_role_to_text(r) for r in roles[i : i + batch_size]]
-        try:
-            emb = await client.embed(
-                model=config.EMBEDDING_MODEL,
-                texts=batch_texts,
-            )
-        except Exception as e:
-            # Most likely: 429 RESOURCE_EXHAUSTED. Wait long enough for
-            # the per-minute window to reset, then retry once.
-            msg = str(e)
-            if "429" in msg or "RESOURCE_EXHAUSTED" in msg or "rate" in msg.lower():
-                await asyncio.sleep(65)
+        emb = None
+        last_err: Exception | None = None
+        for attempt in range(3):
+            try:
                 emb = await client.embed(
                     model=config.EMBEDDING_MODEL,
                     texts=batch_texts,
                 )
-            else:
-                raise
+                last_err = None
+                break
+            except Exception as e:
+                msg = str(e)
+                is_429 = (
+                    "429" in msg
+                    or "RESOURCE_EXHAUSTED" in msg
+                    or "rate" in msg.lower()
+                )
+                if not is_429:
+                    raise
+                last_err = e
+                # Skip backoff sleep after the final attempt
+                if attempt < 2:
+                    await asyncio.sleep(65 * (attempt + 1))
+        if last_err is not None or emb is None:
+            # All 3 attempts hit 429. Surface the error so the orchestrator
+            # fails the run cleanly rather than continuing with partial
+            # embeddings (which would silently break similarity ranking).
+            raise last_err if last_err else RuntimeError(
+                "embedding_filter: batch returned no embeddings"
+            )
         all_role_embeddings.extend(emb)
 
     if len(all_role_embeddings) != len(roles):

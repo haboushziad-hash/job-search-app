@@ -56,10 +56,20 @@ import time
 from pathlib import Path
 from typing import Any, Optional
 
+from backend.config import config
 from backend.models import Role, score_to_tier
 
 
-CACHE_DB_PATH = Path(__file__).resolve().parent.parent.parent / "archive" / "jd_score_cache.db"
+# v0.3.15 (P1.6): use config.ARCHIVE_DIR instead of computed-from-__file__
+# path. The old form `Path(__file__).resolve().parent.parent.parent / "archive"`
+# resolves to PyInstaller's `_MEIPASS/archive/` in bundled mode, which is
+# WIPED on every app exit. Result: this cache had zero entries persisting
+# across desktop-app sessions, and the cross-run reuse benefit (the entire
+# point of this module) was effectively never realized in production.
+# config.ARCHIVE_DIR resolves to %APPDATA%\app.jobsearch.desktop\archive
+# in frozen mode (per the v0.3.13 _resolve_archive_dir() fix), which DOES
+# persist. Source-mode behavior is unchanged.
+CACHE_DB_PATH = config.ARCHIVE_DIR / "jd_score_cache.db"
 CACHE_TTL_SECONDS = 7 * 24 * 3600  # 7 days
 
 

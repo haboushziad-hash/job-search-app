@@ -6,6 +6,7 @@ import {
 import { toast } from 'sonner'
 import { cn, formatCurrency, formatRelativeDate } from '@/lib/utils'
 import { useAppStore } from '@/stores/appStore'
+import { logRoleEvent } from '@/services/api'
 import type { Role } from '@/types'
 
 interface RoleCardProps {
@@ -56,9 +57,42 @@ export function RoleCard({ role, onClick, condensed = false }: RoleCardProps) {
         ? role.stage3_analysis
         : null)
 
+  // v0.3.15 (P1.11): helper to fire a role event with the standard payload.
+  // All four button handlers below use this so we get a consistent
+  // append-only behavioral log in archive/role_events.jsonl. Fire-and-forget
+  // — never blocks the user flow on logging failures.
+  const fireRoleEvent = (
+    eventType:
+      | 'visit_link'
+      | 'mark_applied'
+      | 'unmark_applied'
+      | 'save'
+      | 'unsave'
+      | 'hide'
+      | 'unhide',
+  ): void => {
+    if (!role.job_url) return  // events without a URL aren't joinable downstream
+    logRoleEvent({
+      eventType,
+      roleUrl: role.job_url,
+      company: role.company,
+      jobTitle: role.job_title,
+      finalScore: role.final_score,
+      finalTier: role.final_tier,
+      stage2Score: role.stage2_score,
+      stage3Score: role.stage3_score,
+      source: 'role_card',
+    })
+  }
+
   const handleVisitJob = async (e: React.MouseEvent) => {
     e.stopPropagation()
     if (!role.job_url) return
+
+    // Log the visit_link event before navigating away. STRONG signal —
+    // the user committed enough to actually open the posting.
+    fireRoleEvent('visit_link')
+
     // In Tauri, window.open is blocked by the webview. Use the shell plugin
     // to open URLs in the user's default browser.
     try {
@@ -73,9 +107,11 @@ export function RoleCard({ role, onClick, condensed = false }: RoleCardProps) {
   const handleSave = (e: React.MouseEvent) => {
     e.stopPropagation()
     if (isSaved) {
+      fireRoleEvent('unsave')
       unsaveRole(role)
       toast(`Removed from saved`, { description: role.job_title })
     } else {
+      fireRoleEvent('save')
       saveRole(role)
       toast.success(`Saved`, { description: role.job_title })
     }
@@ -86,16 +122,25 @@ export function RoleCard({ role, onClick, condensed = false }: RoleCardProps) {
     if (isHidden) {
       // Toggle off — clear the hidden status so the role re-appears in
       // the dashboard's default view.
+      fireRoleEvent('unhide')
       unsaveRole(role)
       toast('Unhidden', { description: role.job_title })
       return
     }
+    // NOTE: 'hide' is an AMBIGUOUS signal in our log — it could mean any of
+    // (a) bad fit, (b) already rejected by this employer, (c) already applied
+    // elsewhere and don't want to see it again, (d) seen-on-dashboard fatigue.
+    // Downstream analysis must treat hide as ambiguous, not clean negative.
+    fireRoleEvent('hide')
     hideRole(role)
     toast('Hidden', {
       description: role.job_title,
       action: {
         label: 'Undo',
-        onClick: () => unsaveRole(role),
+        onClick: () => {
+          fireRoleEvent('unhide')
+          unsaveRole(role)
+        },
       },
     })
   }
@@ -104,9 +149,11 @@ export function RoleCard({ role, onClick, condensed = false }: RoleCardProps) {
     e.stopPropagation()
     if (isApplied) {
       // Toggle off — move back to saved (so they can decide later)
+      fireRoleEvent('unmark_applied')
       saveRole(role)
       toast(`Marked as saved`, { description: role.job_title })
     } else {
+      fireRoleEvent('mark_applied')
       markApplied(role)
       toast.success(`Marked as applied`, {
         description: role.job_title + ' — track stages on the Applications page',

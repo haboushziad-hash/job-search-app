@@ -197,7 +197,7 @@ export default function StartSearch() {
       const skipMsg = appliedRoles.length > 0
         ? ` · skipping ${appliedRoles.length} already-applied role${appliedRoles.length === 1 ? '' : 's'}`
         : ''
-      toast.success(`Search started · this will take 10–20 minutes${skipMsg}`)
+      toast.success(`Search started · this will take 20–30 minutes${skipMsg}`)
       navigate('/running')
     } catch (e) {
       const msg = e instanceof ApiError ? e.detail : (e instanceof Error ? e.message : 'Unknown error')

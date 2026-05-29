@@ -376,6 +376,84 @@ export async function setApplicationStatus(input: ApplicationStatusInput): Promi
   await handle(res)
 }
 
+// v0.3.15 (P1.11): Log a role-interaction event. Append-only timeline of
+// user behavior. Distinct from setApplicationStatus, which writes the
+// PERSISTENT user-relationship flag (saved/applied/hidden) to runs.db.
+// This event log is the SEQUENCE — what the user did and when — which is
+// what enables the 70-application ground-truth validation.
+//
+// Event types fall into three categories. Only the first two are usable
+// for fit-quality analysis. See backend/api.py docstring for the full
+// rationale; short version below.
+//
+// USABLE POSITIVE SIGNALS:
+//   mark_applied  — STRONGEST    — multi-step commitment; closest to ground-truth "good fit"
+//   visit_link    — MEDIUM-STRONG — opened the posting; ambiguous (interest vs disinterest-confirm)
+//   save          — MEDIUM       — bookmarked but uncommitted
+// USABLE OUTCOME SIGNAL (post-application, not fit):
+//   update_app_stage — interview/offer/rejected/etc; downstream of fit
+// NOISE — log for sequence completeness, DO NOT use for analysis:
+//   unmark_applied   — conflates retraction with post-rejection cleanup
+//   unsave           — conflates mind-change with cleanup
+//   unhide           — conflates mind-change with cleanup
+//   hide             — conflates bad-fit with already-rejected/applied/fatigue
+//
+// Stacking patterns for analysis (group by roleUrl, USABLE signals only):
+//   saved + visited + mark_applied   → STRONGEST positive (full funnel)
+//   mark_applied without prior visit → applied via referral / external
+//   visited only, no apply           → ambiguous (interest vs reject)
+//
+// Fire-and-forget. Failures must NOT block the user's flow.
+export type RoleEventType =
+  | 'visit_link'
+  | 'mark_applied'
+  | 'unmark_applied'
+  | 'save'
+  | 'unsave'
+  | 'hide'
+  | 'unhide'
+  | 'update_app_stage'
+
+export interface RoleEventInput {
+  eventType: RoleEventType
+  roleUrl: string
+  company?: string
+  jobTitle?: string
+  finalScore?: number | null
+  finalTier?: string | null
+  stage2Score?: number | null
+  stage3Score?: number | null
+  source?: string  // 'role_card' | 'detail_view' | 'list' | 'tracker' | etc.
+  runId?: string
+  profileHash?: string
+  applicationStage?: string  // only used for update_app_stage
+}
+
+export async function logRoleEvent(input: RoleEventInput): Promise<void> {
+  try {
+    await fetch(`${API_BASE}/applications/event`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        event_type: input.eventType,
+        role_url: input.roleUrl,
+        company: input.company,
+        job_title: input.jobTitle,
+        final_score: input.finalScore,
+        final_tier: input.finalTier,
+        stage2_score: input.stage2Score,
+        stage3_score: input.stage3Score,
+        source: input.source,
+        run_id: input.runId,
+        profile_hash: input.profileHash,
+        application_stage: input.applicationStage,
+      }),
+    })
+  } catch {
+    // Never block the user flow on logging failures
+  }
+}
+
 // ----------------------------------------------------------------------------
 // Settings — audit folder + cache duration
 // ----------------------------------------------------------------------------

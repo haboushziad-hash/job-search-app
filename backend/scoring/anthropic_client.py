@@ -244,13 +244,29 @@ _default_client: Optional[AnthropicClient] = None
 
 
 def get_anthropic_client() -> Optional[AnthropicClient]:
-    """Return an AnthropicClient if ANTHROPIC_API_KEY is configured, else None."""
+    """Return an AnthropicClient if Anthropic is reachable, else None.
+
+    v0.3.15 (P1.8): gate now accepts EITHER a local ANTHROPIC_API_KEY OR
+    proxy mode (LLM_PROXY_URL set, the Worker holds the real key). Prior
+    behavior returned None whenever the local key was missing, even in
+    proxy mode where the Worker has the key. Result: bundled tester runs
+    silently skipped Anthropic on profile build, dropping the 4-way
+    consensus (3 Gemini Pro + 1 Claude Opus) to a 3-way Gemini-only
+    pattern. The bundled-run audit confirmed zero Anthropic rows.
+    """
     global _default_client
     if _default_client is not None:
         return _default_client
+
     key = config.ANTHROPIC_API_KEY
-    if not key or key.startswith("PASTE_"):
+    has_local_key = bool(key) and not key.startswith("PASTE_")
+    proxy_url = (config.LLM_PROXY_URL or "").strip()
+    has_proxy = bool(proxy_url)
+
+    if not (has_local_key or has_proxy):
+        # Neither path available — Anthropic genuinely unreachable.
         return None
+
     try:
         _default_client = AnthropicClient()
         return _default_client
