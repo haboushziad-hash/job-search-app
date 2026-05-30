@@ -98,8 +98,12 @@ def _strip_html_preserving_text(html: str) -> str:
 # Regex patterns (ordered by specificity — more specific first)
 # ----------------------------------------------------------------------------
 
-# Re-usable amount fragment: $130,000 / $130K / $130k / $130 (no comma, just digits)
-_AMOUNT = r"\d{2,3}(?:,\d{3})+|\d{2,3}\s*[Kk]|\d{4,7}"
+# Re-usable amount fragment: $130,000 / $130,000.00 / $130K / $130k / $130
+# Wave-2B Phase 2 (FIX 22, 2026-05-30): added optional `.\d{1,2}` decimal
+# suffix to handle Google Jobs / Indeed format "$85,000.00 - $110,000.00".
+# Previously the trailing ".00" broke _parse_amount because _AMOUNT didn't
+# capture it.
+_AMOUNT = r"\d{2,3}(?:,\d{3})+(?:\.\d{1,2})?|\d{2,3}\s*[Kk]|\d{4,7}(?:\.\d{1,2})?"
 
 # $130,000 - $165,000 / $130K - $165K / $130,000–$165,000 (em-dash)
 PATTERN_RANGE = re.compile(
@@ -115,24 +119,40 @@ PATTERN_RANGE = re.compile(
 # was bypassing this case because the text "OTE range" didn't match any
 # salary-context word).
 PATTERN_LABELED_RANGE = re.compile(
-    r"(?:pay\s*range|salary\s*range|compensation\s*range|comp\s*range|"
-    r"base\s*pay\s*range|base\s*salary\s*range|target\s*compensation|"
+    # Wave-2B Phase 2 (FIX 22): added `s?` to plural variants — Greenhouse
+    # postings use "Base Compensation Ranges:" not "Base Compensation
+    # Range:" and the prior regex didn't match plurals. Same for
+    # "Pay Ranges:" etc.
+    r"(?:pay\s*ranges?|salary\s*ranges?|compensation\s*ranges?|comp\s*ranges?|"
+    r"base\s*pay\s*ranges?|base\s*salary\s*ranges?|target\s*compensation|"
     r"total\s*target\s*compensation|target\s*total\s*compensation|"
     r"annual\s*salary|annual\s*compensation|annual\s*base\s*salary|"
     r"annual\s*cash\s*salary|annual\s*base|"
     r"pay\s*scale|salary|compensation|comp|"
     r"base\s*pay|base\s*salary|"
-    r"us\s*base\s*pay\s*range|usa\s*base\s*pay|"
+    r"us\s*base\s*pay\s*ranges?|usa\s*base\s*pay|"
     r"new\s*hire\s*base\s*salary|new\s*hire\s*pay|"
     r"target\s*base\s*salary|"
     # v0.3.3: OTE = On-Target Earnings (sales/account roles)
-    r"ote\s*range|ote|on[\s\-]target\s*earnings|on[\s\-]target\s*compensation|"
-    r"target\s*earnings|earnings\s*range|earnings\s*target|"
+    r"ote\s*ranges?|ote|on[\s\-]target\s*earnings|on[\s\-]target\s*compensation|"
+    r"target\s*earnings|earnings\s*ranges?|earnings\s*target|"
     r"new\s*hire\s*ote|annual\s*ote)"
     r"[^$]{0,80}?"  # allow up to 80 chars between label and first $
     r"\$\s*(" + _AMOUNT + r")\s*"
     r"(?:to|-|–|—)\s*"
     r"\$?\s*(" + _AMOUNT + r")",
+    re.IGNORECASE,
+)
+
+# Wave-2B Phase 2 (FIX 22): K-range without $ sign — BuiltIn / Indeed
+# style "110K-130K Annually" / "60K-81K". These appear in listing cards
+# rather than JD body, so the unlabeled PATTERN_RANGE missed them (no
+# $ prefix). Require a salary-context word within 30 chars to avoid
+# matching unrelated numbers like "100K-130K users" or
+# "10K-20K subscribers".
+PATTERN_K_RANGE_BARE = re.compile(
+    r"(\d{2,3})\s*[Kk]\s*[-–—]\s*(\d{2,3})\s*[Kk]"
+    r"\s*(?:annually|annual|/\s*year|/\s*yr|per\s*year|salary|comp|pay|usd)?",
     re.IGNORECASE,
 )
 
@@ -180,7 +200,13 @@ PATTERN_HOURLY = re.compile(
 # ----------------------------------------------------------------------------
 
 def _parse_amount(s: str) -> Optional[int]:
-    """Convert '130,000' or '130K' or '130k' to integer 130000."""
+    """Convert '130,000' / '130,000.00' / '130K' / '130k' to integer.
+
+    Wave-2B Phase 2 (FIX 22): float() already handles decimals like
+    "130000.00" so the only fix needed at this layer was the upstream
+    _AMOUNT regex (now captures the decimal suffix). int(float(...))
+    then truncates to integer cents-free dollars.
+    """
     if not s:
         return None
     s = s.strip().replace(",", "").replace(" ", "")
@@ -294,6 +320,27 @@ def extract_salary_from_jd(jd_text: str) -> tuple[Optional[str], Optional[int], 
                 return (f"${hourly}/hr (~${annual:,}/yr)", annual, annual)
         except ValueError:
             pass
+
+    # 7. Wave-2B Phase 2 (FIX 22): K-range without $ sign — last resort.
+    # Only match when surrounded by salary context (within 50 chars before
+    # OR within 30 chars after — most BuiltIn/Indeed cards put "Annually"
+    # right after the range).
+    for m in PATTERN_K_RANGE_BARE.finditer(text):
+        # Look at 50 chars before AND the matched suffix for context.
+        ctx_start = max(0, m.start() - 50)
+        context = text[ctx_start:m.end() + 30].lower()
+        if any(w in context for w in (
+            "salary", "pay", "compensation", "comp", "base", "annual",
+            "annually", "/year", "/yr", "per year", "usd",
+        )):
+            smin = int(m.group(1)) * 1000
+            smax = int(m.group(2)) * 1000
+            if smin > smax:
+                smin, smax = smax, smin
+            if (_is_realistic_annual_salary(smin)
+                    and _is_realistic_annual_salary(smax)
+                    and smax <= smin * 5):
+                return (f"${smin:,} - ${smax:,}", smin, smax)
 
     return (None, None, None)
 
