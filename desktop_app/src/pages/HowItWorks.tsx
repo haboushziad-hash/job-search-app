@@ -14,7 +14,15 @@ export default function HowItWorks() {
   // First-timers go straight to /setup for resume upload.
   const profile = useAppStore((s) => s.profile)
   const lastRoles = useAppStore((s) => s.lastRoles)
-  const hasPriorRun = !!profile && profile.keywords.length > 0 && lastRoles.length > 0
+  // v0.3.23 (FIX 28): route to /start-search whenever the user has a usable
+  // profile (keywords present), regardless of whether localStorage still
+  // holds prior results. A profile recovered via auto-heal should send the
+  // user to the search chooser (which itself offers re-run vs fresh build),
+  // NOT force them back through resume upload at /setup just because
+  // lastRoles got cleared. /start-search already gates correctly on
+  // profile+keywords alone.
+  const hasUsableProfile = !!profile && profile.keywords.length > 0
+  const hasPriorRun = hasUsableProfile || lastRoles.length > 0
   const continueDest = hasPriorRun ? '/start-search' : '/setup'
 
   return (

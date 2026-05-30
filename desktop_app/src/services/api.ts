@@ -280,6 +280,16 @@ export async function getRecentProfiles(): Promise<{ profiles: RecentProfile[] }
   return handle(res)
 }
 
+// v0.3.23 (FIX 28 — auto-heal): fetch the most-recently-built profile from
+// the backend's profile_build_cache.db. Used on app launch to recover the
+// active profile when the frontend's localStorage copy is null (origin-
+// partition / zustand rehydration edge case). Returns { profile: null }
+// for a genuine first-time user.
+export async function getLastBuiltProfile(): Promise<{ profile: CandidateProfile | null }> {
+  const res = await fetch(`${API_BASE}/profile/last-built`)
+  return handle(res)
+}
+
 // ----------------------------------------------------------------------------
 // Search status (polled while running)
 // ----------------------------------------------------------------------------

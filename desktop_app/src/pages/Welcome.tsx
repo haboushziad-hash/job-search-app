@@ -10,7 +10,15 @@ export default function Welcome() {
   const navigate = useNavigate()
   const profile = useAppStore((s) => s.profile)
   const lastRoles = useAppStore((s) => s.lastRoles)
-  const hasPriorRun = !!profile && lastRoles.length > 0
+  // v0.3.23 (FIX 28): distinguish "can run a search" (has a usable profile)
+  // from "can view past results" (has stored roles). A returning user whose
+  // profile was recovered via auto-heal should see "Run Search" even if
+  // their localStorage lastRoles got cleared — they shouldn't be forced
+  // back through resume upload. "View previous results" stays gated on
+  // actually having results to show.
+  const hasProfile = !!profile && (profile.keywords?.length ?? 0) > 0
+  const hasResults = lastRoles.length > 0
+  const hasPriorRun = hasProfile || hasResults
   const version = useAppVersion()
 
   return (
@@ -164,7 +172,7 @@ export default function Welcome() {
                                opacity-0 group-hover:opacity-100 transition-opacity blur-md -z-10" />
             </button>
 
-            {hasPriorRun && (
+            {hasResults && (
               <button
                 onClick={() => navigate('/dashboard')}
                 className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full

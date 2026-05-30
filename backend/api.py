@@ -344,6 +344,32 @@ async def profile_result(build_id: str) -> dict[str, Any]:
     return state.result or {}
 
 
+@app.get("/profile/last-built")
+async def profile_last_built() -> dict[str, Any]:
+    """Return the most-recently-built profile, for frontend auto-heal.
+
+    v0.3.23 (FIX 28): The desktop UI keeps the active profile in
+    localStorage (zustand persist). A rehydration edge-case or an
+    origin-partition mismatch (dev server vs installed build) can leave
+    that copy null even though the user has built profiles before — which
+    hides the re-run option behind the "fresh search" gate.
+
+    This endpoint reads profile_build_cache.db (which persists EVERY
+    profile the user has built, in %APPDATA%) and returns the most recent
+    one. The frontend calls it on launch when its own profile is null and
+    re-hydrates from the result. Returns {"profile": null} when the cache
+    is genuinely empty (a true first-time user) so the setup flow runs
+    normally.
+    """
+    try:
+        from backend.profile import profile_cache
+        prof = profile_cache.get_most_recent_profile()
+        return {"profile": prof}
+    except Exception as e:
+        # Never fail the launch path — fall back to null (setup flow).
+        return {"profile": None, "error": str(e)[:200]}
+
+
 # ============================================================================
 # Search run
 # ============================================================================

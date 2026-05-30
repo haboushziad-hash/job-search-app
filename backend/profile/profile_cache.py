@@ -155,6 +155,43 @@ def lookup(cache_key: str) -> Optional[dict]:
         conn.close()
 
 
+def get_most_recent_profile() -> Optional[dict]:
+    """Return the most-recently-built profile dict, or None if cache empty.
+
+    v0.3.23 (FIX 28 — auto-heal): used by the GET /profile/last-built
+    endpoint to recover a profile when the frontend's localStorage copy is
+    null. This is the safety net for the origin-partition / rehydration
+    edge case where the UI loses its `profile` field but the backend still
+    holds every profile the user ever built.
+
+    Unlike lookup() (keyed on exact input hash), this returns whatever was
+    built most recently regardless of prompt_version — because for recovery
+    we want the user's last-known profile, not a cache-validity match. The
+    profile is still the user's own data (built from their resume); we're
+    just re-surfacing it.
+
+    NOT TTL-gated: a returning user opening the app after >7 days should
+    still recover their profile rather than be forced through a rebuild.
+    """
+    _ensure_db()
+    conn = sqlite3.connect(str(CACHE_DB_PATH))
+    try:
+        row = conn.execute(
+            "SELECT profile_json FROM profile_build_cache "
+            "ORDER BY cached_at DESC LIMIT 1"
+        ).fetchone()
+        if not row:
+            return None
+        try:
+            return json.loads(row[0])
+        except Exception:
+            return None
+    except Exception:
+        return None
+    finally:
+        conn.close()
+
+
 def store(
     cache_key: str,
     profile_dict: dict,

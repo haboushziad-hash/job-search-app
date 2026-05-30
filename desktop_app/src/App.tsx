@@ -8,7 +8,7 @@ import { Sidebar } from '@/components/Sidebar'
 import { ZMark } from '@/components/ZMark'
 import { checkForUpdates } from '@/lib/updater'
 import { useActiveSearchPoll } from '@/hooks/useActiveSearchPoll'
-import { listRuns, getRun, healthCheck } from '@/services/api'
+import { listRuns, getRun, healthCheck, getLastBuiltProfile } from '@/services/api'
 import { useAppStore } from '@/stores/appStore'
 import type { Role, RunSummary } from '@/types'
 
@@ -135,6 +135,42 @@ export default function App() {
         // Silent fail — backend may be slow to start, or first launch may
         // not have an archive yet. Keep whatever's in localStorage.
         console.warn('[startup-sync] failed to sync to most recent run:', e)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  // v0.3.23 (FIX 28 — profile auto-heal): on launch, if the persisted
+  // profile is null but the backend has previously built profiles, recover
+  // the most recent one. This self-heals the origin-partition / zustand
+  // rehydration edge case where the UI loses its `profile` field (which
+  // hides the re-run option behind the "fresh search" gate) even though
+  // the user has a profile + run history. The backend's
+  // profile_build_cache.db persists every profile ever built in %APPDATA%,
+  // independent of the WebView localStorage origin, so it's the reliable
+  // recovery source. No-op for genuine first-time users (cache empty →
+  // profile stays null → normal setup flow). Only heals when the in-memory
+  // profile is STILL null at resolve time (guards against racing a profile
+  // the user just built this session).
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        if (useAppStore.getState().profile) return // already have one
+        const { profile } = await getLastBuiltProfile()
+        if (cancelled || !profile) return
+        // Only heal a non-trivial profile (has keywords) and only if the
+        // store is still empty — don't clobber a fresh build mid-session.
+        const kwCount = (profile.keywords as unknown[] | undefined)?.length ?? 0
+        if (kwCount > 0 && !useAppStore.getState().profile) {
+          useAppStore.getState().setProfile(profile)
+          console.info('[profile-heal] recovered profile from backend cache (localStorage was null)')
+        }
+      } catch (e) {
+        // Backend slow/unavailable or cache empty — keep null, setup flow runs.
+        console.warn('[profile-heal] could not recover profile:', e)
       }
     })()
     return () => {
