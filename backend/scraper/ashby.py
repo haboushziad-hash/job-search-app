@@ -207,6 +207,14 @@ class AshbyScraper(BaseScraper):
         # Ashby has explicit workplaceType: "Remote", "Hybrid", "On-Site"
         if "remote" in location_type_raw:
             location_type = "Remote"
+            # Wave-2B Phase 2 (FIX 24, 2026-05-30): pure-remote Ashby roles
+            # often have empty locationName. Populate with "Remote" so
+            # the dashboard displays SOMETHING instead of blank. Mirrors
+            # the same fix applied to Findwork. Display-only — doesn't
+            # affect hard_filter (which treats remote roles as
+            # location-agnostic).
+            if not location_text:
+                location_text = "Remote"
         elif "hybrid" in location_type_raw:
             location_type = "Hybrid"
         elif location_text:

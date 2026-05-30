@@ -178,6 +178,15 @@ class FindworkScraper(BaseScraper):
         is_remote = bool(j.get("remote"))
         if is_remote:
             location_type = "Remote"
+            # Wave-2B Phase 2 (FIX 24, 2026-05-30): when role is pure-
+            # remote AND has no specific city/state, populate location
+            # with "Remote" rather than leaving it None. Closes the
+            # 4% audit-coverage gap where Findwork pure-remote roles
+            # showed 0% location-populated. Downstream hard_filter
+            # treats remote roles as location-agnostic so this is
+            # display-only — doesn't affect filtering.
+            if not loc_str:
+                loc_str = "Remote"
         else:
             location_type, _ = self._classify_location(loc_str)
 

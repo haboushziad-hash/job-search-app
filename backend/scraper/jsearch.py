@@ -147,9 +147,16 @@ class JSearchScraper(BaseScraper):
         self,
         *,
         keywords: list[str],
-        limit_per_keyword: int = 50,
+        limit_per_keyword: int = 100,
         posted_within_days: Optional[int] = 30,
     ) -> list[Role]:
+        # Wave-2B Phase 2 (FIX 23, 2026-05-30): limit raised 50 → 100. Pairs
+        # with JSEARCH_NUM_PAGES default raise in config.py (5 → 10). At
+        # RapidAPI's pricing model, each task is fixed-cost regardless of
+        # num_pages; raising both unlocks 2x raw items per keyword (50 →
+        # ~100) for $0 extra. The Agent-2 audit note from v0.3.12 said
+        # "If we ever raise limit_per_keyword > 100, revert num_pages to
+        # 10+" — that's now the active config.
         base_url, api_key = _jsearch_base_and_key()
         proxy_mode = bool((config.LLM_PROXY_URL or "").strip())
         if not proxy_mode and not api_key:

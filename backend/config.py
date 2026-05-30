@@ -176,11 +176,15 @@ class Config:
     # calls/mo; paid plans scale linearly. JSEARCH_NUM_PAGES bounds per-query
     # pagination so a single keyword can't blow the monthly budget.
     JSEARCH_RAPIDAPI_KEY: str = os.getenv("JSEARCH_RAPIDAPI_KEY", "").strip()
-    # Wave-2B Phase 2 (FIX 3): default raised 3 → 5. Phase 1 introduced the
-    # "3" default which silently regressed JSearch raw from ~994 to ~512
-    # per run (-49%). Pages 4-5 are free on RapidAPI (the per-call cost is
-    # fixed regardless of num_pages), so this is a pure-win revert.
-    JSEARCH_NUM_PAGES: int = int(os.getenv("JSEARCH_NUM_PAGES", "5") or 5)
+    # Wave-2B Phase 2 (FIX 3, then FIX 23): bumped 3 → 5 → 10. The original
+    # FIX 3 revert restored the pre-regression baseline (994 raw). FIX 23
+    # raises num_pages to 10 in tandem with jsearch.py raising
+    # limit_per_keyword from 50 → 100. RapidAPI charges per query call, not
+    # per page returned — num_pages=10 returns up to 100 items in the
+    # SAME billable call. Combined with the limit raise, this 2x's JSearch
+    # raw items per keyword (50 → ~100) for $0 extra. Expected per-run
+    # impact: 994 → ~1,800-2,000 raw, ~+50-80 qualifying.
+    JSEARCH_NUM_PAGES: int = int(os.getenv("JSEARCH_NUM_PAGES", "10") or 10)
 
     @classmethod
     def is_central_server_mode(cls) -> bool:
