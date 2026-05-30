@@ -106,24 +106,79 @@ class SmartRecruitersScraper(BaseScraper):
             return []
 
         items = data.get("content") or []
-        out: list[Role] = []
+
+        # Wave-2B Phase 2 (FIX 6c): two-pass — first build roles + capture
+        # detail URLs, then fetch each detail endpoint in parallel to fill
+        # JD body. Listing payload only has metadata; the rich JD lives at
+        # the per-posting detail endpoint exposed via top-level 'ref' field.
+        pairs: list[tuple[Role, str]] = []
         for j in items:
             try:
-                role = self._item_to_role(j, display)
+                role = self._item_to_role(j, display, slug)
                 if role:
-                    out.append(role)
+                    detail_url = (j.get("ref") or "").strip()
+                    pairs.append((role, detail_url))
             except Exception:
                 continue
-        return out
 
-    def _item_to_role(self, j: dict, display: str) -> Optional[Role]:
+        # Parallel JD enrichment from the detail endpoint.
+        detail_sem = asyncio.Semaphore(4)
+
+        async def _enrich(role: Role, detail_url: str) -> Role:
+            if not detail_url or role.job_description_full:
+                return role
+            try:
+                async with detail_sem:
+                    d_resp = await self.client._client.get(  # type: ignore[union-attr]
+                        detail_url,
+                        headers={"Accept": "application/json"},
+                        timeout=15.0,
+                    )
+            except Exception:
+                return role
+            if d_resp.status_code != 200:
+                return role
+            try:
+                detail = d_resp.json()
+            except Exception:
+                return role
+            sections = (detail.get("jobAd") or {}).get("sections") or {}
+            jd_parts = []
+            for k in ("companyDescription", "jobDescription", "qualifications", "additionalInformation"):
+                section = sections.get(k) or {}
+                text = section.get("text") or ""
+                if text:
+                    jd_parts.append(_strip_html(text))
+            jd_full = "\n\n".join(jd_parts)[:8000]
+            if jd_full:
+                role.job_description_full = jd_full
+                role.jd_completeness = "Full" if len(jd_full) > 500 else "Partial"
+            return role
+
+        enriched = await asyncio.gather(*[_enrich(r, du) for r, du in pairs])
+        return list(enriched)
+
+    def _item_to_role(self, j: dict, display: str, slug: str) -> Optional[Role]:
         title = (j.get("name") or "").strip()
         if not title:
             return None
 
-        # SmartRecruiters job URL — refs.jobAd.url
-        refs = j.get("refs") or {}
-        url = refs.get("jobAd", {}).get("url") or ""
+        # Wave-2B Phase 2 (FIX 6a + 6b): SmartRecruiters URL construction.
+        # Previously read `refs.jobAd.url` — but the listing response uses
+        # `ref` (singular, top-level) as the DETAIL API URL, and there is
+        # no `refs` (plural) field. Every Role was shipping with job_url=None
+        # which broke click-through AND silently filtered the role out of
+        # keyword matching (matches_any_keyword requires a non-None URL via
+        # the dedup path). Build the public URL deterministically from
+        # slug + posting id — verified URL pattern.
+        posting_id = (j.get("id") or "").strip()
+        url = ""
+        if posting_id:
+            url = f"https://jobs.smartrecruiters.com/{slug}/{posting_id}"
+        # Defensive fallback (some Wave-2B Phase 1 era responses had refs):
+        if not url:
+            refs_legacy = j.get("refs") or {}
+            url = refs_legacy.get("jobAd", {}).get("url") or ""
 
         # Location
         loc = j.get("location") or {}

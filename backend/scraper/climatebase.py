@@ -59,7 +59,24 @@ class ClimatebaseScraper(BaseScraper):
                         self._search_keyword(kw, limit_per_keyword),
                         timeout=20.0,
                     )
-                except Exception:
+                except asyncio.TimeoutError:
+                    # Network slowness / Climatebase SSR hanging — distinct
+                    # from API quota issues. Surface it so the orchestrator
+                    # silent-zero alert can distinguish "we never heard back"
+                    # from "we got a 0-result response".
+                    self.quota_exhausted = True
+                    self.quota_exhausted_reason = (
+                        f"Climatebase timeout (>20s) on keyword '{kw}'"
+                    )
+                    return []
+                except Exception as e:
+                    # Unexpected error — bubble the type into the reason so
+                    # the audit JSON shows something more useful than 0 roles.
+                    self.quota_exhausted = True
+                    self.quota_exhausted_reason = (
+                        f"Climatebase unexpected error on '{kw}': "
+                        f"{type(e).__name__}: {str(e)[:80]}"
+                    )
                     return []
 
         tasks = [bounded(kw) for kw in keywords]
@@ -89,23 +106,74 @@ class ClimatebaseScraper(BaseScraper):
                     "Accept": "text/html",
                 },
             )
-        except Exception:
+        except Exception as e:
+            # Network/transport failure (DNS, TLS, connection reset). Not the
+            # same as an HTTP error — server never replied. Surface it so the
+            # orchestrator can distinguish from quota issues.
+            self.quota_exhausted = True
+            self.quota_exhausted_reason = (
+                f"Climatebase network error on '{keyword}': "
+                f"{type(e).__name__}: {str(e)[:80]}"
+            )
             return []
         if resp.status_code != 200:
+            # Distinguish 429/403 (rate-limit/block — true quota signal) from
+            # other 4xx/5xx (transient or upstream regression). Both set
+            # quota_exhausted so the orchestrator silent-zero alert can fire,
+            # but the reason text differentiates them in the audit JSON.
+            if resp.status_code in (403, 429):
+                self.quota_exhausted = True
+                self.quota_exhausted_reason = (
+                    f"Climatebase HTTP {resp.status_code} on '{keyword}' "
+                    "(rate limit or anti-bot block)"
+                )
+            elif 500 <= resp.status_code < 600:
+                self.quota_exhausted = True
+                self.quota_exhausted_reason = (
+                    f"Climatebase HTTP {resp.status_code} on '{keyword}' "
+                    "(server error)"
+                )
+            else:
+                self.quota_exhausted = True
+                self.quota_exhausted_reason = (
+                    f"Climatebase HTTP {resp.status_code} on '{keyword}'"
+                )
             return []
 
         m = NEXT_DATA_RE.search(resp.text or "")
         if not m:
+            # SSR page returned 200 but no __NEXT_DATA__ blob — likely a
+            # site redesign or a Cloudflare interstitial. This is a scraper
+            # regression signal that warrants attention, not a no-results
+            # condition.
+            self.quota_exhausted = True
+            self.quota_exhausted_reason = (
+                f"Climatebase missing __NEXT_DATA__ on '{keyword}' "
+                "(possible site redesign or anti-bot interstitial)"
+            )
             return []
         try:
             data = json.loads(m.group(1))
-        except Exception:
+        except Exception as e:
+            # __NEXT_DATA__ present but unparseable — also a regression
+            # signal (truncated body, malformed JSON, encoding issue).
+            self.quota_exhausted = True
+            self.quota_exhausted_reason = (
+                f"Climatebase __NEXT_DATA__ JSON parse failure on "
+                f"'{keyword}': {type(e).__name__}: {str(e)[:80]}"
+            )
             return []
 
         jobs = (
             data.get("props", {}).get("pageProps", {}).get("jobs", [])
             or []
         )
+        # Empty job list in a valid SSR response is normal for niche
+        # keywords — DO NOT set quota_exhausted here. The orchestrator's
+        # silent-zero alert only fires when the scraper returns 0 across
+        # ALL keywords AND quota_exhausted is set, so leaving this branch
+        # quiet correctly distinguishes "Climatebase truly has no matches"
+        # from "Climatebase broke".
         out: list[Role] = []
         for j in jobs[:limit]:
             try:
@@ -113,6 +181,9 @@ class ClimatebaseScraper(BaseScraper):
                 if role:
                     out.append(role)
             except Exception:
+                # Per-item parse failure (missing field, type error) — skip
+                # the row but keep processing siblings. Not a quota signal;
+                # individual rows fail in normal operation.
                 continue
         return out
 

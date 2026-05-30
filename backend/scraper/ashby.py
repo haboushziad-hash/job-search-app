@@ -73,6 +73,33 @@ ASHBY_COMPANIES: list[tuple[str, str]] = [
     ("SentiLink",         "sentilink"),         #  44 jobs — fraud detection
     ("Dust",              "dust"),              #  25 jobs — AI agents platform
     ("Zapier",            "zapier"),            #  25 jobs — automation
+
+    # ========== Wave-2B Phase 2 (FIX 8, 2026-05-30) — 21 verified-live ==
+    # Sourced from deep-dive workflow synthesis. Each verified to return
+    # active postings at probe time. If any 404 in production, the existing
+    # _fetch_company_jobs except branch swallows them gracefully and the
+    # orchestrator's dead_tenants tracker logs them for pruning.
+    ("Saronic",           "saronic"),           # ~276 — defense / autonomy
+    ("Applied Intuition", "appliedintuition"),  # ~213 — autonomous vehicles
+    ("ElevenLabs",        "elevenlabs"),        # ~149 — voice AI
+    ("Lovable",           "lovable"),           #  ~81 — AI app builder
+    ("Deepgram",          "deepgram"),          #  ~60 — speech-to-text
+    ("Watershed",         "watershed"),         #  ~38 — climate
+    ("Vapi",              "vapi"),              #  ~26 — voice agents
+    ("Cube",              "cube"),              #  ~18 — analytics
+    ("Mintlify",          "mintlify"),          #  ~14 — dev docs
+    ("Magic School",      "magicschool"),       #   ~3 — edtech
+    ("Airbyte",           "airbyte"),           # data pipelines
+    ("Neon",              "neon"),              # serverless postgres
+    ("Prefect",           "prefect"),           # data orchestration
+    ("Weaviate",          "weaviate"),          # vector DB
+    ("Jamf",              "jamf"),              # device management
+    ("Gong",              "gong"),              # revenue intelligence
+    ("Klaviyo",           "klaviyo"),           # email marketing
+    ("Brex",              "brex"),              # fintech
+    ("Faire",             "faire"),             # wholesale marketplace
+    ("Lattice",           "lattice"),           # HR tech
+    ("Rippling",          "rippling"),          # HRIS
 ]
 
 
@@ -147,7 +174,20 @@ class AshbyScraper(BaseScraper):
         url = f"{self.BASE_URL}/{slug}"
         try:
             data = await self.client.get_json(url, params={"includeCompensation": "true"})
-        except Exception:
+        except Exception as _e:
+            # Wave-2B Phase 2 (visibility): surface per-tenant failures so the
+            # orchestrator's dead_tenants tracker can prune them. Previously
+            # this bare except hid 404s on retired tenants.
+            status = getattr(getattr(_e, "response", None), "status_code", None)
+            if status == 404:
+                if not hasattr(self, "dead_tenants"):
+                    self.dead_tenants = {}
+                self.dead_tenants[slug] = "404 (tenant retired or migrated)"
+            elif status in (429, 403, 503):
+                self.quota_exhausted = True
+                self.quota_exhausted_reason = (
+                    f"Ashby tenant '{slug}' HTTP {status}"
+                )
             return []
         jobs = data.get("jobs") or []
         roles: list[Role] = []

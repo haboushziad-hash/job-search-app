@@ -128,7 +128,7 @@ class AdzunaScraper(BaseScraper):
         # or run out of results. Cap pages to a sensible number to avoid
         # burning the free-tier quota (1000 calls/month).
         per_page = 50
-        max_pages = min((limit + per_page - 1) // per_page, 8)  # cap 8 pages = 400 jobs/keyword
+        max_pages = 4  # cap 4 pages = 200 jobs/keyword; decoupled from limit_per_keyword
 
         out: list[Role] = []
         for page in range(1, max_pages + 1):
@@ -148,18 +148,26 @@ class AdzunaScraper(BaseScraper):
                 params["max_days_old"] = max_age_days
 
             # v0.3.5: upstream user-pref filters. Adzuna supports `where`
-            # (location text) and `salary_min` directly on the search
-            # endpoint. Surfacing the user's preferences here drops 30-50%
-            # of mismatched roles before they enter the pipeline.
+            # (location text) directly on the search endpoint. Surfacing
+            # location here drops mismatched roles before they enter the
+            # pipeline.
+            # Wave-2B FIX 39: skip `where` when the user accepts Remote or
+            # is remote-only — Adzuna's `where=DC` filters out Remote-only
+            # listings upstream. Local hard_filter validates post-fetch.
+            # Wave-2B FIX 5: dropped server-side salary_min. Adzuna's
+            # salary_min excludes ALL roles with unlisted salary (most
+            # trades, clinical, ops, billing, retail). The local
+            # passes_salary_floor() already handles salary correctly
+            # post-scrape.
             uf = getattr(self, "_user_filters", None) or {}
+            acceptable_locs = uf.get("acceptable_locations") or []
+            remote_ok = bool(uf.get("remote_only")) or any(
+                isinstance(loc, str) and loc.strip().lower() == "remote"
+                for loc in acceptable_locs
+            )
             loc_text = (uf.get("location_text") or "").strip()
-            if loc_text:
+            if loc_text and not remote_ok:
                 params["where"] = loc_text
-            salary_min = uf.get("salary_minimum")
-            if isinstance(salary_min, (int, float)) and salary_min > 0:
-                # Adzuna's salary_min is in the country's local currency.
-                # For the US Adzuna country it's already USD.
-                params["salary_min"] = int(salary_min)
 
             try:
                 resp = await self.client._client.get(  # type: ignore[union-attr]

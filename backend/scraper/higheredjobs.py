@@ -84,30 +84,89 @@ class HigherEdJobsScraper(BaseScraper):
         limit_per_keyword: int = 50,
         posted_within_days: Optional[int] = 30,
     ) -> list[Role]:
-        sem = asyncio.Semaphore(4)
+        sem = asyncio.Semaphore(1)
 
         async def fetch_cat(cat_id: int, cat_name: str) -> list[ET.Element]:
             async with sem:
                 try:
                     resp = await asyncio.wait_for(
-                        self.client._client.get(  # type: ignore[union-attr]
+                        self.client.get(
                             _category_url(cat_id),
                             headers={
                                 "Accept": "application/rss+xml, application/xml, text/xml",
-                                "User-Agent": (
-                                    "Mozilla/5.0 (compatible; JobSearchApp/0.3.5)"
-                                ),
                             },
                         ),
                         timeout=15.0,
                     )
-                except Exception:
+                except Exception as _e:
+                    # Wave-2B Phase 2 (FIX 12): surface the failure so we
+                    # know whether HigherEd is rate-limited, DataDome-
+                    # challenged, or genuinely empty. Previously bare
+                    # except masked all of it.
+                    err_class = type(_e).__name__
+                    try:
+                        print(
+                            f"[higheredjobs] {err_class} on category "
+                            f"{cat_id} ({cat_name}): {str(_e)[:160]}",
+                            flush=True,
+                        )
+                    except Exception:
+                        pass
+                    status = getattr(getattr(_e, "response", None), "status_code", None)
+                    if status in (429, 403, 503):
+                        self.quota_exhausted = True
+                        self.quota_exhausted_reason = (
+                            f"HigherEdJobs HTTP {status} on cat={cat_id}"
+                        )
                     return []
                 if resp.status_code != 200:
+                    try:
+                        print(
+                            f"[higheredjobs] HTTP {resp.status_code} on cat={cat_id} ({cat_name})",
+                            flush=True,
+                        )
+                    except Exception:
+                        pass
+                    if resp.status_code in (429, 403, 503):
+                        self.quota_exhausted = True
+                        self.quota_exhausted_reason = (
+                            f"HigherEdJobs HTTP {resp.status_code} on cat={cat_id}"
+                        )
+                    return []
+                # Wave-2B Phase 2 (FIX 12): DataDome serves a "Pardon Our
+                # Interruption" HTML page with status_code=200 when it
+                # decides a fetcher looks bot-like. Detect that case so the
+                # zero-jobs result is logged + surfaces as quota_exhausted
+                # rather than silently treated as "category really has no
+                # jobs". Probe by inspecting the response body before XML
+                # parse since the interruption page is HTML, not RSS XML.
+                body_head = (resp.text or "")[:500].lower()
+                if "pardon our interruption" in body_head or "datadome" in body_head:
+                    try:
+                        print(
+                            f"[higheredjobs] DataDome bot challenge on cat={cat_id} "
+                            f"({cat_name}) — treating as quota_exhausted",
+                            flush=True,
+                        )
+                    except Exception:
+                        pass
+                    self.quota_exhausted = True
+                    self.quota_exhausted_reason = (
+                        f"HigherEdJobs DataDome bot challenge on cat={cat_id}"
+                    )
                     return []
                 try:
                     root = ET.fromstring(resp.text)
-                except ET.ParseError:
+                except ET.ParseError as _pe:
+                    try:
+                        print(
+                            f"[higheredjobs] XML ParseError on cat={cat_id} ({cat_name}): "
+                            f"{str(_pe)[:120]} — first 200 chars: "
+                            f"{(resp.text or '')[:200]!r}",
+                            flush=True,
+                        )
+                    except Exception:
+                        pass
                     return []
                 channel = root.find("channel")
                 if channel is None:

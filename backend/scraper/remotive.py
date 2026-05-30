@@ -45,40 +45,18 @@ class RemotiveScraper(BaseScraper):
         limit_per_keyword: int = 50,
         posted_within_days: Optional[int] = 30,
     ) -> list[Role]:
-        sem = asyncio.Semaphore(4)
-
-        async def bounded(kw: str) -> list[Role]:
-            async with sem:
-                try:
-                    return await asyncio.wait_for(
-                        self._search_keyword(kw, limit_per_keyword),
-                        timeout=20.0,
-                    )
-                except Exception:
-                    return []
-
-        tasks = [bounded(kw) for kw in keywords]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-
-        seen: set[str] = set()
-        out: list[Role] = []
-        for r in results:
-            if isinstance(r, BaseException):
-                continue
-            for role in r or []:
-                if role.job_url and role.job_url in seen:
-                    continue
-                if role.job_url:
-                    seen.add(role.job_url)
-                out.append(role)
-        return out
-
-    async def _search_keyword(self, keyword: str, limit: int) -> list[Role]:
-        params = {"search": keyword, "limit": min(50, limit)}
+        # Remotive's API silently ignores search/limit/category/company_name
+        # params — every keyword returns the same ~20 jobs. Their docs cap
+        # callers at 4 requests/day, so fan-out per keyword violates TOS and
+        # produces identical data. Do a single no-param fetch and let the
+        # centralized keyword sanity check downstream do the filtering.
         try:
-            resp = await self.client._client.get(  # type: ignore[union-attr]
-                REMOTIVE_API, params=params,
-                headers={"Accept": "application/json"},
+            resp = await asyncio.wait_for(
+                self.client._client.get(  # type: ignore[union-attr]
+                    REMOTIVE_API,
+                    headers={"Accept": "application/json"},
+                ),
+                timeout=20.0,
             )
         except Exception:
             return []
@@ -90,14 +68,20 @@ class RemotiveScraper(BaseScraper):
             return []
 
         jobs = data.get("jobs") or []
+        seen: set[str] = set()
         out: list[Role] = []
-        for j in jobs[:limit]:
+        for j in jobs:
             try:
                 role = self._item_to_role(j)
-                if role:
-                    out.append(role)
             except Exception:
                 continue
+            if not role:
+                continue
+            if role.job_url and role.job_url in seen:
+                continue
+            if role.job_url:
+                seen.add(role.job_url)
+            out.append(role)
         return out
 
     def _item_to_role(self, j: dict) -> Optional[Role]:

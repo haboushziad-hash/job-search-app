@@ -28,6 +28,7 @@ from backend.config import config
 from backend.models import Role
 from backend.scraper.base import BaseScraper
 from backend.scraper.greenhouse import _strip_html
+from backend.scraper._exception_helpers import handle_scraper_exception
 
 
 THEMUSE_API_BASE = "https://www.themuse.com/api/public/jobs"
@@ -56,7 +57,14 @@ class TheMuseScraper(BaseScraper):
                         self._search_keyword(kw, limit_per_keyword, api_key),
                         timeout=30.0,
                     )
-                except Exception:
+                except Exception as _e:
+                    # Wave-2B Phase 2 (FIX 15): surface via shared helper.
+                    # Previously this bare except hid every Muse failure
+                    # (rate limits, JSON parse, timeouts) and we couldn't
+                    # tell why TheMuse occasionally returned 0 roles.
+                    handle_scraper_exception(
+                        self, "TheMuse", _e, context=f"keyword='{kw}'"
+                    )
                     return []
 
         tasks = [bounded(kw) for kw in keywords]
@@ -85,6 +93,31 @@ class TheMuseScraper(BaseScraper):
         # keyword-relevance precisely. Net effect: BREADTH (40 jobs from
         # 30+ companies per keyword), not narrow keyword precision.
         category = _keyword_to_category(keyword)
+        if category:
+            return await self._fetch_category(category, limit, api_key)
+
+        # No mapped category — fan out across a curated subset of the
+        # broadest Muse categories rather than hitting the same global
+        # recency feed N times. Cap at len(_MUSE_FANOUT_CATEGORIES) to
+        # respect the unkeyed ~25 calls/hr free-tier rate limit.
+        per_cat_limit = max(10, limit // len(_MUSE_FANOUT_CATEGORIES))
+        out: list[Role] = []
+        seen: set[str] = set()
+        for cat in _MUSE_FANOUT_CATEGORIES:
+            roles = await self._fetch_category(cat, per_cat_limit, api_key)
+            for role in roles:
+                if role.job_url and role.job_url in seen:
+                    continue
+                if role.job_url:
+                    seen.add(role.job_url)
+                out.append(role)
+                if len(out) >= limit:
+                    return out
+        return out
+
+    async def _fetch_category(
+        self, category: Optional[str], limit: int, api_key: str,
+    ) -> list[Role]:
         params: dict = {
             "page": 0,
             "descending": "true",
@@ -105,7 +138,12 @@ class TheMuseScraper(BaseScraper):
                     THEMUSE_API_BASE, params=params,
                     headers={"Accept": "application/json"},
                 )
-            except Exception:
+            except Exception as _e:
+                # Wave-2B Phase 2 (FIX 15): surface via shared helper.
+                handle_scraper_exception(
+                    self, "TheMuse", _e,
+                    context=f"category='{category}' page={page}",
+                )
                 break
             if resp.status_code != 200:
                 break
@@ -182,46 +220,81 @@ class TheMuseScraper(BaseScraper):
 # The Muse uses ~30 fixed categories. Map common keyword tokens to the
 # closest Muse category for coarse pre-filtering. Returns None to fetch
 # from all categories (broadest coverage).
+
+# Curated subset (8 broadest) used for fan-out when a keyword doesn't map
+# to any specific category. Picked to maximize cross-industry coverage
+# without exceeding the unkeyed ~25 calls/hr free-tier rate limit.
+# Wave-2B Phase 2 (FIX 1): 5 of 8 category names were typo'd against
+# the actual Muse vocabulary and returned 0 jobs each. Fixed names verified
+# live against https://www.themuse.com/api/public/jobs?category=X
+# Expanded from 8 → 14 to widen cross-industry coverage. With Semaphore(4)
+# this still fits under the unkeyed ~25 calls/hr free-tier rate limit when
+# multiple keywords fan out (the global rate budget is shared via the
+# semaphore-bounded HTTP layer).
+_MUSE_FANOUT_CATEGORIES = (
+    "Software Engineering",            # was "Engineering" (dead)
+    "Data and Analytics",              # was "Data Science" (dead)
+    "Advertising and Marketing",       # was "Marketing" (dead)
+    "Sales",
+    "Healthcare and Medicine",         # was "Healthcare" (dead)
+    "Human Resources and Recruitment", # was "HR" (dead)
+    "Business Operations",             # was "Operations" (dead)
+    "Customer Service",
+    "Legal Services",
+    "Writing and Editing",
+    "Creative and Design",
+    "Education",
+    "Project and Program Management",
+    "Account Management",
+)
+
+# Wave-2B Phase 2 (FIX 4): same vocabulary corrections as FIX 1. Keys
+# mapping to dead category names returned 0 jobs and silently degraded
+# every role-category fetch. Removed dead targets ("Consulting",
+# "Government", "Editorial", "Product", "Legal", "Healthcare", "Project
+# Management") that don't exist as Muse categories; remapped to live
+# equivalents OR removed so they fall through to fan-out. Verified
+# remapping live 2026-05-30.
 _MUSE_CATEGORIES = {
-    "engineer": "Engineering",
+    "engineer": "Software Engineering",
     "developer": "Software Engineering",
     "software": "Software Engineering",
-    "data scientist": "Data Science",
-    "data engineer": "Data Science",
-    "product manager": "Product",
-    "designer": "Design and UX",
-    "ux": "Design and UX",
-    "marketing": "Marketing",
-    "growth": "Marketing",
+    "data scientist": "Data and Analytics",
+    "data engineer": "Data and Analytics",
+    "designer": "Creative and Design",
+    "ux": "Creative and Design",
+    "marketing": "Advertising and Marketing",
+    "growth": "Advertising and Marketing",
     "sales": "Sales",
     "account executive": "Sales",
     "account manager": "Account Management",
-    "operations": "Operations",
-    "ops": "Operations",
-    "project manager": "Project Management",
-    "program manager": "Project Management",
-    "consultant": "Consulting",
+    "operations": "Business Operations",
+    "ops": "Business Operations",
+    "project manager": "Project and Program Management",
+    "program manager": "Project and Program Management",
     "analyst": "Data and Analytics",
     "finance": "Accounting and Finance",
     "accountant": "Accounting and Finance",
     "tax": "Accounting and Finance",
     "audit": "Accounting and Finance",
-    "hr": "HR",
-    "recruiter": "HR",
-    "people": "HR",
-    "lawyer": "Legal",
-    "attorney": "Legal",
-    "counsel": "Legal",
-    "nurse": "Healthcare",
-    "clinical": "Healthcare",
-    "physician": "Healthcare",
-    "policy": "Government",
-    "federal": "Government",
-    "writer": "Editorial",
-    "content": "Editorial",
-    "communications": "Editorial",
+    "hr": "Human Resources and Recruitment",
+    "recruiter": "Human Resources and Recruitment",
+    "people": "Human Resources and Recruitment",
+    "lawyer": "Legal Services",
+    "attorney": "Legal Services",
+    "counsel": "Legal Services",
+    "nurse": "Healthcare and Medicine",
+    "clinical": "Healthcare and Medicine",
+    "physician": "Healthcare and Medicine",
+    "writer": "Writing and Editing",
+    "content": "Writing and Editing",
+    "communications": "Writing and Editing",
     "support": "Customer Service",
     "success": "Customer Service",
+    # consultant/policy/federal/product manager intentionally fall through
+    # to broad fan-out — Muse has no dedicated category, and the fan-out
+    # list now covers all 14 broad categories so the candidate's actual
+    # role will surface from whichever category houses it.
 }
 
 

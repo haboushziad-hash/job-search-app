@@ -28,6 +28,7 @@ recover both fields when present.
 """
 from __future__ import annotations
 
+import asyncio
 import re
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
@@ -37,9 +38,23 @@ from backend.models import Role
 from backend.scraper.base import BaseScraper
 from backend.scraper.greenhouse import _strip_html
 from backend.scraper import _keyword_match as _kw_match
+from backend.scraper._exception_helpers import handle_scraper_exception
 
 
 NODESK_RSS_URL = "https://nodesk.co/remote-jobs/index.xml"
+
+# Per-category RSS endpoints — fanned out in parallel for better coverage.
+# Each category endpoint surfaces roles tagged with that function. Dedup by
+# guid/link across all responses (a role may appear in multiple categories).
+NODESK_CATEGORY_FEEDS = [
+    "https://nodesk.co/remote-jobs/engineering/index.xml",
+    "https://nodesk.co/remote-jobs/design/index.xml",
+    "https://nodesk.co/remote-jobs/marketing/index.xml",
+    "https://nodesk.co/remote-jobs/customer-support/index.xml",
+    "https://nodesk.co/remote-jobs/sales/index.xml",
+    "https://nodesk.co/remote-jobs/operations/index.xml",
+    "https://nodesk.co/remote-jobs/product/index.xml",
+]
 
 # Match standalone `&` not already followed by entity-name-or-#-digit;-pattern.
 # Used to escape stray ampersands so stdlib XML parser doesn't reject the feed.
@@ -87,16 +102,17 @@ class NoDeskScraper(BaseScraper):
     source_name = "NoDesk"
     attribution: str = "Powered by NoDesk — https://nodesk.co"
 
-    async def search(
-        self,
-        *,
-        keywords: list[str],
-        limit_per_keyword: int = 50,
-        posted_within_days: Optional[int] = 30,
-    ) -> list[Role]:
+    async def _fetch_feed(self, url: str) -> list:
+        """Fetch one RSS feed and return its <item> elements.
+
+        CRITICAL GUARD: NoDesk returns HTML 404 with HTTP 200 status for
+        non-existent categories. Verify content-type is XML or that the body
+        starts with an XML prolog before handing to the parser — otherwise
+        the parser fails silently and we lose nothing useful but waste cycles.
+        """
         try:
             resp = await self.client._client.get(  # type: ignore[union-attr]
-                NODESK_RSS_URL,
+                url,
                 headers={
                     "Accept": "application/rss+xml, application/xml, text/xml",
                     "User-Agent": (
@@ -106,9 +122,13 @@ class NoDeskScraper(BaseScraper):
                 },
                 timeout=20.0,
             )
-        except Exception:
-            self.quota_exhausted = True
-            self.quota_exhausted_reason = "NoDesk fetch error (transient)"
+        except Exception as _e:
+            # Wave-2B Phase 2 (FIX 15): surface via shared helper. Picks
+            # the category slug out of the URL so log lines are diagnosable.
+            cat_slug = url.rstrip("/").split("/")[-2] if "/remote-jobs/" in url else url
+            handle_scraper_exception(
+                self, "NoDesk", _e, context=f"category={cat_slug}"
+            )
             return []
         if resp.status_code != 200:
             if resp.status_code in (403, 429):
@@ -118,13 +138,66 @@ class NoDeskScraper(BaseScraper):
                 )
             return []
 
+        # Guard against HTML-404-with-200 responses.
+        ctype = (resp.headers.get("content-type") or "").lower()
+        body = resp.content
+        is_xml_ctype = ctype.startswith("application/xml") or ctype.startswith("text/xml") or "rss+xml" in ctype
+        is_xml_prolog = body[:5].lstrip().startswith(b"<?xml")
+        if not (is_xml_ctype or is_xml_prolog):
+            # Wave-2B Phase 2 (FIX 20, 2026-05-30): surface this case
+            # via quota_exhausted_reason. Previously this silent return
+            # made NoDesk look like a bug in the integrity check when
+            # actually NoDesk had served HTML (anti-bot interstitial,
+            # category 404, or full-site outage). Setting quota_exhausted
+            # categorizes this as an external blocker, not a code bug.
+            cat_slug = url.rstrip("/").split("/")[-2] if "/remote-jobs/" in url else url
+            try:
+                print(
+                    f"[nodesk] non-XML response on {cat_slug} (content-type="
+                    f"{ctype[:40]!r}, first-bytes={body[:40]!r}) — likely "
+                    f"category 404 or anti-bot HTML",
+                    flush=True,
+                )
+            except Exception:
+                pass
+            self.quota_exhausted = True
+            self.quota_exhausted_reason = (
+                f"NoDesk non-XML response on {cat_slug} "
+                f"(content-type={ctype[:30]!r})"
+            )
+            return []
+
         try:
-            root = _parse_feed_lenient(resp.content)
+            root = _parse_feed_lenient(body)
         except Exception:
             return []
 
-        # Find all <item> elements regardless of root shape (lxml tree vs ET tree).
-        items = root.findall(".//item") if root is not None else []
+        return root.findall(".//item") if root is not None else []
+
+    async def search(
+        self,
+        *,
+        keywords: list[str],
+        limit_per_keyword: int = 50,
+        posted_within_days: Optional[int] = 30,
+    ) -> list[Role]:
+        # Fan out across per-category RSS endpoints in parallel. A role may
+        # appear in multiple categories; dedup by guid/link below.
+        results = await asyncio.gather(
+            *(self._fetch_feed(url) for url in NODESK_CATEGORY_FEEDS),
+            return_exceptions=True,
+        )
+
+        items: list = []
+        for r in results:
+            if isinstance(r, list):
+                items.extend(r)
+
+        if not items:
+            # All category feeds came back empty/failed — quota_exhausted may
+            # already be set by _fetch_feed if a 403/429 was seen. Either way,
+            # nothing to process.
+            return []
 
         keywords_lower = [k.lower() for k in keywords]
         per_kw_count: dict[str, int] = {kw: 0 for kw in keywords}

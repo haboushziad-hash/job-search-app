@@ -43,15 +43,20 @@ class FindworkScraper(BaseScraper):
         self,
         *,
         keywords: list[str],
-        limit_per_keyword: int = 50,
+        limit_per_keyword: int = 100,
         posted_within_days: Optional[int] = 30,
     ) -> list[Role]:
+        # Wave-2B Phase 2 (FIX 14a): default limit raised 50 → 100. Findwork
+        # returns up to 100 items per page (its native page size); the prior
+        # 50 cap discarded half of each first-page response before
+        # downstream filtering even ran. No extra API calls — same page,
+        # bigger slice.
         base_url, api_key = _findwork_base_and_key()
         proxy_mode = bool((config.LLM_PROXY_URL or "").strip())
         if not proxy_mode and not api_key:
             return []  # silent no-op when unset locally
 
-        sem = asyncio.Semaphore(3)
+        sem = asyncio.Semaphore(1)
 
         async def bounded(kw: str) -> list[Role]:
             # v0.2.1: short-circuit remaining keywords once any keyword has
@@ -64,11 +69,16 @@ class FindworkScraper(BaseScraper):
                 if self.quota_exhausted:
                     return []
                 try:
-                    return await asyncio.wait_for(
+                    result = await asyncio.wait_for(
                         self._search_keyword(kw, limit_per_keyword,
                                              api_key or "", base_url),
                         timeout=20.0,
                     )
+                    # Free-tier authenticated allows 50 req/min = 1.2s
+                    # spacing; add 0.1s safety margin. Pace inside the
+                    # semaphore so the next keyword waits before acquiring.
+                    await asyncio.sleep(1.3)
+                    return result
                 except Exception:
                     return []
 
@@ -94,37 +104,63 @@ class FindworkScraper(BaseScraper):
     ) -> list[Role]:
         # Findwork accepts `sort_by=date_posted` (not `order_by`); default
         # ordering already returns newest-first so the param is optional.
-        params = {"search": keyword}
+        # Wave-2B Phase 2 (FIX 14b): paginate via the response 'next' URL
+        # until we hit the per-keyword limit OR run out of pages. Cap at
+        # 5 pages to respect the 50 req/min budget (already 1.3s pace from
+        # earlier fix). Findwork pages are 100 items each → 5 pages = 500
+        # raw items max per keyword.
+        params: dict = {"search": keyword}
         # In proxy mode the Worker injects Authorization: Token <key>.
         # In direct mode we set it ourselves from .env.
         headers: dict[str, str] = {"Accept": "application/json"}
         if api_key:
             headers["Authorization"] = f"Token {api_key}"
-        try:
-            resp = await self.client._client.get(  # type: ignore[union-attr]
-                base_url, params=params, headers=headers,
-            )
-        except Exception:
-            return []
-        if resp.status_code != 200:
-            if resp.status_code in (403, 429):
-                self.quota_exhausted = True
-                self.quota_exhausted_reason = f"Findwork HTTP {resp.status_code} (rate limit or quota)"
-            return []
-        try:
-            data = resp.json()
-        except Exception:
-            return []
 
-        items = data.get("results") or []
         out: list[Role] = []
-        for j in items[:limit]:
+        next_url: Optional[str] = None
+        max_pages = 5
+        for page_idx in range(max_pages):
             try:
-                role = self._item_to_role(j)
-                if role:
-                    out.append(role)
+                if next_url:
+                    # Findwork's 'next' is the absolute URL with cursor
+                    # already encoded — pass it directly.
+                    resp = await self.client._client.get(  # type: ignore[union-attr]
+                        next_url, headers=headers,
+                    )
+                else:
+                    resp = await self.client._client.get(  # type: ignore[union-attr]
+                        base_url, params=params, headers=headers,
+                    )
             except Exception:
-                continue
+                break
+            if resp.status_code != 200:
+                if resp.status_code in (403, 429):
+                    self.quota_exhausted = True
+                    self.quota_exhausted_reason = f"Findwork HTTP {resp.status_code} (rate limit or quota)"
+                break
+            try:
+                data = resp.json()
+            except Exception:
+                break
+
+            items = data.get("results") or []
+            for j in items:
+                try:
+                    role = self._item_to_role(j)
+                    if role:
+                        out.append(role)
+                except Exception:
+                    continue
+                if len(out) >= limit:
+                    return out
+            # Walk the cursor — Findwork uses DRF-style pagination with
+            # 'next' = absolute URL or null when exhausted.
+            next_url = data.get("next")
+            if not next_url:
+                break
+            # Respect the 50 req/min budget between pages too.
+            await asyncio.sleep(1.3)
+
         return out
 
     def _item_to_role(self, j: dict) -> Optional[Role]:

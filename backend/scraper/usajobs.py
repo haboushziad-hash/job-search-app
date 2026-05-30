@@ -72,7 +72,8 @@ class USAJobsScraper(BaseScraper):
                     return await asyncio.wait_for(
                         self._search_keyword(kw, limit_per_keyword,
                                              user_agent or "", api_key or "",
-                                             base_url),
+                                             base_url,
+                                             posted_within_days=posted_within_days),
                         timeout=30.0,
                     )
                 except Exception:
@@ -98,11 +99,60 @@ class USAJobsScraper(BaseScraper):
     async def _search_keyword(
         self, keyword: str, limit: int, user_agent: str, api_key: str,
         base_url: str,
+        posted_within_days: Optional[int] = None,
     ) -> list[Role]:
-        params = {
+        params: dict = {
             "Keyword": keyword,
             "ResultsPerPage": min(500, limit * 5),
         }
+        # FIX 17: wire posted_within_days into the USAJOBS DatePosted param
+        # (USAJOBS supports 1-60 days).
+        if posted_within_days:
+            params["DatePosted"] = min(60, int(posted_within_days))
+
+        # FIX 16: wire self._user_filters into the USAJOBS request.
+        # USAJOBS supports LocationName, Radius, RemunerationMinimumAmount.
+        #
+        # v0.3.17 hotfix: USAJOBS LocationName expects "City, State" format
+        # (e.g. "Richmond, Virginia"), NOT abbreviated "Richmond VA".
+        # Audit 2026-05-29_19-49 showed USAJOBS returning 1 raw role when
+        # passed "Richmond VA" verbatim (was 222 prior). Be conservative:
+        # only set LocationName if the user's location_text looks USAJOBS-
+        # friendly (contains a comma indicating City, State format).
+        # Otherwise omit LocationName and let USAJOBS return US-wide
+        # federal results — the downstream hard_filter validates against
+        # acceptable_locations.
+        #
+        # Also: RemunerationMinimumAmount is REMOVED. Federal job postings
+        # frequently omit salary entirely (especially GS-series which are
+        # implicit by grade). Sending a $130k minimum excludes most
+        # legitimate matches whose salary just isn't listed in the API
+        # response. Salary filtering happens correctly post-fetch in
+        # hard_filters.passes_salary_floor().
+        # Wave-2B Phase 2 (FIX 19, 2026-05-30): when user has MULTIPLE
+        # acceptable_locations, USAJOBS can only filter by ONE LocationName
+        # at the API level. Previously only locs[0] was queried, silently
+        # dropping all secondary-location federal job matches. Fix: when
+        # multi-location, skip the LocationName + Radius filter so the
+        # API returns US-wide federal results and the downstream
+        # hard_filter validates against the full acceptable_locations
+        # list. Single-location users keep the tight API filter.
+        user_filters = getattr(self, "_user_filters", None) or {}
+        accept_locs = user_filters.get("acceptable_locations") or []
+        loc_text = (user_filters.get("location_text") or "").strip()
+        if len(accept_locs) > 1:
+            # Multi-location: drop LocationName so all locations are
+            # represented in the pull. Downstream is the authority.
+            pass
+        elif loc_text and "," in loc_text and len(loc_text.split(",")) >= 2:
+            # Single-location: keep the tight API filter (City, State).
+            params["LocationName"] = loc_text
+            radius = user_filters.get("radius_miles", 50)
+            try:
+                params["Radius"] = int(radius)
+            except (ValueError, TypeError):
+                params["Radius"] = 50
+
         # In proxy mode the Worker injects auth + Host. In direct mode we
         # set them ourselves from .env.
         headers: dict[str, str] = {}
@@ -163,11 +213,31 @@ class USAJobsScraper(BaseScraper):
         company = self._normalize_company(org or "Federal Government")
 
         # Locations
+        # FIX 6: federal jobs typically list 5-20 eligible duty stations.
+        # Previously we kept only locations[0] and silently dropped the rest.
+        # Now we prefer the first LocationName matching the user's
+        # location_text filter (so candidates see "their" duty station),
+        # else fall back to joining all LocationName values with "; ".
         locations = descriptor.get("PositionLocation") or []
         loc_str = ""
         if locations:
-            ln = locations[0].get("LocationName") or ""
-            loc_str = ln
+            user_filters = getattr(self, "_user_filters", None) or {}
+            user_loc = (user_filters.get("location_text") or "").strip().lower()
+            all_names = [
+                (loc.get("LocationName") or "").strip()
+                for loc in locations
+                if loc.get("LocationName")
+            ]
+            matched = ""
+            if user_loc:
+                for name in all_names:
+                    if user_loc in name.lower():
+                        matched = name
+                        break
+            if matched:
+                loc_str = matched
+            elif all_names:
+                loc_str = "; ".join(all_names)
         # USAJOBS doesn't have a clean Remote/Hybrid flag — heuristic
         location_type = "Remote" if "anywhere" in loc_str.lower() or "telework" in loc_str.lower() else "On-site"
 

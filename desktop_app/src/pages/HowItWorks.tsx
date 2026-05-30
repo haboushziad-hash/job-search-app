@@ -98,13 +98,13 @@ export default function HowItWorks() {
               <>
                 Roles are grouped into{' '}
                 <span className="text-tier-strong font-medium">STRONG</span>{' '}
-                (apply this week) ·{' '}
+                (DAMN! Apply!) ·{' '}
                 <span className="text-tier-good font-medium">GOOD</span>{' '}
-                (apply within 2 weeks) ·{' '}
+                (yeah, apply) ·{' '}
                 <span className="text-tier-maybe font-medium">MAYBE</span>{' '}
-                (worth a closer read) ·{' '}
+                (hmm, read it) ·{' '}
                 <span className="text-base-300 font-medium">STRETCH</span>{' '}
-                (long shot but technically qualifying) so you know where to focus first.
+                (ehhhhh) so you know where to focus first.
                 Each role's tier reflects fit across function, seniority, skills, salary,
                 location, and your stated preferences.
               </>

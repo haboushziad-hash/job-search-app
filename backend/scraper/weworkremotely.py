@@ -25,6 +25,7 @@ the first ": " to recover both fields.
 """
 from __future__ import annotations
 
+import asyncio
 import re
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
@@ -38,6 +39,30 @@ from backend.scraper import _keyword_match as _kw_match
 
 
 WWR_RSS_URL = "https://weworkremotely.com/remote-jobs.rss"
+
+# Per-category RSS endpoints. The master /remote-jobs.rss feed is capped at
+# ~99 items (10 per category), which drops most active roles on the floor.
+# Fetching every category feed in parallel and deduping by job_url recovers
+# the full active set (~9-11 categories × ~50 items = ~500-1000 raw items).
+# Wave-2B Phase 2 (FIX 13a): added 2 broader category feeds so non-tech
+# personas (admin, support, legal, HR, education, ops) surface. The
+# original 10-feed list was tech-heavy; "remote-all-other-jobs" carries
+# the long tail and "remote-software-developer-jobs" is a more popular
+# alias than "remote-programming-jobs" on WWR.
+WWR_CATEGORY_RSS_URLS = [
+    "https://weworkremotely.com/categories/remote-programming-jobs.rss",
+    "https://weworkremotely.com/categories/remote-back-end-programming-jobs.rss",
+    "https://weworkremotely.com/categories/remote-front-end-programming-jobs.rss",
+    "https://weworkremotely.com/categories/remote-full-stack-programming-jobs.rss",
+    "https://weworkremotely.com/categories/remote-customer-support-jobs.rss",
+    "https://weworkremotely.com/categories/remote-sales-and-marketing-jobs.rss",
+    "https://weworkremotely.com/categories/remote-design-jobs.rss",
+    "https://weworkremotely.com/categories/remote-product-jobs.rss",
+    "https://weworkremotely.com/categories/remote-devops-sysadmin-jobs.rss",
+    "https://weworkremotely.com/categories/remote-management-and-finance-jobs.rss",
+    "https://weworkremotely.com/categories/remote-all-other-jobs.rss",
+    "https://weworkremotely.com/categories/remote-software-developer-jobs.rss",
+]
 
 
 def _parse_pubdate(raw: str) -> Optional[str]:
@@ -72,31 +97,61 @@ class WeWorkRemotelyScraper(BaseScraper):
         limit_per_keyword: int = 50,
         posted_within_days: Optional[int] = 30,
     ) -> list[Role]:
-        try:
-            resp = await self.client._client.get(  # type: ignore[union-attr]
-                WWR_RSS_URL,
-                headers={
-                    "Accept": "application/rss+xml, application/xml, text/xml",
-                    "User-Agent": (
-                        "Mozilla/5.0 (compatible; JobSearchApp/0.3.5)"
-                    ),
-                },
-            )
-        except Exception:
-            return []
-        if resp.status_code != 200:
-            return []
+        # Fetch all per-category RSS feeds in parallel. The master
+        # /remote-jobs.rss caps at ~99 items (10/category) — per-category
+        # feeds return the full active set per category. Dedupe by job_url
+        # across feeds (a role tagged with multiple categories appears in
+        # several feeds).
+        sem = asyncio.Semaphore(5)
 
-        try:
-            root = ET.fromstring(resp.text)
-        except ET.ParseError:
-            return []
+        async def fetch_feed(url: str) -> list[ET.Element]:
+            async with sem:
+                try:
+                    resp = await self.client._client.get(  # type: ignore[union-attr]
+                        url,
+                        headers={
+                            "Accept": "application/rss+xml, application/xml, text/xml",
+                            "User-Agent": (
+                                "Mozilla/5.0 (compatible; JobSearchApp/0.3.5)"
+                            ),
+                        },
+                        # Wave-2B Phase 2 (FIX 13b): WWR sometimes 301s
+                        # category URLs to canonical aliases. Without
+                        # follow_redirects the response is the 301 body
+                        # (empty channel) and we silently dropped the
+                        # entire feed.
+                        follow_redirects=True,
+                    )
+                except Exception:
+                    return []
+                if resp.status_code != 200:
+                    return []
+                try:
+                    root = ET.fromstring(resp.text)
+                except ET.ParseError:
+                    return []
+                channel = root.find("channel")
+                if channel is None:
+                    return []
+                return channel.findall("item") or []
 
-        # RSS 2.0 — items live at /rss/channel/item.
-        channel = root.find("channel")
-        if channel is None:
-            return []
-        items = channel.findall("item")
+        tasks = [fetch_feed(u) for u in WWR_CATEGORY_RSS_URLS]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        # Flatten and dedupe items by <link> (job_url) across feeds so we
+        # don't double-process roles tagged with multiple categories.
+        items: list[ET.Element] = []
+        seen_links: set[str] = set()
+        for r in results:
+            if isinstance(r, BaseException):
+                continue
+            for it in r or []:
+                link = (it.findtext("link") or "").strip()
+                if link and link in seen_links:
+                    continue
+                if link:
+                    seen_links.add(link)
+                items.append(it)
         if not items:
             return []
 

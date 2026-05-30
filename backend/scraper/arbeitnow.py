@@ -13,6 +13,7 @@ Endpoint: GET https://www.arbeitnow.com/api/job-board-api
 from __future__ import annotations
 
 import asyncio
+import re
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -23,6 +24,43 @@ from backend.scraper import _keyword_match as _kw_match
 
 
 ARBEITNOW_API = "https://www.arbeitnow.com/api/job-board-api"
+
+# US state abbreviations + common US city markers — used to short-circuit
+# the source for US-only searches (Arbeitnow is overwhelmingly EU/German).
+_US_STATE_ABBR = {
+    "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA", "HI",
+    "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI",
+    "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC",
+    "ND", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT",
+    "VT", "VA", "WA", "WV", "WI", "WY", "DC",
+}
+_US_CITY_MARKERS = (
+    "united states", "usa", "u.s.a", "u.s.", " us", "washington dc",
+    "new york", "san francisco", "los angeles", "chicago", "boston",
+    "seattle", "austin", "atlanta", "denver", "houston", "dallas",
+    "miami", "philadelphia", "phoenix",
+)
+# German-language job-posting markers — present in ~100% of German listings.
+_GERMAN_MARKERS = (
+    "m/w/d", "w/m/d", "m/f/d", "werkstudent", "mitarbeiter",
+    "gmbh", "großraum",
+)
+
+
+def _looks_us_location(text: str) -> bool:
+    """Best-effort detection of a US-based location string."""
+    if not text:
+        return False
+    low = text.lower()
+    if any(marker in low for marker in _US_CITY_MARKERS):
+        return True
+    # Token scan for two-letter state codes (e.g. "Arlington, VA").
+    # Split on non-alphanumeric so "Washington, DC" and "DC" both match.
+    tokens = re.findall(r"[A-Za-z]{2,}", text)
+    for tok in tokens:
+        if len(tok) == 2 and tok.upper() in _US_STATE_ABBR:
+            return True
+    return False
 
 
 class ArbeitnowScraper(BaseScraper):
@@ -35,6 +73,16 @@ class ArbeitnowScraper(BaseScraper):
         limit_per_keyword: int = 50,
         posted_within_days: Optional[int] = 30,
     ) -> list[Role]:
+        # Short-circuit: ~93% of Arbeitnow listings are German-language. If
+        # the user is searching for a US-based onsite/hybrid role, skip this
+        # source entirely (remote_only users still benefit from EU-remote
+        # postings that may be globally open).
+        uf = getattr(self, "_user_filters", None) or {}
+        loc_text = (uf.get("location_text") or "").strip()
+        if loc_text and uf.get("remote_only") is not True:
+            if _looks_us_location(loc_text):
+                return []
+
         # Arbeitnow returns the same 100 jobs regardless of keyword (no
         # search param). We fetch once and apply client-side keyword filter.
         try:
@@ -62,6 +110,15 @@ class ArbeitnowScraper(BaseScraper):
         for j in all_jobs:
             title = (j.get("title") or "").strip()
             if not title:
+                continue
+            # Filter out German-language postings — these markers appear
+            # in ~100% of German JDs and are useless for English-speaking
+            # users. "m/w/d" etc. are German gender-neutral job suffixes;
+            # "werkstudent" / "mitarbeiter" / "gmbh" / "großraum" are
+            # ubiquitous German job-posting vocabulary.
+            desc_raw = (j.get("description") or "")
+            scan_text = (title + " " + desc_raw[:200]).lower()
+            if any(marker in scan_text for marker in _GERMAN_MARKERS):
                 continue
             # Token-overlap match (shared via _keyword_match.py).
             if not _kw_match.matches_any_keyword(

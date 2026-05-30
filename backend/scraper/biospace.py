@@ -122,7 +122,7 @@ class BioSpaceScraper(BaseScraper):
     async def _search_keyword(self, keyword: str, limit: int) -> list[Role]:
         # ~25 results per page; honor `limit` by fetching up to ceil(limit/25)
         # pages but cap at 4 to keep cost bounded.
-        pages_needed = max(1, (limit + 24) // 25)
+        pages_needed = max(1, (limit + 19) // 20)
         max_pages = min(pages_needed, 4)
 
         out: list[Role] = []
@@ -131,6 +131,7 @@ class BioSpaceScraper(BaseScraper):
             params = {
                 "keywords": keyword,
                 "location": "United States",
+                "sort": "Date",
             }
             if page > 1:
                 params["page"] = str(page)

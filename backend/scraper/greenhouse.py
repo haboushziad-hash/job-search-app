@@ -98,6 +98,31 @@ GREENHOUSE_COMPANIES: list[tuple[str, str]] = [
     ("Okta", "okta"),
     ("DataDog", "datadog"),
     ("New Relic", "newrelic"),
+
+    # ========== Wave-2B Phase 2 (FIX 11, 2026-05-30) — 11 new tenants ==
+    # Cross-vertical coverage: healthcare (Oscar/Omada), enterprise SaaS
+    # (GitLab/LaunchDarkly/BeyondTrust), fintech (SumUp/Sezzle/Jumio),
+    # marketplace (TaskRabbit — also first Greenhouse skilled-trades source),
+    # consumer (ThirdLove), infra (RunPod). Each slug verified live by the
+    # deep-dive workflow. If any 404 in production, the existing
+    # dead_tenants tracker (added in v0.3.5) prunes them.
+    #
+    # Wave-2B Phase 2 post-validation prune (2026-05-30 Ziad smoke run):
+    # Removed Gong (slug 'gong' returned 404 — migrated to Ashby, covered
+    # there in FIX 8) and Jamf (slug 'jamfsoftware' returned 404 — also
+    # migrated to Ashby, covered there). Three 404s remain to investigate
+    # next round (opendoor was pre-existing, not added by FIX 11).
+    ("SumUp",         "sumup"),
+    ("Oscar Health",  "oscar"),
+    ("Sezzle",        "sezzle"),
+    ("GitLab",        "gitlab"),
+    ("BeyondTrust",   "beyondtrust"),
+    ("LaunchDarkly",  "launchdarkly"),
+    ("Omada Health",  "omadahealth"),
+    ("RunPod",        "runpod"),
+    ("Jumio",         "jumio"),
+    ("TaskRabbit",    "taskrabbit"),
+    ("ThirdLove",     "thirdlove"),
     ("Elastic", "elastic"),
     ("MongoDB", "mongodb"),
     ("PagerDuty", "pagerduty"),
@@ -276,6 +301,16 @@ class GreenhouseScraper(BaseScraper):
             if posted_within_days else None
         )
         keywords_lower = [k.lower() for k in keywords]
+        # FIX 26 (Wave-2B Phase 1): per-tenant error accumulator. We hit ~150
+        # Greenhouse boards per run, and previously every 404 / timeout /
+        # parse error was silently swallowed (`except Exception: pass`).
+        # That made dead tenants invisible — boards that had renamed their
+        # slug or pulled their public API would just contribute 0 roles
+        # indistinguishably from live boards with no matches. The
+        # orchestrator picks up `dead_tenants` via getattr() and surfaces
+        # it on the health_out["Greenhouse"]["dead_tenants"] dict so the
+        # audit JSON records {tenant_slug: error_type} for triage.
+        self.dead_tenants: dict[str, str] = {}
 
         # Fetch from all companies in parallel.
         # v0.2.1: cap concurrent in-flight requests at 20 to prevent
@@ -298,8 +333,28 @@ class GreenhouseScraper(BaseScraper):
         seen_url: set[str] = set()
         seen_title_company: set[tuple[str, str]] = set()
 
-        for result in all_company_results:
+        # Build a parallel index of (display_name, slug) so we can attribute
+        # gather() exceptions back to the right tenant for FIX 26 logging.
+        tenant_index = list(GREENHOUSE_COMPANIES)
+        for idx, result in enumerate(all_company_results):
             if isinstance(result, Exception):
+                # FIX 26: surface the failing tenant + error type instead of
+                # swallowing. asyncio.gather(..., return_exceptions=True)
+                # captures errors that escaped _fetch_company_jobs (e.g. a
+                # bug in _bounded, semaphore acquisition failure, or a
+                # CancelledError propagated up). _fetch_company_jobs itself
+                # also writes to self.dead_tenants for the upstream-side
+                # errors (404 / timeout / parse) — this branch covers
+                # everything else.
+                if idx < len(tenant_index):
+                    _display, _slug = tenant_index[idx]
+                    err_type = type(result).__name__
+                    self.dead_tenants[_slug] = f"gather:{err_type}"
+                    print(
+                        f"[Greenhouse] tenant '{_slug}' raised "
+                        f"{err_type}: {str(result)[:120]}",
+                        flush=True,
+                    )
                 continue  # company API failed, just skip
             for role in result:
                 # Dedup by URL (exact)
@@ -339,16 +394,55 @@ class GreenhouseScraper(BaseScraper):
         url = f"{self.BASE_URL}/{slug}/jobs"
         try:
             data = await self.client.get_json(url, params={"content": "true"})
-        except Exception:
+        except Exception as e:
+            # FIX 26 (Wave-2B Phase 1): structured error capture instead of
+            # silent pass. Classify the error so dead_tenants tells us *why*
+            # the tenant is dead (404 = slug renamed/pulled; timeout =
+            # transient; other = HTTP error or JSON decode failure). The
+            # orchestrator reads self.dead_tenants via getattr() and writes
+            # it into health_out["Greenhouse"]["dead_tenants"] for audit.
+            err_type = type(e).__name__
+            msg = str(e).lower()
+            if "404" in msg or "not found" in msg:
+                category = "404"
+            elif "timeout" in msg or "timed out" in msg:
+                category = "timeout"
+            elif "json" in msg or "decode" in msg:
+                category = "parse_error"
+            else:
+                category = f"fetch_error:{err_type}"
+            self.dead_tenants[slug] = category
+            print(
+                f"[Greenhouse] tenant '{slug}' fetch failed ({category}): "
+                f"{str(e)[:120]}",
+                flush=True,
+            )
             return []
 
         jobs = data.get("jobs") or []
         roles: list[Role] = []
+        parse_failures = 0
         for j in jobs:
             try:
                 roles.append(self._job_to_role(j, display_name))
-            except Exception:
+            except Exception as e:
+                # FIX 26: track per-role parse failures so a partially broken
+                # board (e.g. one malformed job in 50) still returns the good
+                # roles but we surface the parse_error in dead_tenants.
+                parse_failures += 1
+                if parse_failures == 1:  # log only the first to avoid spam
+                    print(
+                        f"[Greenhouse] tenant '{slug}' role parse error: "
+                        f"{type(e).__name__}: {str(e)[:120]}",
+                        flush=True,
+                    )
                 continue
+        # FIX 26: gate accumulation with `if jobs` so legitimate zero-result
+        # tenants (board exists, just no open roles right now) don't spam
+        # logs or show up as dead. Only mark a tenant when there were jobs
+        # AND we failed to parse some of them.
+        if jobs and parse_failures > 0:
+            self.dead_tenants[slug] = f"parse_error:{parse_failures}/{len(jobs)}"
         return roles
 
     def _job_to_role(self, job: dict[str, Any], company: str) -> Role:

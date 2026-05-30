@@ -287,6 +287,13 @@ async def scrape_all(
             "cost_estimate_usd": round(
                 float(getattr(scraper_inst, "cost_estimate", 0.0) or 0.0), 4
             ),
+            # v0.3.17 (Wave-2B FIX 26): surface per-tenant scrape errors
+            # accumulated by scrapers that track them (Greenhouse so far).
+            # Structure: {tenant_slug: error_classification}. Empty dict if
+            # the scraper doesn't populate dead_tenants (most scrapers).
+            "dead_tenants": dict(
+                getattr(scraper_inst, "dead_tenants", {}) or {}
+            ),
         }
         # v0.3.12: silent-zero scraper alert. v0.3.13 refined: the original
         # threshold (elapsed_s < 0.1) ONLY caught the silent-cred-check
@@ -359,6 +366,30 @@ async def scrape_all(
         print(f"[scraper] total before dedup: {len(filtered_roles)} (after sanity filter), "
               f"after dedup: {len(deduped)}, "
               f"after per-company cap (max 50): {len(capped)}")
+
+    # FIX 35 (Wave-2B Phase 1): persist per-source funnel survival counts so
+    # the audit JSON can show the full raw -> filter -> dedup -> cap pipeline
+    # per board. Today only the totals + raw `by_source` make it into the
+    # audit; the 18K -> 6 Workday funnel breakdown is invisible. Counting
+    # here from the actual deduped/capped role lists is robust (won't drift
+    # if pipeline order changes).
+    by_source_dedup: dict[str, int] = {}
+    for r in deduped:
+        src = getattr(r, "primary_source", None) or getattr(r, "source", None) or "unknown"
+        by_source_dedup[src] = by_source_dedup.get(src, 0) + 1
+    by_source_capped: dict[str, int] = {}
+    for r in capped:
+        src = getattr(r, "primary_source", None) or getattr(r, "source", None) or "unknown"
+        by_source_capped[src] = by_source_capped.get(src, 0) + 1
+    for source_name in valid_sources:
+        if source_name not in health:
+            continue
+        health[source_name]["funnel"] = {
+            "raw": int(by_source.get(source_name, 0)),
+            "after_filter": int(by_source_filtered.get(source_name, 0)),
+            "after_dedup": int(by_source_dedup.get(source_name, 0)),
+            "after_dedup_cap": int(by_source_capped.get(source_name, 0)),
+        }
 
     # Populate caller's health dict so the runner can persist this into
     # RunSummary.per_source_counts for audit + monitoring.

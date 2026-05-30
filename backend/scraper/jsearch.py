@@ -126,7 +126,10 @@ def _jsearch_base_and_key() -> tuple[str, Optional[str]]:
     proxy = (config.LLM_PROXY_URL or "").rstrip("/")
     if proxy:
         return f"{proxy}/v1/scraper/jsearch/search", ""
-    return JSEARCH_API_BASE, getattr(config, "JSEARCH_RAPIDAPI_KEY", "") or ""
+    key = getattr(config, "JSEARCH_RAPIDAPI_KEY", "") or ""
+    if not key:
+        print("[JSearch] No RAPIDAPI key — scraper returning empty (local mode)")
+    return JSEARCH_API_BASE, key
 
 
 class JSearchScraper(BaseScraper):
@@ -270,12 +273,27 @@ class JSearchScraper(BaseScraper):
         # and minimum salary via job_salary; pass through what's set so
         # we drop unrelated geos / underpaying roles before they hit the
         # downstream pipeline. None values stay omitted (default = no filter).
+        #
+        # Wave-2B Phase 2 (FIX 18, 2026-05-30): when user has MULTIPLE
+        # acceptable_locations (e.g. Ziad's [Washington DC, Richmond VA]),
+        # JSearch can only filter by one at the API level. Previously
+        # only locs[0] was queried, silently dropping all secondary-
+        # location matches (Richmond roles never made it into the pull).
+        # Fix: skip the API-side location filter when multi-location.
+        # The downstream hard_filter validates against the full
+        # acceptable_locations list so no role gets wrongly through;
+        # we just trade some narrowness for guaranteed coverage of
+        # every user-listed location.
         uf = getattr(self, "_user_filters", None) or {}
+        accept_locs = uf.get("acceptable_locations") or []
         loc_text = (uf.get("location_text") or "").strip()
-        if loc_text:
-            # JSearch matches `location` against city/state/country; even
-            # broad strings like "Washington DC" or "Remote, US" narrow
-            # results meaningfully.
+        if len(accept_locs) > 1:
+            # Multi-location: drop API-side filter so all locations have
+            # a fair shot at surfacing. Downstream hard_filter is the
+            # authority on which roles to keep.
+            pass
+        elif loc_text:
+            # Single-location: keep the tight API filter.
             params["location"] = loc_text
         if uf.get("remote_only") is True:
             params["remote_jobs_only"] = "true"

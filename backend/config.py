@@ -171,6 +171,16 @@ class Config:
     # password (not account password — different field in DataForSEO UI).
     DATAFORSEO_LOGIN: str = os.getenv("DATAFORSEO_LOGIN", "").strip()
     DATAFORSEO_PASSWORD: str = os.getenv("DATAFORSEO_PASSWORD", "").strip()
+    # Wave-2B Phase 1 (FIX 18): JSearch via RapidAPI. Aggregates LinkedIn,
+    # Indeed, Glassdoor, ZipRecruiter into one HTTP endpoint. Free tier 150
+    # calls/mo; paid plans scale linearly. JSEARCH_NUM_PAGES bounds per-query
+    # pagination so a single keyword can't blow the monthly budget.
+    JSEARCH_RAPIDAPI_KEY: str = os.getenv("JSEARCH_RAPIDAPI_KEY", "").strip()
+    # Wave-2B Phase 2 (FIX 3): default raised 3 → 5. Phase 1 introduced the
+    # "3" default which silently regressed JSearch raw from ~994 to ~512
+    # per run (-49%). Pages 4-5 are free on RapidAPI (the per-call cost is
+    # fixed regardless of num_pages), so this is a pure-win revert.
+    JSEARCH_NUM_PAGES: int = int(os.getenv("JSEARCH_NUM_PAGES", "5") or 5)
 
     @classmethod
     def is_central_server_mode(cls) -> bool:
@@ -270,6 +280,26 @@ class Config:
     # cold-cache baseline + 2-tester canary with per-user STRONG-recall ≥95%
     # monitoring. Auto-disable per-user if recall <95% in first 2 runs.
     PATH_B_GATE_ENABLED: bool = False
+
+    # Wave-2B Phase 1 (2026-05-29): Workday upstream facet filters.
+    # When True, the Workday scraper translates self._user_filters into
+    # `appliedFacets` on the POST body (locations text, Remote-only,
+    # postingDateRange). Some Workday tenants reject unknown facet keys
+    # with 422 — the scraper retries without facets on first 422.
+    # Set to False to disable the feature entirely if a tenant misbehaves
+    # and the per-tenant fallback isn't catching it cleanly.
+    #
+    # v0.3.17 hotfix: DEFAULTED TO FALSE. Audit 2026-05-29_19-49 showed
+    # ALL 144 Workday requests returned 400 (not 422) — every tenant
+    # rejected our generic facet shape because Workday CXS facets use
+    # TENANT-SPECIFIC UUIDs (not plain string keys like "locations"/
+    # "Remote"). The 422-retry never fired because the actual response
+    # was 400. Disabling facets reverts Workday to post-scrape filtering
+    # (preserves the 18K -> 6 qualifying funnel — small but non-zero).
+    # Task #28 (Wave-2B.1) tracks the proper fix: probe per-tenant
+    # facet UUIDs OR maintain a hand-curated tenant->UUID map for the
+    # top ~20 tenants. Re-enable to True after that lands.
+    WORKDAY_USE_FACETS: bool = False
 
     # Profile + keyword generation is THE critical LLM call — every downstream
     # scrape uses these keywords. We use a max-quality pipeline:

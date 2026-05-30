@@ -27,8 +27,15 @@ from backend.scraper.base import BaseScraper
 from backend.scraper import _keyword_match as _kw_match
 
 
-HN_SEARCH_API = "https://hn.algolia.com/api/v1/search"
+HN_SEARCH_API = "https://hn.algolia.com/api/v1/search_by_date"
 HN_ITEM_API = "https://hn.algolia.com/api/v1/items"
+
+# Match current monthly thread: "Ask HN: Who is hiring? (Month YYYY)"
+_HIRING_THREAD_RE = re.compile(
+    r"Who is hiring\?\s*\((January|February|March|April|May|June|"
+    r"July|August|September|October|November|December)\s+\d{4}\)",
+    re.IGNORECASE,
+)
 
 
 class HNHiringScraper(BaseScraper):
@@ -75,7 +82,14 @@ class HNHiringScraper(BaseScraper):
         return out
 
     async def _find_latest_thread(self) -> Optional[int]:
-        """Find the most recent 'Ask HN: Who is hiring?' story by user 'whoishiring'."""
+        """Find the most recent 'Ask HN: Who is hiring?' story by user 'whoishiring'.
+
+        Uses /search_by_date (chronological) instead of /search (Algolia
+        relevance-default) to avoid latching onto old high-relevance threads
+        (e.g. the 2020 pandemic-era thread). Filters titles against a regex
+        matching the canonical "Who is hiring? (Month YYYY)" pattern so we
+        only accept the actual current monthly thread.
+        """
         # whoishiring is the official account that posts every month
         params = {
             "tags": "story,author_whoishiring",
@@ -95,8 +109,8 @@ class HNHiringScraper(BaseScraper):
         except Exception:
             return None
         for hit in data.get("hits") or []:
-            title = (hit.get("title") or "").lower()
-            if "who is hiring" in title and "ask hn" in title:
+            title = hit.get("title") or ""
+            if _HIRING_THREAD_RE.search(title):
                 obj_id = hit.get("objectID")
                 if obj_id:
                     try:
@@ -145,7 +159,12 @@ class HNHiringScraper(BaseScraper):
         url_m = re.search(r"https?://[^\s<>\"]+", plain)
         url = url_m.group(0).rstrip(".,)") if url_m else ""
         if not url:
-            return None  # without a URL it's hard to act on
+            # Fallback: use the HN permalink so the role isn't dropped.
+            comment_id = comment.get("id")
+            if comment_id:
+                url = f"https://news.ycombinator.com/item?id={comment_id}"
+            else:
+                return None
 
         # Title heuristic: first ~120 chars of the comment (often "Company | Role | ...")
         first_chunk = plain[:200]

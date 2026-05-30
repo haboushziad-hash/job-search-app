@@ -52,10 +52,20 @@ DOMAIN_OVERRIDES: dict[str, dict[str, float]] = {
     "api.ashbyhq.com":           {"min_delay_seconds": 0.5,  "max_delay_seconds": 1.2},
     "jobs.ashbyhq.com":          {"min_delay_seconds": 0.8,  "max_delay_seconds": 2.0},
     # HTML-scraped boards need to look more human
-    "builtin.com":               {"min_delay_seconds": 2.0,  "max_delay_seconds": 5.0},
+    # Wave-2B Phase 2 (FIX 9): loosened 2.0/5.0 → 0.8/2.0 (avg ~1.4s gap).
+    # The aggressive prior pacing combined with Semaphore(2)+timeout=25s in
+    # builtin.py was killing 60-75% of keywords (each keyword took ~140s
+    # wall-clock vs 25s timeout). Together with FIX 5 (timeout 25 → 90)
+    # this restores BuiltIn raw counts. Pre-Wave-2B raw-httpx fired 80
+    # requests within seconds with no soft-ban, so 1.4s avg gap is safe.
+    "builtin.com":               {"min_delay_seconds": 0.8,  "max_delay_seconds": 2.0},
+    "www.builtin.com":           {"min_delay_seconds": 0.8,  "max_delay_seconds": 2.0},
     "wellfound.com":             {"min_delay_seconds": 2.5,  "max_delay_seconds": 6.0},
     "indeed.com":                {"min_delay_seconds": 3.0,  "max_delay_seconds": 7.0},
     "www.indeed.com":            {"min_delay_seconds": 3.0,  "max_delay_seconds": 7.0},
+    # HigherEdJobs uses DataDome — soft-IP-ban triggers when 10 categories
+    # hit in <2s. Conservative pacing keeps sequential category fetches safe.
+    "www.higheredjobs.com":      {"min_delay_seconds": 4.0,  "max_delay_seconds": 8.0},
 }
 
 

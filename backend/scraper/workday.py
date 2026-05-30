@@ -35,6 +35,7 @@ from pathlib import Path
 from typing import Any, Optional
 from urllib.parse import urlparse
 
+from backend.config import config
 from backend.models import Role
 from backend.scraper.base import BaseScraper
 from backend.scraper.greenhouse import _strip_html
@@ -515,6 +516,7 @@ class WorkdayScraper(BaseScraper):
                     result = await asyncio.wait_for(
                         self._search_tenant_keyword(
                             display_name, base_url, board, kw, limit_per_keyword,
+                            posted_within_days=posted_within_days,
                             error_counter=tenant_500_count,
                         ),
                         timeout=30.0,
@@ -572,6 +574,7 @@ class WorkdayScraper(BaseScraper):
         keyword: str,
         limit: int,
         *,
+        posted_within_days: Optional[int] = None,
         error_counter: Optional[dict] = None,
     ) -> list[Role]:
         """Search one Workday tenant for one keyword.
@@ -584,9 +587,39 @@ class WorkdayScraper(BaseScraper):
         endpoint = f"{base_url}/wday/cxs/{self._tenant_from_url(base_url)}/{board}/jobs"
         roles: list[Role] = []
         offset = 0
+        # FIX 11 (Wave-2B Phase 1, 2026-05-29): build appliedFacets from
+        # self._user_filters so the tenant filters server-side instead of
+        # us pulling everything and post-filtering. Drops 30-50% of off-
+        # topic roles before they enter the pipeline. The facet keys
+        # (`locations`, `workerSubType`, `postingDateRange`) are the ones
+        # Workday's careers UI sends; values are tenant-agnostic enum
+        # strings on the date-range facet, free text on locations.
+        # Some tenants reject unknown facet keys with HTTP 422 — when
+        # that happens on the first request, we retry once with an empty
+        # facets dict so the tenant still produces results.
+        use_facets = bool(config.WORKDAY_USE_FACETS)
+        uf = getattr(self, "_user_filters", None) or {}
+        applied_facets: dict[str, Any] = {}
+        if use_facets:
+            loc_text = (uf.get("location_text") or "").strip()
+            if loc_text:
+                applied_facets["locations"] = [loc_text]
+            if uf.get("remote_only"):
+                applied_facets["workerSubType"] = ["Remote"]
+            if posted_within_days:
+                # Workday's postingDateRange enum buckets. Map our day
+                # window to the closest supported bucket; anything above
+                # 30d falls into the broadest bucket Workday supports.
+                if posted_within_days <= 1:
+                    applied_facets["postingDateRange"] = ["1"]
+                elif posted_within_days <= 7:
+                    applied_facets["postingDateRange"] = ["7"]
+                else:
+                    applied_facets["postingDateRange"] = ["30"]
+        facets_disabled = False  # flips True after a 422-retry
         while len(roles) < limit:
             body = {
-                "appliedFacets": {},
+                "appliedFacets": {} if facets_disabled else applied_facets,
                 "limit": 20,
                 "offset": offset,
                 "searchText": keyword,
@@ -603,7 +636,34 @@ class WorkdayScraper(BaseScraper):
                 )
             except Exception:
                 break
+            # FIX 11: 422 on the first request usually means the tenant
+            # rejected one of our facet keys. Retry once with an empty
+            # facets dict before giving up on the tenant.
+            if (
+                response.status_code == 422
+                and not facets_disabled
+                and applied_facets
+                and offset == 0
+            ):
+                print(
+                    f"[workday] tenant={display_name} 422 with facets — "
+                    f"retrying without appliedFacets",
+                    flush=True,
+                )
+                facets_disabled = True
+                continue
             if response.status_code >= 400:
+                # FIX 37 (Wave-2B Phase 1, 2026-05-29): distinguish 429
+                # from generic 4xx. 429 = tenant is rate-limiting us,
+                # worth tracking separately so we can spot which
+                # tenants throttle (and decide whether to slow that
+                # tenant down or back off entirely).
+                if response.status_code == 429:
+                    print(
+                        f"[workday] tenant={display_name} HTTP 429 "
+                        f"(rate-limited) on keyword='{keyword}' offset={offset}",
+                        flush=True,
+                    )
                 # Track 500-class errors for backoff (5xx = upstream tenant
                 # is broken right now; further attempts likely waste time).
                 # 4xx errors not counted — those are usually pagination ends.

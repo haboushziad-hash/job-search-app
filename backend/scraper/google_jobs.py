@@ -86,8 +86,18 @@ DATAFORSEO_BASE = "https://api.dataforseo.com/v3/serp/google/jobs"
 DATAFORSEO_TASK_POST = f"{DATAFORSEO_BASE}/task_post"
 DATAFORSEO_TASK_GET = f"{DATAFORSEO_BASE}/task_get/advanced"
 
-# Cost per query at priority=2 (verified live)
-DFSE_COST_PER_QUERY = 0.0024
+# Cost per query at priority=2 (corrected 2026-05-30 via live probe — was
+# 0.0024, actually charged $0.0012/task. We were overestimating cost 2x).
+DFSE_COST_PER_QUERY = 0.0012
+
+# Wave-2B Phase 2 (FIX 16C, 2026-05-30): start_position pagination.
+# Per live probe, DataForSEO Google Jobs supports start_position to
+# paginate beyond depth=100 (which is the per-task hard cap — depth>100
+# silently fails as "Task Not Found"). Three pages (0/100/200) typically
+# yield ~280-300 unique items per keyword per location — close to Google's
+# real ceiling. Going to start=300 yields diminishing returns (probe shows
+# depth=200 returns only 112 items, suggesting the supply tail is shallow).
+DFSE_START_POSITIONS = (0, 100, 200)
 
 
 def _dfseo_creds() -> tuple[str, str]:
@@ -167,11 +177,33 @@ def _parse_salary_text(salary: str) -> tuple[Optional[int], Optional[int]]:
 
 
 def _classify_arrangement(location: str) -> str:
-    """Quick remote / on-site / hybrid classifier from location string."""
+    """Quick remote / on-site / hybrid classifier from location string.
+
+    Wave-2B Phase 2 (FIX 16E, 2026-05-30): expanded remote-detection
+    patterns. Google Jobs surfaces remote roles with several location
+    string conventions beyond just "Remote":
+      - "Anywhere" — most common Google tag for fully-remote
+      - "Worldwide" — global remote
+      - "United States" (bare, no city) — Google's nationwide tag often
+        indicates remote-or-distributed roles (cross-referenced with a
+        Remote work_from_home flag at the API level)
+      - "USA" (bare) — same as above
+    Without these patterns, location_type defaulted to "On-site" and the
+    hard_filter incorrectly assumed the role required a physical presence
+    in some unknown city.
+    """
     if not location:
         return "On-site"
-    lower = location.lower()
+    lower = location.strip().lower()
+    # Explicit remote-style markers
     if "remote" in lower:
+        return "Remote"
+    if "anywhere" in lower:
+        return "Remote"
+    if "worldwide" in lower:
+        return "Remote"
+    # Bare country / nation-level — Google uses these for distributed roles.
+    if lower in ("united states", "usa", "us", "u.s.", "u.s.a."):
         return "Remote"
     if "hybrid" in lower:
         return "Hybrid"
@@ -193,9 +225,32 @@ class GoogleJobsScraper(BaseScraper):
         self,
         *,
         keywords: list[str],
-        limit_per_keyword: int = 20,
+        limit_per_keyword: int = 300,
         posted_within_days: Optional[int] = 30,
     ) -> list[Role]:
+        # Wave-2B Phase 2 (FIX 16 for GoogleJobs, 2026-05-30):
+        #   B) Multi-location query. Previously: 1 location per keyword
+        #      (either "United States" or the user's text). Now: ALWAYS
+        #      submit a "United States" national task PLUS a user-location
+        #      task when the user has a comma-formatted location. The two
+        #      result sets are often disjoint (national skews popular tech
+        #      hubs; user-level surfaces local roles the national crawl
+        #      misses).
+        #   C) start_position pagination. Per live probe (2026-05-30),
+        #      depth>100 silently fails on DataForSEO Google Jobs ("Task
+        #      Not Found"). The right path is to keep depth=100 per task
+        #      and paginate via start_position. start=0/100/200 yields
+        #      ~93+97+99 = ~289 unique items per keyword per location —
+        #      close to Google's real ceiling. This is the architecture
+        #      that delivers GoogleJobs as the "big daddy" aggregator
+        #      (covering LinkedIn / Indeed / Glassdoor / employer career
+        #      pages via Google's universal index).
+        # Cost (corrected): $0.0012/task at priority=2 (NOT $0.0024 as the
+        # old constant assumed — we were overestimating 2x).
+        #   14 keywords * 1 loc * 1 page * $0.0012 = $0.017/run (before)
+        #   14 keywords * 2 loc * 3 pages * $0.0012 = $0.10/run (after)
+        # Still well under the $5/run hard cap. Total scraper wall-clock
+        # increases ~3x (more tasks to poll) but still under 60s.
         post_url, get_base_url, auth = _dfseo_endpoints()
         proxy_mode = auth is None and post_url != DATAFORSEO_TASK_POST
         if not proxy_mode and auth is None:
@@ -209,11 +264,50 @@ class GoogleJobsScraper(BaseScraper):
             )
             return []
 
+        # FIX B + D — Build the location list:
+        #   1. ALWAYS include "United States" national base. This catches:
+        #      (a) Remote roles (Google tags them as nationwide / remote+USA)
+        #      (b) Roles in cities the user is open to but didn't list
+        #          explicitly (e.g., Northern Virginia for a DC user)
+        #   2. Add EVERY user acceptable_location (from FIX 16D in
+        #      runner.py) that is comma-formatted, so Google can parse it.
+        #      For a Ziad-style user with ["Washington, DC", "Richmond, VA"]
+        #      this becomes ["United States", "Washington, DC",
+        #      "Richmond, VA"] — 3 location queries per keyword × 3 pages
+        #      = 9 tasks per keyword.
+        user_filters = getattr(self, "_user_filters", None) or {}
+        locations_for_query: list[str] = ["United States"]
+        # Prefer the acceptable_locations list when available (v0.3.17+).
+        accept_locs = user_filters.get("acceptable_locations") or []
+        if accept_locs:
+            for loc in accept_locs:
+                loc_clean = (loc or "").strip()
+                if loc_clean and "," in loc_clean and len(loc_clean.split(",")) >= 2:
+                    if loc_clean not in locations_for_query:
+                        locations_for_query.append(loc_clean)
+        else:
+            # Fallback: pre-FIX-16D callers only pass location_text (single).
+            raw_loc = (user_filters.get("location_text") or "").strip()
+            if raw_loc and "," in raw_loc and len(raw_loc.split(",")) >= 2:
+                if raw_loc not in locations_for_query:
+                    locations_for_query.append(raw_loc)
+
+        # Submission unit = (keyword, location, start_position). We track
+        # task IDs keyed by this triple so the polling loop can route
+        # results back to the right bucket. Per-keyword raw counts
+        # aggregate across (location, start) dimensions at the end.
+        submissions = [
+            (kw, loc, start)
+            for kw in keywords
+            for loc in locations_for_query
+            for start in DFSE_START_POSITIONS
+        ]
+
         # Submit ALL tasks in parallel (so we pay one round-trip latency
-        # not 14× round-trip)
+        # not N× round-trip). Cap concurrency to be polite to DataForSEO.
         sem_post = asyncio.Semaphore(8)
 
-        async def _submit(kw: str) -> Optional[str]:
+        async def _submit(kw: str, loc: str, start: int) -> Optional[str]:
             if self.quota_exhausted:
                 return None
             async with sem_post:
@@ -221,15 +315,23 @@ class GoogleJobsScraper(BaseScraper):
                     return None
                 try:
                     async with httpx.AsyncClient(timeout=15.0) as client:
-                        kwargs: dict[str, Any] = dict(
-                            json=[{
-                                "keyword": kw,
-                                "location_name": "United States",
-                                "language_name": "English",
-                                "depth": min(limit_per_keyword, 30),
-                                "priority": 2,
-                            }],
-                        )
+                        body: dict[str, Any] = {
+                            "keyword": kw,
+                            "location_name": loc,
+                            "language_name": "English",
+                            # depth=100 is the per-task hard cap on Google
+                            # Jobs. depth>100 silently fails. Use
+                            # start_position to paginate beyond 100.
+                            "depth": min(limit_per_keyword, 100),
+                            "priority": 2,
+                        }
+                        # start_position param paginates the result set —
+                        # 0 = first page, 100 = second page, 200 = third.
+                        # Omit on first page (some API versions reject
+                        # start_position=0 explicitly; safer to skip when 0).
+                        if start > 0:
+                            body["start_position"] = start
+                        kwargs: dict[str, Any] = dict(json=[body])
                         if auth is not None:
                             kwargs["auth"] = auth  # local mode
                         else:
@@ -254,25 +356,35 @@ class GoogleJobsScraper(BaseScraper):
                 except Exception:
                     return None
 
-        task_ids = await asyncio.gather(*[_submit(kw) for kw in keywords])
-        keyword_to_task = {kw: tid for kw, tid in zip(keywords, task_ids) if tid}
+        task_ids = await asyncio.gather(*[
+            _submit(kw, loc, start) for kw, loc, start in submissions
+        ])
+        # Key by (kw, loc, start) so results route correctly during polling.
+        submission_to_task: dict[tuple[str, str, int], str] = {
+            (kw, loc, start): tid
+            for (kw, loc, start), tid in zip(submissions, task_ids)
+            if tid
+        }
         # v0.3.12: writes to BaseScraper.cost_estimate (now a proper
         # interface attribute). Orchestrator picks it up at the end of the
         # scrape and rolls it into cost_breakdown.scraper_apis_usd in the
         # audit JSON. The earlier `_dfseo_cost_estimate` workaround is gone.
-        self.cost_estimate += len(keyword_to_task) * DFSE_COST_PER_QUERY
+        # With multi-location, len(submission_to_task) ≈ N_keywords *
+        # len(locations_for_query) so cost scales correctly.
+        self.cost_estimate += len(submission_to_task) * DFSE_COST_PER_QUERY
 
-        if not keyword_to_task:
+        if not submission_to_task:
             return []
 
-        # Poll for task completion. Most tasks land at priority=2 in 6-12s.
-        # Total wait budget: 90s (3 polls × 3s + extras). Keep going if any
-        # tasks are still pending.
-        completed: dict[str, list[Role]] = {}
+        # Poll for task completion. Tasks land at priority=2 in 6-12s.
+        # With 3x more tasks (pagination), absolute wall-clock for polling
+        # all of them rises but per-task time doesn't. 180s budget gives
+        # generous headroom; typical Ziad-scale runs complete in 30-60s.
+        completed: dict[tuple[str, str, int], list[Role]] = {}
         sem_get = asyncio.Semaphore(8)
-        deadline = asyncio.get_event_loop().time() + 90.0
+        deadline = asyncio.get_event_loop().time() + 180.0
 
-        async def _try_fetch(kw: str, tid: str) -> Optional[list[Role]]:
+        async def _try_fetch(kw: str, loc: str, start: int, tid: str) -> Optional[list[Role]]:
             async with sem_get:
                 try:
                     async with httpx.AsyncClient(timeout=15.0) as client:
@@ -307,30 +419,39 @@ class GoogleJobsScraper(BaseScraper):
                     return None
 
         # Polling loop: keep retrying pending tasks until deadline
-        pending = dict(keyword_to_task)
+        pending = dict(submission_to_task)
         while pending and asyncio.get_event_loop().time() < deadline:
             await asyncio.sleep(2.0)
             results = await asyncio.gather(*[
-                _try_fetch(kw, tid) for kw, tid in pending.items()
+                _try_fetch(kw, loc, start, tid)
+                for (kw, loc, start), tid in pending.items()
             ])
-            new_pending = {}
-            for (kw, tid), result in zip(pending.items(), results):
+            new_pending: dict[tuple[str, str, int], str] = {}
+            for ((kw, loc, start), tid), result in zip(pending.items(), results):
                 if result is None:
-                    new_pending[kw] = tid  # still pending
+                    new_pending[(kw, loc, start)] = tid  # still pending
                 else:
-                    completed[kw] = result
-                    self.per_keyword_raw_counts[kw] = len(result)
+                    completed[(kw, loc, start)] = result
             pending = new_pending
 
-        # Mark any timed-out tasks as zero-yield
-        for kw in pending:
-            self.per_keyword_raw_counts[kw] = 0
+        # Aggregate per-keyword raw counts across (location, start_position)
+        # dimensions. per_keyword_raw_counts is keyed by keyword.
+        for kw in keywords:
+            total = sum(
+                len(roles)
+                for (k, _loc, _start), roles in completed.items()
+                if k == kw
+            )
+            self.per_keyword_raw_counts[kw] = total
 
-        # Cross-keyword dedup (same role often surfaces under multiple kws)
+        # Cross-keyword + cross-location + cross-page dedup. The same role
+        # often surfaces under multiple keywords, both locations, AND in
+        # overlapping start positions (Google's ordering shifts slightly
+        # between paginated calls). Use url + (company, title) dedup.
         seen_url: set[str] = set()
         seen_pair: set[tuple[str, str]] = set()
         out: list[Role] = []
-        for kw, roles in completed.items():
+        for (kw, _loc, _start), roles in completed.items():
             for role in roles:
                 if role.job_url and role.job_url in seen_url:
                     continue

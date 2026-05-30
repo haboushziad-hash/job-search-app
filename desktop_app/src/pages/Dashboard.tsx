@@ -527,10 +527,10 @@ export default function Dashboard() {
                 : '40–54'
               }
               description={
-                tier === 'STRONG' ? 'Apply this week'
-                : tier === 'GOOD' ? 'Apply within 2 weeks'
-                : tier === 'MAYBE' ? 'Worth reading'
-                : 'Long shot'
+                tier === 'STRONG' ? 'DAMN! Apply!'
+                : tier === 'GOOD' ? 'Yeah, apply'
+                : tier === 'MAYBE' ? 'Hmm, read it'
+                : 'Ehhhhh'
               }
               onClick={() => setFilterTier(filterTier === tier ? null : tier)}
               selected={filterTier === tier}

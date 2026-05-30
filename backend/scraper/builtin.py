@@ -52,9 +52,14 @@ class BuiltInScraper(BaseScraper):
         async def bounded(kw: str) -> list[Role]:
             async with sem:
                 try:
+                    # Wave-2B Phase 2 (FIX 5): 25s → 90s. Wave-2B Phase 1 added
+                    # ScraperClient pacing (Semaphore + per-domain gap), so each
+                    # keyword search now takes ~140s wall-clock. The 25s overall
+                    # timeout was silently killing 60-75% of keywords. The
+                    # per-request httpx timeout (30s) still prevents true hangs.
                     return await asyncio.wait_for(
                         self._search_keyword(kw, limit_per_keyword),
-                        timeout=25.0,
+                        timeout=90.0,
                     )
                 except Exception:
                     return []
@@ -88,29 +93,43 @@ class BuiltInScraper(BaseScraper):
             params = {"search": keyword}
             if page > 1:
                 params["page"] = str(page)
+            # v0.3.16 Wave-2B fix: route through self.client.get() (UA rotation +
+            # per-domain pacing + tenacity retry). ScraperClient.get() calls
+            # raise_for_status() on 4xx/5xx, so we catch HTTPStatusError to keep
+            # the explicit 403 quota_exhausted telemetry working. Without this
+            # except branch, BuiltIn 403s would propagate as bare exceptions and
+            # the scraper_health.jsonl signal we rely on to spot soft-bans
+            # would silently stop firing.
             try:
-                resp = await self.client._client.get(  # type: ignore[union-attr]
+                resp = await self.client.get(
                     SEARCH_URL, params=params,
                     headers={
                         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0",
                         "Accept": "text/html",
                     },
                 )
-            except Exception:
+            except Exception as _e:
+                # Detect 403 from httpx.HTTPStatusError shape without importing
+                # httpx at module level (already in scope via client).
+                status = getattr(getattr(_e, "response", None), "status_code", None)
+                if status == 403:
+                    try:
+                        print(f"[builtin] 403 on '{keyword}' page {page} — skipping (retries exhausted)")
+                    except Exception:
+                        pass
+                    self.quota_exhausted = True
+                    self.quota_exhausted_reason = (
+                        f"BuiltIn HTTP 403 on '{keyword}' (anti-bot or rate-limit)"
+                    )
                 break
             if resp.status_code != 200:
-                # BuiltIn returns 403 on some keyword queries (anti-bot or
-                # rate-limit). Skip this keyword/page and move on instead of
-                # treating it as "no results." The scraper still tries other
-                # keywords; one query failing doesn't kill the whole search.
+                # Non-403 non-200 (rare since raise_for_status fires earlier) —
+                # keep the original guard as a belt-and-suspenders fallback.
                 if resp.status_code == 403:
                     try:
                         print(f"[builtin] 403 on '{keyword}' page {page} — skipping")
                     except Exception:
                         pass
-                    # v0.2.1: surface 403 as quota_exhausted in the audit so
-                    # operators can spot rate-limiting in scraper_health.jsonl
-                    # instead of guessing. No flow change — we still skip.
                     self.quota_exhausted = True
                     self.quota_exhausted_reason = f"BuiltIn HTTP 403 on '{keyword}' (anti-bot or rate-limit)"
                 break
@@ -168,7 +187,7 @@ class BuiltInScraper(BaseScraper):
         if not role.job_url:
             return ""
         try:
-            resp = await self.client._client.get(  # type: ignore[union-attr]
+            resp = await self.client.get(
                 role.job_url,
                 headers={"User-Agent": "Mozilla/5.0", "Accept": "text/html"},
             )

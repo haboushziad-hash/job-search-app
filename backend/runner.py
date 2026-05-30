@@ -182,12 +182,28 @@ async def run_search(
     user_filters: dict = {}
     locs = list(getattr(profile, "acceptable_locations", []) or [])
     if locs:
-        # Pass the FIRST location only — Adzuna/JSearch take a single
-        # `where`/`location` value. The downstream hard_filter still
-        # checks the full acceptable_locations list, so we don't lose
+        # Pass the FIRST location only as `location_text` — Adzuna/JSearch
+        # take a single `where`/`location` value. The downstream hard_filter
+        # still checks the full acceptable_locations list, so we don't lose
         # roles that match alternate user locations; this just tightens
         # the upstream pull around the primary preference.
         user_filters["location_text"] = str(locs[0])
+        # Wave-2B Phase 2 (FIX 16D, 2026-05-30): pass ALL acceptable
+        # locations to scrapers that fan out across multiple location
+        # queries. Field name `acceptable_locations` matches the pre-
+        # existing Adzuna convention so multiple scrapers can share it.
+        # Use cases:
+        #   - GoogleJobs: submits paginated tasks per location (e.g.
+        #     "United States" + "Washington DC" + "Richmond VA")
+        #   - JSearch / USAJOBS: when len > 1, drop the API-side
+        #     LocationName/location filter so the response is US-wide
+        #     and the downstream hard_filter authoritatively decides
+        #     which locations match. Previously these scrapers used
+        #     only locs[0], silently dropping all of the user's
+        #     secondary location preferences.
+        #   - Adzuna: already reads acceptable_locations (pre-existing
+        #     dead-code path now activated by this assignment).
+        user_filters["acceptable_locations"] = [str(loc) for loc in locs]
     if getattr(profile, "salary_minimum", None):
         user_filters["salary_minimum"] = int(profile.salary_minimum)
     if getattr(profile, "remote_only", False):
@@ -284,7 +300,32 @@ async def run_search(
         # Re-run salary extraction on newly-enriched JDs
         enrich_salaries(missing_jd, log=log)
 
-    # ---- 4.6 Dead-listing regex pre-filter (AI-B) ----
+    # ---- 4.6 Hard-require JD body (Wave-2B Phase 2 FIX 21, 2026-05-30) ----
+    # User policy: a role without a JD body can't be honestly scored. Either:
+    #   (a) our scraper failed to grab it (our fault — investigate per-source)
+    #   (b) the posting was taken down between scrape and JD-fetch
+    # In either case, the AI cascade can't deliver a true relevance score
+    # without text to read. Drop the role rather than guess. This guarantees
+    # 100% JD-any coverage in the audit/dashboard and surfaces per-source
+    # leakage if any scraper systematically loses JDs.
+    pre_jd_filter = len(alive)
+    no_jd_roles = [r for r in alive if not (r.job_description_full or "").strip()]
+    if no_jd_roles:
+        # Per-source breakdown so we can see WHO is leaking
+        from collections import Counter
+        by_src = Counter(r.primary_source or "?" for r in no_jd_roles)
+        if log:
+            print(
+                f"[no_jd_filter] dropping {len(no_jd_roles)} roles with no JD body "
+                f"after fetch step (cannot score without text). Per-source:"
+            )
+            for src, cnt in by_src.most_common():
+                print(f"    {src}: {cnt}")
+        alive = [r for r in alive if (r.job_description_full or "").strip()]
+    if log and pre_jd_filter != len(alive):
+        print(f"[no_jd_filter] {pre_jd_filter} -> {len(alive)} after dropping no-JD roles")
+
+    # ---- 4.7 Dead-listing regex pre-filter (AI-B) ----
     # Drop roles whose JD shouts "no longer hiring" / "filled" before we
     # spend embedding + LLM budget on them. Stage 2 has a stronger
     # LLM-based check for borderline cases.

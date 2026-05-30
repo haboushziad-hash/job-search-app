@@ -129,13 +129,43 @@ class BaseScraper(ABC):
     def _classify_location(location_text: str) -> tuple[str, str | None]:
         """Heuristic location classification → (location_type, normalized_location).
 
-        Returns location_type from {"Remote", "Hybrid", "On-site"} when inferrable.
+        Returns location_type from {"Remote", "Hybrid", "On-site"} when
+        inferrable. Wave-2B Phase 2 (FIX 17, 2026-05-30): expanded remote
+        detection beyond the bare "remote" substring. Several scrapers
+        surface remote roles using vocabulary that the old heuristic
+        misclassified as On-site:
+          - "Anywhere" — common across Lever, Ashby, RemoteOK, Jobicy
+          - "Worldwide" / "Global" — frequently used by international boards
+          - "Distributed" — used by some YC-style boards
+          - Bare country/nation strings ("United States", "USA") which
+            Google Jobs (and increasingly Workday postings) use as a
+            distributed-team tag rather than "headquartered there".
+          - "Work from home" / "WFH" — direct synonyms for Remote
+        Misclassified remote roles were getting filtered OUT by
+        hard_filter.location for users who set acceptable_locations to a
+        specific city — even though the role would actually accept them.
+        Cross-scraper impact: applies to every scraper that calls
+        self._classify_location() (i.e., everything except GoogleJobs
+        which has its own classifier with parallel logic).
         """
         if not location_text:
             return ("On-site", None)
         loc = location_text.strip()
         low = loc.lower()
-        if "remote" in low:
+        # Explicit remote-style markers (any-substring match)
+        for kw in ("remote", "anywhere", "worldwide", "work from home", "wfh"):
+            if kw in low:
+                return ("Remote", loc)
+        # "Distributed" is a legit remote marker but can also describe
+        # distributed-systems roles (engineering). Require exact match.
+        if low in ("distributed", "fully distributed"):
+            return ("Remote", loc)
+        # Bare country/nation strings (no city component) → likely remote.
+        # Require exact match to avoid false positives like "Boston, USA".
+        if low in (
+            "united states", "usa", "us", "u.s.", "u.s.a.",
+            "global", "international",
+        ):
             return ("Remote", loc)
         if "hybrid" in low:
             return ("Hybrid", loc)
