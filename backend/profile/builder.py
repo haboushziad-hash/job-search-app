@@ -1433,12 +1433,46 @@ async def build_profile_from_resumes(
             search_terms.append(s)
     search_terms = search_terms[:15]
 
+    # v0.3.21 (FIX 27 — profile-builder fixture failures, 2026-05-30):
+    # Two post-process safety nets that the synthesis prompt should already
+    # be enforcing, but doesn't reliably across all BUCKET-A/B/C cases.
+    #
+    # (a) target_functions sanitization — drop "AI-enabled" / "AI-powered" /
+    #     "AI-driven" entries. These are marketing-fluff descriptors, not
+    #     real function names, and tend to leak in for BUCKET-B candidates
+    #     (some AI exposure but not pivoting). Fixture 05 (marketing
+    #     director with Wharton AI cert + Copilot rollout) was failing
+    #     because the builder generated 'AI-enabled Marketing' as a target
+    #     function — fixture explicitly forbids this pattern. Drop here
+    #     pre-construction. NOTE: legit pure-AI functions like "AI
+    #     Strategy" / "AI Adoption" stay — only the X-enabled style is
+    #     stripped (regex requires a hyphen/space before "enabled").
+    #
+    # (b) target_industries hard cap 20 → 6. Fixture 07 (new grad
+    #     generalist) was failing because the builder dumped 7 industries
+    #     (FS / IB / AM / Consulting / PE / Industrials / Corporate F500),
+    #     exceeding the schema cap of 6. Cap here to match the fixture's
+    #     and most realistic profiles' breadth — 6 industries is plenty
+    #     to drive scraper keyword selection across diverse personas.
+    import re as _re
+    _AI_FLUFF_RE = _re.compile(
+        r"\bai[\s\-_](?:enabled|powered|driven|enhanced)\b",
+        _re.IGNORECASE,
+    )
+    raw_target_functions = [str(x).strip() for x in data.get("target_functions", []) if x]
+    sanitized_target_functions = [
+        f for f in raw_target_functions if not _AI_FLUFF_RE.search(f)
+    ][:30]
+
+    raw_target_industries = [str(x).strip() for x in data.get("target_industries", []) if x]
+    capped_target_industries = raw_target_industries[:6]
+
     profile = CandidateProfile(
         headline=str(data.get("headline", ""))[:300],
         years_experience=int(data["years_experience"]) if data.get("years_experience") else None,
         target_seniority=str(data.get("target_seniority", ""))[:50] or None,
-        target_functions=[str(x).strip() for x in data.get("target_functions", []) if x][:30],
-        target_industries=[str(x).strip() for x in data.get("target_industries", []) if x][:20],
+        target_functions=sanitized_target_functions,
+        target_industries=capped_target_industries,
         technical_skills=[str(x).strip() for x in data.get("technical_skills", []) if x][:30],
         domain_expertise=[str(x).strip() for x in data.get("domain_expertise", []) if x][:20],
         soft_skills=[str(x).strip() for x in data.get("soft_skills", []) if x][:15],

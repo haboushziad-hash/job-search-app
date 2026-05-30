@@ -56,7 +56,7 @@ CACHE_TTL_SECONDS = 30 * 24 * 3600  # 30 days
 # directional refinement (weighted by [Word count: N] header), summary
 # opening is no longer the dominant signal. Also changed user-message
 # construction to label freeform separately from hard-requirement preferences.
-PROMPT_VERSION = "v0.3.16-wave2a-r8"
+PROMPT_VERSION = "v0.3.21-fix27-sanitize"
 
 
 def _ensure_db() -> None:
