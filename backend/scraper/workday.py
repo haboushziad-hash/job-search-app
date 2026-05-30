@@ -482,6 +482,18 @@ def _parse_posted_on(posted_on: str) -> Optional[str]:
 class WorkdayScraper(BaseScraper):
     source_name = "Workday"
 
+    def __init__(self, client=None):  # type: ignore[no-untyped-def]
+        super().__init__(client=client)
+        # Wave-2B Phase 2 (FIX 25, 2026-05-30): per-tenant facets-support
+        # tracker. Workday tenants are independently configured — some
+        # accept our standard facet keys (locations/postingDateRange),
+        # others reject with 400/422. Once a tenant fails facets, remember
+        # it so subsequent keyword queries for that tenant skip facets
+        # entirely (avoid wasting 1 doomed request per keyword). Empty set
+        # at construction; populated by _search_tenant_keyword as it
+        # discovers failures during the scrape.
+        self._tenants_without_facet_support: set[str] = set()
+
     async def search(
         self,
         *,
@@ -597,7 +609,15 @@ class WorkdayScraper(BaseScraper):
         # Some tenants reject unknown facet keys with HTTP 422 — when
         # that happens on the first request, we retry once with an empty
         # facets dict so the tenant still produces results.
+        # Wave-2B Phase 2 (FIX 25): if we've already discovered this
+        # tenant rejects facets during an earlier keyword in this run,
+        # skip facets entirely for the rest of its keywords. Avoids
+        # wasting one 400/422 request per keyword on tenants that we
+        # already know don't support them.
+        tenant_slug = self._tenant_from_url(base_url)
         use_facets = bool(config.WORKDAY_USE_FACETS)
+        if use_facets and tenant_slug in self._tenants_without_facet_support:
+            use_facets = False
         uf = getattr(self, "_user_filters", None) or {}
         applied_facets: dict[str, Any] = {}
         if use_facets:
@@ -636,21 +656,27 @@ class WorkdayScraper(BaseScraper):
                 )
             except Exception:
                 break
-            # FIX 11: 422 on the first request usually means the tenant
-            # rejected one of our facet keys. Retry once with an empty
-            # facets dict before giving up on the tenant.
+            # FIX 11 (Phase 1) + FIX 25 (Phase 2, 2026-05-30): rejection
+            # on the first request usually means the tenant rejected one
+            # of our facet keys. The Phase 1 audit showed Workday tenants
+            # return BOTH 400 AND 422 for this — Phase 1 only caught 422.
+            # FIX 25 broadens to 400 AND caches the failure per-tenant so
+            # subsequent keywords for the same tenant skip facets from
+            # the start (saves N-1 wasted requests per tenant per run).
             if (
-                response.status_code == 422
+                response.status_code in (400, 422)
                 and not facets_disabled
                 and applied_facets
                 and offset == 0
             ):
                 print(
-                    f"[workday] tenant={display_name} 422 with facets — "
-                    f"retrying without appliedFacets",
+                    f"[workday] tenant={display_name} HTTP {response.status_code} "
+                    f"with facets — retrying without (and marking tenant "
+                    f"facet-incompatible for remainder of run)",
                     flush=True,
                 )
                 facets_disabled = True
+                self._tenants_without_facet_support.add(tenant_slug)
                 continue
             if response.status_code >= 400:
                 # FIX 37 (Wave-2B Phase 1, 2026-05-29): distinguish 429

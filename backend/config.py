@@ -303,7 +303,17 @@ class Config:
     # Task #28 (Wave-2B.1) tracks the proper fix: probe per-tenant
     # facet UUIDs OR maintain a hand-curated tenant->UUID map for the
     # top ~20 tenants. Re-enable to True after that lands.
-    WORKDAY_USE_FACETS: bool = False
+    # Wave-2B Phase 2 (FIX 25, 2026-05-30): re-enabled. Phase 1 disabled
+    # this after 144 of 144 tenants returned HTTP 400, but Phase 2 added
+    # per-tenant facet-failure caching + 400-aware retry. Tenants that
+    # accept facets now benefit from API-side filtering (locations +
+    # postingDateRange); tenants that reject get auto-marked for the
+    # rest of the run and seamlessly fall back to no-facets. Net effect
+    # is upside-only — no tenant produces fewer roles than before.
+    WORKDAY_USE_FACETS: bool = (
+        os.getenv("WORKDAY_USE_FACETS", "true").strip().lower()
+        not in ("false", "0", "no", "off", "")
+    )
 
     # Profile + keyword generation is THE critical LLM call — every downstream
     # scrape uses these keywords. We use a max-quality pipeline:
