@@ -1284,6 +1284,13 @@ async def build_profile_from_resumes(
             _report(95, "Reusing cached profile (no inputs changed)")
             try:
                 cached_profile = CandidateProfile.model_validate(_cached)
+                # v0.3.21 (FIX 26): tag the cached profile with the input-
+                # derived cache key so the downstream jd_score_cache can
+                # key its lookups on the SAME deterministic value as the
+                # profile cache itself. Without this, score-cache profile
+                # hashes drifted with LLM rebuilds (0 hits on a profile
+                # that should have ~80% reuse).
+                cached_profile.input_cache_key = _cache_key
                 _report(100, "Profile ready (cache hit)")
                 return cached_profile
             except Exception:
@@ -1456,6 +1463,15 @@ async def build_profile_from_resumes(
             profile_cache.store(_cache_key, profile.model_dump(mode="json"))
         except Exception:
             pass  # cache write failures shouldn't fail the build
+        # v0.3.21 (FIX 26): tag the freshly-built profile too — same
+        # rationale as the cache-hit path above. The cache key is
+        # input-derived (resume_bytes + prefs + prompt_version +
+        # model_versions) so it's deterministic across rebuilds for
+        # the same user input.
+        try:
+            profile.input_cache_key = _cache_key
+        except Exception:
+            pass
 
     return profile
 

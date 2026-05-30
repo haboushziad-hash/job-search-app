@@ -220,6 +220,24 @@ class CandidateProfile(BaseModel):
     # Resume metadata — when multiple are uploaded
     resumes: list["ResumeMetadata"] = Field(default_factory=list)
 
+    # v0.3.21 (FIX 26 — cost): input-derived cache key for the jd_score_cache.
+    # Computed once when the profile is built (from resume_bytes +
+    # user_preferences + prompt_version + model_versions) and stored here
+    # so downstream stages can key the cross-run score cache on a
+    # GUARANTEED-deterministic value rather than re-hashing LLM-generated
+    # output fields (target_functions, headline, etc.) which can drift
+    # slightly across rebuilds.
+    #
+    # Before this fix: the jd_score_cache.profile_hash() function
+    # recomputed a hash from the profile dump's OUTPUT fields. Tiny LLM
+    # drift between rebuilds produced different hashes → cache hits
+    # silently went to 0 (audit showed 0 hits / 462 misses on a profile
+    # that should have ~80% hit rate). Switching to this input-based
+    # key restores the intended 50-89% hit rate per the
+    # cost_optimization_research/02_jd_cache_simulation.py prototype
+    # ($0.42-0.60/run saved on rerun days).
+    input_cache_key: Optional[str] = None
+
 
 class Keyword(BaseModel):
     """A search keyword with tier and quality flags."""

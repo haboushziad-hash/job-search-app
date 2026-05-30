@@ -72,6 +72,13 @@ from backend.models import Role, score_to_tier
 CACHE_DB_PATH = config.ARCHIVE_DIR / "jd_score_cache.db"
 CACHE_TTL_SECONDS = 7 * 24 * 3600  # 7 days
 
+# v0.3.21 (FIX 26 — cost): diagnostic logging gate. When True, prints the
+# profile_hash being used + cache hit/miss counts so we can verify the
+# cache fix is actually delivering hits in production. Default False to
+# keep the audit log clean; flip via JD_CACHE_DEBUG=1 env var.
+import os as _os
+_DEBUG_LOGGING = _os.getenv("JD_CACHE_DEBUG", "").strip().lower() in ("1", "true", "yes")
+
 
 def _normalize_jd(text: str) -> str:
     """Normalize JD text for hashing — strip whitespace, lowercase.
@@ -91,14 +98,31 @@ def _jd_hash(text: str) -> str:
 def profile_hash(profile_dump: dict[str, Any]) -> str:
     """Stable hash of the profile fields that affect scoring.
 
-    We hash ONLY the fields that influence Stage 2/3 scoring decisions.
-    Includes: headline, target_functions, target_industries,
-    excluded_title_patterns, negative_signals, salary_minimum.
-    Excludes: resumes (binary, large), keywords (derived), search_terms.
+    v0.3.21 (FIX 26 — cost): PREFER the input-derived `_input_cache_key`
+    when present on the profile dump. This is set by build_profile_from_
+    resumes() and is GUARANTEED deterministic across rebuilds for the
+    same (resume_bytes, user_preferences, prompt_version, model_versions).
 
-    Any change to a scoring-relevant field invalidates the cache for this
-    user, forcing fresh Stage 2/3 evaluation on the next run.
+    Before this fix: this function only had output-derived hashing, which
+    drifted whenever the LLM produced slightly different target_functions
+    / headline / etc. on rebuild. A profile_cache hit (cached profile
+    bytes returned) would still produce a NEW jd_score_cache.profile_hash
+    if the cache load somehow normalized differently — leading to 0
+    cross-run cache hits despite intent. Empirically the May 30 audit
+    showed 0 hits on a 462-role run that should have had ~80% reuse.
+
+    Fallback (output-field hashing) preserved for back-compat with old
+    profile dumps that pre-date FIX 26 — they don't carry the
+    `_input_cache_key` field and would otherwise produce no hash.
     """
+    # v0.3.21 (FIX 26): primary path — input-derived deterministic key
+    input_key = profile_dump.get("input_cache_key")
+    if input_key and isinstance(input_key, str) and len(input_key) >= 16:
+        # The profile cache key is 32 hex chars; truncate to 16 to match
+        # the existing hash width and avoid bloating the SQLite index.
+        return input_key[:16]
+
+    # Fallback — output-field hashing (pre-FIX-26 dumps).
     relevant = {
         "headline": profile_dump.get("headline"),
         "target_functions": sorted(profile_dump.get("target_functions") or []),
