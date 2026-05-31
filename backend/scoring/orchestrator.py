@@ -82,6 +82,62 @@ def _apply_salary_realism_penalty(
         role.stage2_reasoning = f"{tag} {role.stage2_reasoning}"[:1000]
 
 
+def _apply_scoring_guards(role: Role) -> None:
+    """v0.3.24 (FIX 29) — anti-inflation guardrails from the 2026-05-30
+    adversarial scoring audit (systematic one-directional over-scoring).
+
+    Two deterministic, validated caps applied AFTER the base final score:
+
+      P0-1  JD not capturable (SPA-redirect / JS-error / bot-wall / <250
+            chars): Stage 3 hallucinated confident rationales on these stubs
+            and boosted scores +28 to +44 (Avanade 63→91, Ramp 35→79). We
+            can't trust ANY score derived from a stub, so cap the tier at
+            MAYBE and flag for re-scrape.
+
+      P0-3  Excluded work (hands-on engineering / sales-GTM) that evaded the
+            TITLE filter because "Consultant"/"Lead"/"Enablement" titles
+            dodge the pattern list — but the JD BODY is the excluded work
+            (3Cloud, SoftServe, Saviance, Lattice, LaunchDarkly, Cresta).
+            Cap at STRETCH so it can't surface as an apply-now match.
+
+    Validated against the audit's 30-role sample: catches 8/8 flagged
+    false-positives, leaves 5/5 confirmed-correct roles untouched. The
+    standalone Stage2→Stage3 delta-clamp (P0-2) was intentionally NOT
+    implemented — it would have wrongly demoted the legitimately-promoted
+    "AI Enablement Lead 81→91"; P0-1 + P0-3 cover every audited hallucination.
+    """
+    if role.final_score is None or role.final_score <= 0:
+        return
+    from backend.scoring._scoring_guards import jd_is_capturable, scan_excluded_body_signals
+    jd = role.job_description_full or role.job_description_essence or ""
+
+    # P0-1: stub / uncapturable JD → cap at MAYBE (55) + re-scrape flag.
+    if not jd_is_capturable(jd):
+        if role.final_score > 55:
+            role.final_score = 55
+            role.final_tier = score_to_tier(55)
+        flag = "[jd-not-captured: score capped at MAYBE — re-scrape recommended]"
+        role.stage3_application_strategy = (
+            f"{flag} {role.stage3_application_strategy or ''}"
+        )[:1000]
+        return  # a stub can't also be reliably body-scanned
+
+    # P0-3: excluded body work evading the title screen → cap at STRETCH (46).
+    sig = scan_excluded_body_signals(jd)
+    if sig["strong"] and role.final_score > 46:
+        kind = "engineering" if sig["engineering"] else "sales"
+        hits = (sig["engineering"] or sig["sales"])[:3]
+        role.final_score = 46
+        role.final_tier = score_to_tier(46)
+        flag = f"[excluded-{kind}-work in JD body ({', '.join(hits)}) — capped at STRETCH]"
+        if role.stage3_analysis:
+            role.stage3_analysis = f"{flag} {role.stage3_analysis}"[:2000]
+        else:
+            role.stage3_application_strategy = (
+                f"{flag} {role.stage3_application_strategy or ''}"
+            )[:1000]
+
+
 def _finalize_score(role: Role, profile: Optional[CandidateProfile] = None) -> None:
     """Pick the final score + tier for a role.
 
@@ -90,6 +146,7 @@ def _finalize_score(role: Role, profile: Optional[CandidateProfile] = None) -> N
     v0.3.7: after picking the base final score, apply the salary realism
     penalty if the candidate's profile_min exists and the role's range
     is bottom-heavy.
+    v0.3.24: then apply anti-inflation scoring guards (stub-JD + excluded-body).
     """
     if role.stage3_score is not None:
         role.final_score = role.stage3_score
@@ -104,6 +161,10 @@ def _finalize_score(role: Role, profile: Optional[CandidateProfile] = None) -> N
     # Salary realism penalty (v0.3.7)
     if profile is not None:
         _apply_salary_realism_penalty(role, profile.salary_minimum)
+
+    # Anti-inflation guards (v0.3.24 FIX 29) — applied last so they cap the
+    # final tier regardless of which stage produced the base score.
+    _apply_scoring_guards(role)
 
 
 def _backpop_salary_from_reasoning(role: Role) -> None:
