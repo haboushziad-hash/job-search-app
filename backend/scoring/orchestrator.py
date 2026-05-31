@@ -82,7 +82,7 @@ def _apply_salary_realism_penalty(
         role.stage2_reasoning = f"{tag} {role.stage2_reasoning}"[:1000]
 
 
-def _apply_scoring_guards(role: Role) -> None:
+def _apply_scoring_guards(role: Role, profile: Optional[CandidateProfile] = None) -> None:
     """v0.3.24 (FIX 29) — anti-inflation guardrails from the 2026-05-30
     adversarial scoring audit (systematic one-directional over-scoring).
 
@@ -108,7 +108,10 @@ def _apply_scoring_guards(role: Role) -> None:
     """
     if role.final_score is None or role.final_score <= 0:
         return
-    from backend.scoring._scoring_guards import jd_is_capturable, scan_excluded_body_signals
+    from backend.scoring._scoring_guards import (
+        jd_is_capturable, scan_excluded_body_signals,
+        profile_targets_engineering, profile_targets_sales,
+    )
     jd = role.job_description_full or role.job_description_essence or ""
 
     # P0-1: stub / uncapturable JD → cap at MAYBE (55) + re-scrape flag.
@@ -123,7 +126,12 @@ def _apply_scoring_guards(role: Role) -> None:
         return  # a stub can't also be reliably body-scanned
 
     # P0-3: excluded body work evading the title screen → cap at STRETCH (46).
-    sig = scan_excluded_body_signals(jd)
+    # Only treat eng/sales as EXCLUDED for candidates who don't TARGET it (v0.3.25).
+    sig = scan_excluded_body_signals(
+        jd,
+        check_eng=not profile_targets_engineering(profile),
+        check_sales=not profile_targets_sales(profile),
+    )
     if sig["strong"] and role.final_score > 46:
         kind = "engineering" if sig["engineering"] else "sales"
         hits = (sig["engineering"] or sig["sales"])[:3]
@@ -164,7 +172,7 @@ def _finalize_score(role: Role, profile: Optional[CandidateProfile] = None) -> N
 
     # Anti-inflation guards (v0.3.24 FIX 29) — applied last so they cap the
     # final tier regardless of which stage produced the base score.
-    _apply_scoring_guards(role)
+    _apply_scoring_guards(role, profile)
 
 
 def _backpop_salary_from_reasoning(role: Role) -> None:

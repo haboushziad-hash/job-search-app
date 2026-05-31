@@ -84,7 +84,7 @@ def _find_resume(scenario_dir: Path) -> Path:
     raise FileNotFoundError(f"No resume.txt/.pdf/.docx in {scenario_dir}")
 
 
-async def _run(scenario_name: str, tester_uuid: str) -> int:
+async def _run(scenario_name: str, tester_uuid: str, max_keywords: int = 25, sources=None) -> int:
     scenario_dir = SCENARIOS_DIR / scenario_name
     if not scenario_dir.is_dir():
         # Try prefix match (e.g., "01" → 01_operations_qa_lab)
@@ -142,7 +142,7 @@ async def _run(scenario_name: str, tester_uuid: str) -> int:
 
     # Use Tier-1 keyword text as search inputs — same as the live app's
     # search-term derivation when no explicit search_terms are present.
-    search_keywords = [k.text for k in profile.keywords if k.tier <= 2][:25]
+    search_keywords = [k.text for k in profile.keywords if k.tier <= 2][:max_keywords]
 
     print(f"\n{'='*70}")
     print(f"SYNTHETIC FULL PIPELINE — {scenario_dir.name}")
@@ -151,6 +151,7 @@ async def _run(scenario_name: str, tester_uuid: str) -> int:
     print(f"Functions: {profile.target_functions}")
     print(f"Industries: {profile.target_industries}")
     print(f"Keywords: {len(search_keywords)} (T1+T2)")
+    print(f"Sources: {sources or 'ALL'}")
     print(f"Tester UUID: {tester_uuid}")
     print(f"Cache key:   {cache_key}")
     print()
@@ -170,6 +171,7 @@ async def _run(scenario_name: str, tester_uuid: str) -> int:
     scored, summary = await run_search(
         profile=profile,
         keywords=search_keywords,
+        sources=sources,
         log=True,
         progress=progress,
     )
@@ -208,6 +210,10 @@ def main() -> int:
                         "or unique prefix (e.g. 01)")
     p.add_argument("--uuid", default=None,
                    help="Tester UUID. Generated if omitted.")
+    p.add_argument("--max-keywords", type=int, default=25,
+                   help="Cap T1+T2 search keywords (default 25; use ~6-10 for a quick partial search).")
+    p.add_argument("--sources", default=None,
+                   help="Comma-separated scraper subset, e.g. GoogleJobs,JSearch,Greenhouse,Lever,Ashby. Default: all.")
     args = p.parse_args()
 
     # Set UUID before importing backend so config picks it up
@@ -218,8 +224,9 @@ def main() -> int:
         tester_uuid = str(_uuid.uuid4())
         os.environ["TESTER_UUID"] = tester_uuid
 
+    srcs = [s.strip() for s in args.sources.split(",")] if args.sources else None
     try:
-        return asyncio.run(_run(args.scenario, tester_uuid))
+        return asyncio.run(_run(args.scenario, tester_uuid, args.max_keywords, srcs))
     except KeyboardInterrupt:
         return 130
 

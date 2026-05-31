@@ -99,7 +99,7 @@ _ENG_HIGH = (
     r"\b(?:c#|asp\.net|\.net core|react|node\.js|angular|java\b|golang|c\+\+|typescript)\b",
     r"\bback[\-\s]?end\b|\bfront[\-\s]?end\b",
     r"writing production code",
-    r"hands[\-\s]?on (?:senior |lead |principal )?(?:software )?(?:architect|engineer|builder|developer)",
+    r"hands[\-\s]?on (?:senior |lead |principal )?(?:software )?(?:architect|engineer|developer)",
     r"\byears? (?:of )?(?:software|hands[\-\s]?on) (?:development|engineering|coding)\b",
     r"\bproficien\w+ (?:in|with) (?:python|java|c#|react|sql|azure|aws)\b",
 )
@@ -108,7 +108,6 @@ _ENG_GENERIC = (
     r"\b(?:design|build|develop|implement|deliver) (?:and \w+ )?(?:ai/ml |ml |software |the )?(?:solutions|components|features|services|pipelines|models|applications)\b",
     r"\bsoftware development\b",
     r"engineering (?:practices|best practices|standards|excellence)",
-    r"with minimal oversight",
     r"\bmodern (?:frameworks|tools|engineering)\b",
 )
 
@@ -120,11 +119,14 @@ _SALES_HIGH = (
     # exact false-friend word that collides with the candidate's legit "AI
     # Enablement" target, so it requires corroboration (moved to GENERIC).
     r"\b(?:quota|book of business|pipeline generation|deal[\-\s]?quality|revenue target|net new revenue)\b",
-    r"\b(?:pre[\-\s]?sales|solutions? engineering|sales engineering)\b",
+    r"\bpre[\-\s]?sales\b",
     r"\bobjection handling\b",
 )
 _SALES_GENERIC = (
     r"\b(?:sales|gtm|go[\-\s]?to[\-\s]?market) enablement\b",
+    # "sales/solutions engineering" is often a PARTNER team in a comma-list,
+    # not the role's own duty (v0.3.25) -> needs a 2nd sales signal to fire.
+    r"\b(?:solutions?|sales) engineering\b",
     r"\benable (?:the |our )?(?:sales|sellers|reps|account executives|ae'?s|gtm|field)\b",
     r"\bcoach (?:reps|sellers|the sales|account)\b",
     r"\bclose deals\b|\bclosing deals\b",
@@ -138,7 +140,57 @@ _SALES_HIGH_RE = [re.compile(p, re.IGNORECASE) for p in _SALES_HIGH]
 _SALES_GEN_RE = [re.compile(p, re.IGNORECASE) for p in _SALES_GENERIC]
 
 
-def scan_excluded_body_signals(jd_text: Optional[str]) -> dict:
+# ---------------------------------------------------------------------------
+# Profile-aware gating (v0.3.25): only treat engineering / sales as EXCLUDED
+# work when the candidate does NOT target it. A software engineer's profile
+# targets engineering, so those roles must NOT be down-tiered for them; same
+# for a salesperson. Without this, the guard (tuned for an AI-strategy
+# consultant who excludes both) would bury the ideal roles of eng/sales users.
+# ---------------------------------------------------------------------------
+_ENG_TARGET_TERMS = (
+    "software engineer", "software development engineer", "backend", "back-end",
+    "front-end", "frontend", "full-stack", "full stack", "developer", "devops",
+    "sre", "site reliability", "platform engineer", "ml engineer",
+    "machine learning engineer", "data engineer", "programmer", "swe",
+)
+_SALES_TARGET_TERMS = (
+    "sales", "account executive", "account manager", "business development",
+    "bdr", "sdr",
+)
+
+
+def _profile_haystack(profile) -> str:
+    """Lowercased blob of what the candidate TARGETS (functions / headline /
+    keywords / seniority) — NOT their skills. (A consultant may list Python as
+    a skill while targeting AI strategy; a SWE targets engineering.)"""
+    if profile is None:
+        return ""
+    parts = []
+    for attr in ("headline", "target_seniority"):
+        v = getattr(profile, attr, None)
+        if isinstance(v, str):
+            parts.append(v)
+    for attr in ("target_functions", "keywords"):
+        v = getattr(profile, attr, None)
+        if isinstance(v, (list, tuple)):
+            parts.extend(str(x) for x in v)
+    return " ".join(parts).lower()
+
+
+def profile_targets_engineering(profile) -> bool:
+    """True if the candidate is seeking engineering work (so eng JDs must NOT
+    be treated as excluded for them)."""
+    h = _profile_haystack(profile)
+    return any(t in h for t in _ENG_TARGET_TERMS)
+
+
+def profile_targets_sales(profile) -> bool:
+    """True if the candidate is seeking sales work."""
+    h = _profile_haystack(profile)
+    return any(t in h for t in _SALES_TARGET_TERMS)
+
+
+def scan_excluded_body_signals(jd_text: Optional[str], check_eng: bool = True, check_sales: bool = True) -> dict:
     """Scan a JD body for excluded-work signals the title filter misses.
 
     Returns {"engineering": [hits], "sales": [hits], "strong": bool}.
@@ -150,7 +202,7 @@ def scan_excluded_body_signals(jd_text: Optional[str]) -> dict:
     Scans the first ~4500 chars where core-duty language lives. One stray
     generic phrase ("we partner with engineers") will NOT down-tier.
     """
-    out = {"engineering": [], "sales": [], "strong": False}
+    out = {"engineering": [], "sales": [], "strong": False, "eng_high": [], "sales_high": []}
     if not jd_text:
         return out
     head = jd_text[:4500]
@@ -163,14 +215,18 @@ def scan_excluded_body_signals(jd_text: Optional[str]) -> dict:
                 found.append(m.group(0)[:60])
         return sorted(set(found))
 
-    eng_high = hits(_ENG_HIGH_RE)
-    eng_gen = hits(_ENG_GEN_RE)
-    sales_high = hits(_SALES_HIGH_RE)
-    sales_gen = hits(_SALES_GEN_RE)
+    eng_high = hits(_ENG_HIGH_RE) if check_eng else []
+    eng_gen = hits(_ENG_GEN_RE) if check_eng else []
+    sales_high = hits(_SALES_HIGH_RE) if check_sales else []
+    sales_gen = hits(_SALES_GEN_RE) if check_sales else []
 
     out["engineering"] = sorted(set(eng_high + eng_gen))
     out["sales"] = sorted(set(sales_high + sales_gen))
     eng_strong = bool(eng_high) or len(eng_gen) >= 2
     sales_strong = bool(sales_high) or len(sales_gen) >= 2
     out["strong"] = eng_strong or sales_strong
+    # Decisive (HIGH) hits — let callers distinguish hard dev/sales (REJECT)
+    # from generic build/advisory language (STRETCH). (v0.3.25)
+    out["eng_high"] = eng_high
+    out["sales_high"] = sales_high
     return out
