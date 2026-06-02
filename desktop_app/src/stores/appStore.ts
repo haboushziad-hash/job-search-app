@@ -78,6 +78,14 @@ interface AppState {
   hideSalarylessRoles: boolean
   setHideSalarylessRoles: (v: boolean) => void
 
+  // Freshness re-check (v0.3.26): URLs confirmed dead by an on-demand re-check,
+  // filtered out of the dashboard. Kept DISTINCT from user-hidden so it can be
+  // undone wholesale, and reset on every new search.
+  staleUrls: string[]
+  freshnessCheckedAt: number | null
+  applyFreshness: (deadUrls: string[]) => void
+  clearFreshness: () => void
+
   // Role tracking
   roleStatuses: Record<string, RoleStatusEntry>
   saveRole: (role: Role) => void
@@ -102,13 +110,22 @@ export const useAppStore = create<AppState>()(
       roleStatuses: {},
       cacheMaxAgeDays: 7,
       hideSalarylessRoles: false,
+      staleUrls: [],
+      freshnessCheckedAt: null,
 
       setProfile: (p) => set({ profile: p }),
       setActiveRunId: (id) => set({ activeRunId: id }),
+      // New results = fresh slate: clear any prior freshness re-check state.
       setLastResults: (roles, summary) =>
-        set({ lastRoles: roles, lastSummary: summary }),
+        set({ lastRoles: roles, lastSummary: summary, staleUrls: [], freshnessCheckedAt: null }),
       setCacheMaxAgeDays: (days) => set({ cacheMaxAgeDays: days }),
       setHideSalarylessRoles: (v) => set({ hideSalarylessRoles: v }),
+      applyFreshness: (deadUrls) =>
+        set((state) => ({
+          staleUrls: Array.from(new Set([...state.staleUrls, ...deadUrls.filter(Boolean)])),
+          freshnessCheckedAt: Date.now(),
+        })),
+      clearFreshness: () => set({ staleUrls: [], freshnessCheckedAt: null }),
 
       saveRole: (role) => {
         syncToArchive(role, 'saved')
@@ -200,6 +217,8 @@ export const useAppStore = create<AppState>()(
           lastRoles: [],
           lastSummary: null,
           roleStatuses: {},
+          staleUrls: [],
+          freshnessCheckedAt: null,
         }),
     }),
     {
@@ -210,6 +229,8 @@ export const useAppStore = create<AppState>()(
         lastRoles: state.lastRoles,
         lastSummary: state.lastSummary,
         roleStatuses: state.roleStatuses,
+        staleUrls: state.staleUrls,
+        freshnessCheckedAt: state.freshnessCheckedAt,
       }),
     }
   )

@@ -81,7 +81,7 @@ export function TierCard({ tier, count, scoreRange, description, onClick, select
           <span className={cn('text-[10px] font-mono tracking-widest uppercase', style.color)}>
             {TIER_LABEL[tier]}
           </span>
-          <span className="text-[10px] text-base-500 font-mono">{scoreRange}</span>
+          {/* v0.3.25: percentile/score-range label removed — users don't need "top ~12%" etc. */}
         </div>
         <div className={cn('text-4xl font-semibold tabular-nums tracking-tight', style.color)}>
           {count}

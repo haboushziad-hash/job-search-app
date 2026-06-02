@@ -303,6 +303,9 @@ class RunSummary(BaseModel):
     jd_coverage_pct: float = 0.0
     salary_coverage_pct: float = 0.0          # % of all scraped roles
     salary_coverage_qualifying_pct: float = 0.0  # % of qualifying roles (≥40 final score)
+    salary_minimum_used: Optional[int] = None  # v0.3.26: the floor THIS run actually enforced
+    # (the run-screen override, which can differ from the profile default) — recorded so a
+    # below-floor "top match" bug is instantly diagnosable from the audit JSON.
     location_coverage_pct: float = 0.0
     self_heal_triggered: bool = False
 

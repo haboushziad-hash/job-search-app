@@ -474,6 +474,7 @@ async def run_search(
     # downstream scorer actually has to work with.
     summary.jd_coverage_pct = _pct(raw_roles, _has_usable_jd)
     summary.salary_coverage_pct = _pct(raw_roles, lambda r: r.salary_max is not None)
+    summary.salary_minimum_used = getattr(profile, "salary_minimum", None)  # v0.3.26 (S1 observability)
     summary.location_coverage_pct = _pct(raw_roles, lambda r: bool(r.location or r.location_type))
 
     # Salary coverage on the roles testers ACTUALLY see (qualifying ≥ 40).

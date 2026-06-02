@@ -21,6 +21,18 @@ import { save } from '@tauri-apps/plugin-dialog'
 import { writeFile } from '@tauri-apps/plugin-fs'
 import type { Role, RunSummary } from '@/types'
 import type { RoleStatusEntry } from '@/stores/appStore'
+import { stripScoringTags } from '@/lib/utils'
+
+// v0.3.26 (UI1/SC3): clean, user-facing fit analysis for exports — strip
+// internal scoring tags and fall back to stage2_reasoning when Stage 3 was
+// skipped (otherwise the cell/section is blank for ~26 GOOD roles).
+function fitAnalysis(role: Role): string {
+  const raw =
+    (role.stage3_analysis && !role.stage3_analysis.startsWith('stage3_error')
+      ? role.stage3_analysis
+      : '') || role.stage2_reasoning || ''
+  return stripScoringTags(raw)
+}
 
 interface ExportContext {
   roles: Role[]
@@ -75,9 +87,7 @@ function roleToRow(role: Role, status?: RoleStatusEntry): FlatRow {
     Status: status?.status || '',
     'Application Stage': status?.applicationStage || '',
     'Status Date': status?.date ? new Date(status.date).toLocaleDateString() : '',
-    'AI Analysis': (role.stage3_analysis && !role.stage3_analysis.startsWith('stage3_error'))
-      ? role.stage3_analysis
-      : (role.stage2_reasoning || ''),
+    'AI Analysis': fitAnalysis(role),
     'Best Resume Match': role.stage3_best_resume_match || '',
   }
 }
@@ -231,8 +241,9 @@ export async function exportToMarkdown(
       if (r.salary_text) meta.push(r.salary_text)
       if (r.primary_source) meta.push(`via ${r.primary_source}`)
       if (meta.length) lines.push(`*${meta.join(' · ')}*\n`)
-      if (r.stage3_analysis && !r.stage3_analysis.startsWith('stage3_error')) {
-        lines.push(`${r.stage3_analysis}\n`)
+      const analysis = fitAnalysis(r)
+      if (analysis) {
+        lines.push(`${analysis}\n`)
       }
       if (r.job_url) lines.push(`[Apply →](${r.job_url})\n`)
       lines.push('')

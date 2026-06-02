@@ -424,8 +424,23 @@ class JSearchScraper(BaseScraper):
         # Posted date — JSearch returns ISO 8601
         posted = item.get("job_posted_at_datetime_utc")
 
-        # Apply URL — primary discoverable link
-        url = item.get("job_apply_link") or item.get("job_google_link") or ""
+        # Apply URL. v0.3.26 (L1): prefer the employer's OWN site
+        # (apply_options[].is_direct == true) over job_apply_link, which often
+        # points to a reposter (BeBee/Lensa/JobLeads) the user must sign into.
+        # Landing on the real ATS page also lets the JD fetch recover a salary
+        # that the aggregator didn't surface (helps S4).
+        url = ""
+        opts = item.get("apply_options")
+        if isinstance(opts, list):
+            direct = next(
+                (o for o in opts
+                 if isinstance(o, dict) and o.get("is_direct") and o.get("apply_link")),
+                None,
+            )
+            if direct:
+                url = direct["apply_link"]
+        if not url:
+            url = item.get("job_apply_link") or item.get("job_google_link") or ""
 
         return Role(
             job_title=title[:200],

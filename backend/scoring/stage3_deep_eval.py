@@ -454,6 +454,30 @@ _RESPONSE_SCHEMA_PAIR_B = {
 }
 
 
+# v0.3.25: the OpenRouter backend (GPT-5-mini etc.) needs ITS OWN Stage-3
+# prompt, not Gemini's. Gemini's prompt is anti-inflation-tuned for an
+# over-scorer; on GPT-5-mini (not an over-scorer) that pressure causes
+# DEFLATION (bench + first wired test confirmed STRONGs collapsing to GOOD).
+# This is the tuned ref-anchored, profile-driven calibration that won the
+# bake-off, adapted to emit the same rich fields the pipeline/dashboard use.
+STAGE3_SYSTEM_PROMPT_OPENROUTER = """You are a STRICT but FAIR judge scoring how well ONE candidate fits ONE job.
+
+CALIBRATION ANCHORS (0-100):
+- ANCHOR ~90 (STRONG): the role's CORE duties clearly match the candidate's TARGET FUNCTIONS (from the profile) AND the seniority is attainable.
+- ANCHOR ~20 (SKIP): the role's CORE duties fall clearly OUTSIDE the candidate's target functions - e.g. hands-on software/ML engineering or sales/GTM/quota-carrying work when those are NOT the candidate's targets, or a different field/level entirely.
+Place THIS role between the anchors.
+
+RULES:
+1. DISQUALIFIER FIRST: if the role's CORE duties fall outside the candidate's target functions, it cannot exceed STRETCH (score < 55), no matter how senior or well-paid.
+2. Require JD evidence for any positive; never infer fit from the job title alone.
+3. USE THE FULL RANGE and do NOT under-rate genuine matches: a role whose core duties clearly match the target functions at attainable seniority IS a GOOD or STRONG - score it that way.
+
+Tiers by score: STRONG >= 85, GOOD 70-84, MAYBE 55-69, STRETCH 40-54, SKIP < 40.
+
+Return ONLY a JSON object with EXACTLY these fields:
+{"match_analysis": "<2-4 sentences mapping the role's core duties to the candidate's target functions, then the single biggest gap or risk>", "application_strategy": "<1-2 sentences: the angle if worth applying, else why to skip>", "best_resume_match": "<short phrase, or empty string>", "summary": "<exactly 2 sentences for a dashboard card: sentence 1 = what the role IS, sentence 2 = the match signal or top concern>", "score": <integer 0-100>}"""
+
+
 def _active_prompt_and_schema() -> tuple[str, dict]:
     """Returns (system_prompt, json_schema) based on Wave-1 feature flags.
 
@@ -469,15 +493,20 @@ def _active_prompt_and_schema() -> tuple[str, dict]:
       (False, True)   → compressed prompt + full schema (not recommended)
       (True,  True)   → compressed prompt + drop_concerns (8K-validated; 16K fail)
     """
-    prompt = (
-        STAGE3_SYSTEM_PROMPT_PAIR_B
-        if config.STAGE3_PROMPT_COMPRESSION_ENABLED
-        else STAGE3_SYSTEM_PROMPT
-    )
     schema = (
         _RESPONSE_SCHEMA_PAIR_B
         if config.PAIR_B_ENABLED
         else _RESPONSE_SCHEMA
+    )
+    # v0.3.25: cross-family backend uses its own ref-anchored prompt. The
+    # schema is only a truthiness flag for OpenRouter (it emits json_object),
+    # so the prompt itself enumerates the required fields.
+    if (config.STAGE3_BACKEND or "gemini").lower() == "openrouter":
+        return STAGE3_SYSTEM_PROMPT_OPENROUTER, schema
+    prompt = (
+        STAGE3_SYSTEM_PROMPT_PAIR_B
+        if config.STAGE3_PROMPT_COMPRESSION_ENABLED
+        else STAGE3_SYSTEM_PROMPT
     )
     return prompt, schema
 
@@ -569,6 +598,39 @@ def _role_block(role: Role, jd_max_chars: int = 16000) -> str:
     return "\n".join(parts)
 
 
+def _stage3_model() -> str:
+    """Stage-3 model id, per config.STAGE3_BACKEND (v0.3.25 scorer migration).
+
+    Default backend is "gemini" → config.STAGE3_MODEL (gemini-2.5-pro).
+    Set STAGE3_BACKEND=openrouter to route to the cross-family model
+    (config.STAGE3_OPENROUTER_MODEL, default openai/gpt-5-mini).
+    """
+    backend = (config.STAGE3_BACKEND or "gemini").lower()
+    if backend == "stack":
+        return "stack"
+    if backend == "openrouter":
+        return config.STAGE3_OPENROUTER_MODEL
+    return config.STAGE3_MODEL
+
+
+def _get_stage3_client(passed: Optional[LLMClient] = None) -> LLMClient:
+    """Pick the Stage-3 client per config.STAGE3_BACKEND. Default = Gemini.
+
+    When backend == "openrouter" we IGNORE any passed (Gemini) client the
+    orchestrator threads through for Stages 1/2 and return a fresh
+    OpenRouterClient — otherwise the backend switch would be silently
+    bypassed. OpenRouterClient is imported lazily so it only loads when used.
+    """
+    backend = (config.STAGE3_BACKEND or "gemini").lower()
+    if backend == "stack":
+        from backend.scoring.stack_client import StackClient
+        return StackClient()
+    if backend == "openrouter":
+        from backend.scoring.openrouter_client import OpenRouterClient
+        return OpenRouterClient()
+    return passed or get_llm_client()
+
+
 def needs_stage3(
     role: Role,
     *,
@@ -637,7 +699,7 @@ async def _score_one(
         )
         try:
             response = await client.complete(
-                model=config.STAGE3_MODEL,
+                model=_stage3_model(),
                 system=None if cached_handle else active_prompt,
                 cached_content=cached_handle,
                 user=prompt,
@@ -729,7 +791,7 @@ async def stage3_deep_eval(
     if not roles:
         return []
 
-    client = client or get_llm_client()
+    client = _get_stage3_client(client)
     if hasattr(client, "current_run_id"):
         client.current_run_id = run_id  # type: ignore[attr-defined]
         client.current_stage = "stage3"  # type: ignore[attr-defined]
@@ -753,7 +815,7 @@ async def stage3_deep_eval(
     if config.PRO_CONTEXT_CACHING_ENABLED:
         try:
             cached_handle = await client.create_cache(
-                model=config.STAGE3_MODEL,
+                model=_stage3_model(),
                 system=active_prompt,
                 ttl_seconds=config.PRO_CONTEXT_CACHE_TTL_SECONDS,
             )
@@ -940,7 +1002,7 @@ async def _resolve_stage3_contradictions(
         try:
             from backend.config import config
             response = await client.complete(
-                model=config.STAGE3_MODEL,
+                model=_stage3_model(),
                 system=STAGE3_SYSTEM_PROMPT,
                 user=retry_prompt,
                 max_output_tokens=4096,

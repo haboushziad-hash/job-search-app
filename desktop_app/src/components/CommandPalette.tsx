@@ -76,7 +76,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
                                                        tracking-widest text-base-500
                                                        px-2 py-1.5">
             <Item icon={Compass} label="Dashboard"      shortcut={sc('1')} onSelect={go('/dashboard')} />
-            <Item icon={PlayCircle} label="New Search"   shortcut={sc('2')} onSelect={go('/run')} />
+            <Item icon={PlayCircle} label="Run Search"   shortcut={sc('2')} onSelect={go('/start-search')} />
             <Item icon={Briefcase} label="Applications"  shortcut={sc('3')} onSelect={go('/tracker')} />
             <Item icon={History} label="Run History"     shortcut={sc('4')} onSelect={go('/history')} />
             <Item icon={Settings} label="Settings"       onSelect={go('/settings')} />

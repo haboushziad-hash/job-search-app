@@ -552,6 +552,14 @@ async def _execute_search(
     except Exception as e:
         state.status = "failed"
         state.error = f"{type(e).__name__}: {str(e)[:500]}"
+        # v0.3.26: log the FULL traceback to backend.log. Previously only the
+        # one-line message was kept in state.error (shown to the user as
+        # "Something went wrong"), with NO stack anywhere — which made run
+        # failures like the Windows-asyncio "[Errno 22] Invalid argument"
+        # impossible to diagnose. Now every run failure leaves a stack trace.
+        import logging as _logging, traceback as _tb
+        _logging.getLogger("backend.search").error(
+            "search run %s FAILED — %s\n%s", run_id, state.error, _tb.format_exc())
 
 
 @app.post("/search/cancel/{run_id}")
@@ -607,6 +615,42 @@ async def search_results(run_id: str) -> dict[str, Any]:
         "summary": state.summary,
         "roles": state.final_roles,
     }
+
+
+# ============================================================================
+# Freshness re-check (v0.3.26) — re-validate an existing run's links live,
+# WITHOUT re-running the whole search. Cheap (HEAD + a GET, ~$0 — no scraping,
+# no LLM) and fast (~30-60s for a few hundred URLs). Uses the SAME liveness
+# engine a full search uses. Returns URLs we're CONFIDENT are dead (404/410 /
+# expired-redirect / closure-banner) so the dashboard can drop them, plus the
+# UNCERTAIN ones (403/timeout/5xx) which we keep + flag — never silently drop.
+# ============================================================================
+
+class RecheckRequest(BaseModel):
+    urls: list[str]
+
+
+@app.post("/roles/recheck")
+async def roles_recheck(req: RecheckRequest) -> dict[str, Any]:
+    from backend.scraper.liveness import verify_liveness
+    urls = [u for u in (req.urls or []) if isinstance(u, str) and u.strip()][:600]
+    if not urls:
+        return {"checked": 0, "dead": [], "uncertain": []}
+    # Minimal shims — liveness only reads job_url. fetch_body_check=True also
+    # GETs each page and scans for closure banners; drop_dead=False returns all
+    # roles with their verification result populated so we classify here.
+    shims = [Role(job_title="recheck", company="recheck", job_url=u) for u in urls]
+    verified = await verify_liveness(shims, fetch_body_check=True, drop_dead=False, log=False)
+    CONFIRMED_DEAD = {"dead", "expired_redirect", "marked_filled"}
+    dead: list[str] = []
+    uncertain: list[str] = []
+    for r in verified:
+        res = r.last_verified_result or ""
+        if res in CONFIRMED_DEAD:
+            dead.append(r.job_url)
+        elif res in ("blocked", "server_error") or res.startswith("error") or res.startswith("http_"):
+            uncertain.append(r.job_url)
+    return {"checked": len(verified), "dead": dead, "uncertain": uncertain}
 
 
 # ============================================================================

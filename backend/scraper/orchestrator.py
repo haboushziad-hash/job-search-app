@@ -8,6 +8,7 @@ cascade scores the same role 3 times.
 from __future__ import annotations
 
 import asyncio
+import re
 from typing import Optional
 
 from backend.models import Role
@@ -440,9 +441,51 @@ async def _run_scraper(
         raise
 
 
+# v0.3.26 (L3) — source/host quality ranking for dedupe. LOWER = better = the
+# copy we keep when the same job appears from multiple boards. Ranked by LINK
+# HOST (what the user clicks AND what we re-scrape for the JD), so a company's
+# own ATS posting always beats a BeBee/aggregator repost of the same role.
+_HOST_ATS = ("greenhouse.io", "boards.greenhouse", "lever.co", "ashbyhq.com",
+             "myworkdayjobs.com", "workday.com", "smartrecruiters.com", "icims.com")
+_HOST_BOARD = ("builtin.com", "builtinchicago.org", "weworkremotely.com", "remoteok",
+               "remotive.com", "workingnomads.com", "higheredjobs.com", "biospace.com",
+               "climatebase.org", "arbeitnow.com", "themuse.com", "nodesk.co",
+               "wellfound.com", "ycombinator.com")
+# Gatewall / low-value reposters that re-list a job behind a sign-in (the ones
+# the user flagged: BeBee, Vaia, JobLeads, Lensa, Jooble, talent.com, …).
+_HOST_REPOSTER = ("bebee.com", "vaia.com", "jobleads.com", "lensa.com", "jooble.org",
+                  "talent.com", "whatjobs.com", "learn4good.com", "jobicy.com",
+                  "ziprecruiter.com", "glassdoor.", "monster.com", "simplyhired.com",
+                  "snagajob.com", "jobright.ai", "adzuna.com", "myjobhelper.com",
+                  "jobcase.com", "theirstack.com", "appcast")
+
+
+def _source_host_priority(role: Role) -> int:
+    """Dedup keep-priority (lower = preferred). See _HOST_* above."""
+    m = re.search(r"https?://([^/]+)", (role.job_url or "").lower())
+    host = m.group(1) if m else ""
+    if not host:
+        return 3
+    if any(x in host for x in _HOST_ATS):
+        return 0
+    if host.endswith(".gov") or ".gov:" in host or "usajobs" in host:
+        return 1
+    if any(x in host for x in _HOST_BOARD):
+        return 2
+    if any(x in host for x in _HOST_REPOSTER):
+        return 5
+    return 3  # unknown — usually the company's own careers page (better than a reposter)
+
+
 def _cross_board_dedupe(roles: list[Role]) -> list[Role]:
     """Dedupe across boards. Same role can appear from Greenhouse + Lever
-    when a company uses multiple ATS systems."""
+    when a company uses multiple ATS systems, OR from a company ATS + a BeBee/
+    aggregator repost. v0.3.26 (L3): sort by source/host quality FIRST (stable,
+    so discovery order is preserved within a tier) so the BEST copy is the one
+    kept — previously the first-scraped copy won regardless of quality, which is
+    why low-value BeBee/Lensa reposts kept beating real ATS postings."""
+    roles = sorted(roles, key=_source_host_priority)  # stable: best source first
+
     out: list[Role] = []
     seen_url: set[str] = set()
     seen_title_company: set[tuple[str, str]] = set()

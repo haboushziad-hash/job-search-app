@@ -485,7 +485,17 @@ class GoogleJobsScraper(BaseScraper):
 
         # Apply URL — the source_url from DataForSEO points to Indeed /
         # LinkedIn / employer career page. We fetch JD from this URL later.
-        url = (item.get("source_url") or item.get("employer_url") or "").strip()
+        # v0.3.26 (L1): when source_url is a gatewall reposter (BeBee/Vaia/
+        # JobLeads/etc. the user must sign into), prefer the employer's own page.
+        src = (item.get("source_url") or "").strip()
+        emp = (item.get("employer_url") or "").strip()
+        _REPOSTER = ("bebee.", "vaia.", "jobleads.", "lensa.", "jooble.", "talent.com",
+                     "whatjobs.", "learn4good.", "ziprecruiter.", "jobcase.",
+                     "theirstack.", "appcast", "jobright.")
+        if src and emp and any(x in src.lower() for x in _REPOSTER):
+            url = emp
+        else:
+            url = src or emp
         if not url:
             return None
 

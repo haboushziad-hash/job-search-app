@@ -19,7 +19,7 @@ interface NavItem {
 const NAV: NavItem[] = [
   { to: '/dashboard',  label: 'Dashboard',       icon: Compass },
   { to: '/stats',      label: 'Stats',           icon: BarChart3 },
-  { to: '/run',        label: 'New Search',      icon: PlayCircle },
+  { to: '/start-search', label: 'Run Search',    icon: PlayCircle },
   { to: '/saved-jobs', label: 'Saved Jobs',      icon: BookmarkCheck },
   { to: '/tracker',    label: 'Applications',    icon: Briefcase },
   { to: '/history',    label: 'Run History',     icon: History },

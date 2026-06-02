@@ -29,6 +29,20 @@ export function formatRelativeDate(iso: string | null | undefined): string {
   return `${Math.floor(days / 365)}y ago`
 }
 
+// v0.3.26 (UI1): the pipeline prepends internal audit tags to the reasoning it
+// shows users — "[salary-penalty:…]", "[contradiction-resolved]", "[title-floor:…]",
+// "[off-target …]", "[excluded-…]", "[seniority-gate …]" — AND the model itself
+// sometimes emits its own, e.g. "[dead-listing]". A real fit summary NEVER starts
+// with a "[", so we strip ANY leading bracketed segment(s) rather than enumerate
+// keywords (which kept missing model-emitted ones). Cap the inner length so a
+// stray "[" mid-thought can't eat a sentence.
+const _SCORING_TAG_RE = /^(?:\s*\[[^\]]{0,80}\]\s*)+/
+
+export function stripScoringTags(text: string | null | undefined): string {
+  if (!text) return ''
+  return text.replace(_SCORING_TAG_RE, '').trim()
+}
+
 export function tierColor(tier: string): string {
   switch (tier?.toUpperCase()) {
     case 'STRONG':  return 'tier-strong'

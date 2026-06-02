@@ -39,6 +39,8 @@ hidden_imports = [
     "pydantic_core",
     "multipart",            # python-multipart — required by FastAPI for Form() params (e.g., /profile/build)
     "python_multipart",     # newer name some FastAPI versions look for
+    "backend.scoring.openrouter_client",  # v0.3.25: lazy-imported in stage3_deep_eval; force-bundle so the flag works
+    "backend.scoring.stack_client",        # v0.3.25: lazy-imported stack backend; force-bundle
 ]
 
 # Bundle data files for packages that need them at runtime

@@ -4,7 +4,7 @@ import {
   Bookmark, BookmarkCheck, EyeOff, Eye, Check, ArrowUpRight, Send,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { cn, formatCurrency, formatRelativeDate } from '@/lib/utils'
+import { cn, formatCurrency, formatRelativeDate, stripScoringTags } from '@/lib/utils'
 import { useAppStore } from '@/stores/appStore'
 import { logRoleEvent } from '@/services/api'
 import type { Role } from '@/types'
@@ -44,18 +44,27 @@ export function RoleCard({ role, onClick, condensed = false }: RoleCardProps) {
   // Salary display — explicit "not disclosed" when missing so users know
   // the field was checked rather than overlooked.
   const salaryDisplay = role.salary_min && role.salary_max
-    ? `${formatCurrency(role.salary_min, { compact: true })}–${formatCurrency(role.salary_max, { compact: true })}`
+    ? (role.salary_min === role.salary_max
+        // single value when min==max (e.g. a backpopped point salary) — no "X–X" range
+        ? formatCurrency(role.salary_min, { compact: true })
+        : `${formatCurrency(role.salary_min, { compact: true })}–${formatCurrency(role.salary_max, { compact: true })}`)
     : role.salary_text || null
   const salaryText = salaryDisplay || 'Salary not disclosed'
   const salaryMissing = !salaryDisplay
 
-  // Prefer the AI-generated summary (Stage 3) over stage3_analysis when
-  // available. Summary is intentionally crisper for the dashboard preview.
+  // Prefer the AI-generated summary (Stage 3) over stage3_analysis, then fall
+  // back to stage2_reasoning. v0.3.26 (SC3): ~26 GOOD-tier roles skip Stage 3
+  // (high Stage-2 confidence or path-B gating) and never get a `summary` or
+  // `stage3_analysis` — without the stage2_reasoning fallback they rendered
+  // BLANK. v0.3.26 (UI1): strip internal scoring tags before display.
   const previewText =
-    (role.summary && role.summary.trim())
-    || (role.stage3_analysis && !role.stage3_analysis.startsWith('stage3_error')
-        ? role.stage3_analysis
-        : null)
+    stripScoringTags(
+      (role.summary && role.summary.trim())
+        || (role.stage3_analysis && !role.stage3_analysis.startsWith('stage3_error')
+            ? role.stage3_analysis
+            : '')
+        || role.stage2_reasoning,
+    ) || null
 
   // v0.3.15 (P1.11): helper to fire a role event with the standard payload.
   // All four button handlers below use this so we get a consistent
@@ -287,7 +296,9 @@ export function RoleCard({ role, onClick, condensed = false }: RoleCardProps) {
               salaryMissing && 'italic text-base-500'
             )}>
               <DollarSign size={12} />
-              {salaryText}
+              {/* The $ icon already shows a "$" — strip the leading one from the
+                  value so a disclosed salary doesn't render as "$ $208K". */}
+              {salaryMissing ? salaryText : salaryText.replace(/^\$/, '')}
             </span>
             {role.posted_date && (
               <span className="flex items-center gap-1">

@@ -58,6 +58,14 @@ def _apply_salary_realism_penalty(
         return
     if role.final_score is None or role.final_score <= 0:
         return
+    # v0.3.26 (UI1): idempotency guard. The JD score cache is model-agnostic and
+    # hydrates across runs (even on force_refresh); a hydrated role already carries
+    # the "[salary-penalty:…]" tag in its reasoning AND already had -15 baked into
+    # its cached final_score. Re-finalizing it would subtract another 15 (score
+    # corruption) and prepend a SECOND tag (the doubled "[salary-penalty] [salary-
+    # penalty]" users saw). Skip if the penalty was already applied.
+    if "[salary-penalty" in (role.stage3_analysis or "") or "[salary-penalty" in (role.stage2_reasoning or ""):
+        return
 
     min_threshold = profile_min * 0.70
     max_threshold = profile_min * 1.50
@@ -111,7 +119,7 @@ def _apply_scoring_guards(role: Role, profile: Optional[CandidateProfile] = None
     from backend.scoring._scoring_guards import (
         jd_is_capturable, scan_excluded_body_signals,
         profile_targets_engineering, profile_targets_sales,
-        title_off_target_for_profile,
+        title_off_target_for_profile, experience_seniority_gate, offtarget_engagement,
     )
 
     # P0-4 (v0.3.25): off-target TITLE → SKIP, PER-CATEGORY profile-gated. Flags a
@@ -126,6 +134,29 @@ def _apply_scoring_guards(role: Role, profile: Optional[CandidateProfile] = None
         flag = f"[off-target title ({off_cat}) — not in candidate's targets — capped at SKIP]"
         role.stage3_analysis = f"{flag} {role.stage3_analysis or ''}"[:2000]
         return
+
+    # SC2 (v0.3.26): non-standard engagement (SkillBridge / internship / fellowship
+    # / apprenticeship / volunteer) → SKIP. Not a target full-time role.
+    eng = offtarget_engagement(role)
+    if eng:
+        role.final_score = 30
+        role.final_tier = Tier.SKIP
+        flag = f"[off-target engagement ({eng}) — not a target full-time role — capped at SKIP]"
+        role.stage3_analysis = f"{flag} {role.stage3_analysis or ''}"[:2000]
+        return
+
+    # SC1 (v0.3.26): HARD experience / seniority cut-off (JD demands far more years
+    # than the candidate has, or an exec-level title above their IC/Manager target)
+    # → cap at STRETCH so it can't surface as an apply-now match. Profile-gated.
+    gate = experience_seniority_gate(role, profile)
+    if gate and (role.final_score or 0) > 46:
+        role.final_score = 46
+        role.final_tier = score_to_tier(46)
+        flag = f"[seniority-gate ({gate}) — capped at STRETCH]"
+        if role.stage3_analysis:
+            role.stage3_analysis = f"{flag} {role.stage3_analysis}"[:2000]
+        else:
+            role.stage3_application_strategy = f"{flag} {role.stage3_application_strategy or ''}"[:1000]
 
     jd = role.job_description_full or role.job_description_essence or ""
 
@@ -177,7 +208,12 @@ _TIER_BANDS = {
 # 91% within-1, reproduces the ~12/27/28/34% shape, adapts per run. (score_to_tier
 # still gives each role its absolute per-stage tier; this overrides final_tier.)
 _PCT_CUM = ((0.115, Tier.STRONG), (0.38, Tier.GOOD), (0.657, Tier.MAYBE))  # cumulative rank shares
-_PCT_FLOOR = ((82, Tier.STRONG), (55, Tier.GOOD), (47, Tier.MAYBE))        # min score per tier
+_PCT_FLOOR = ((72, Tier.STRONG), (55, Tier.GOOD), (47, Tier.MAYBE))        # min score per tier
+# ^ v0.3.26: STRONG floor 82→72. The cheap stack's scores compress into discrete
+# clusters (a run's top band is ~76-81, then 63, 57…). At 82 the floor sat ABOVE
+# the entire top cluster, so EVERY top-ranked role got floor-capped to GOOD →
+# STRONG=0. 72 lets the real top cluster qualify; the rank share (top ~11.5%)
+# still caps how many become STRONG, so a weak search can't manufacture fakes.
 _TIER_ORD = {Tier.STRONG: 4, Tier.GOOD: 3, Tier.MAYBE: 2, Tier.STRETCH: 1, Tier.SKIP: 0}
 
 

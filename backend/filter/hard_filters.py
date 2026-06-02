@@ -105,6 +105,18 @@ _DEAD_LISTING_PATTERNS = [
         r"application (?:deadline|period) has (?:passed|ended|expired|closed)",
         r"this (?:opening|position|role) (?:has been|is) (?:filled|withdrawn|removed)",
         r"\bstatus:?\s+(?:closed|filled|expired|inactive)\b",
+        # v0.3.26 (L2): board-specific removal banners observed in live testing.
+        # BuiltIn/builtinchicago: "Sorry, this job was removed at 02:13 a.m. …".
+        # talent.com: "No longer accepting applications". HHMI: "no longer available".
+        r"this (?:job|posting|listing) (?:was|has been) removed",
+        r"\bjob was removed (?:at|on)\b",
+        r"no longer accepting applications",
+        r"(?:job|position|role|posting|listing) is no longer available",
+        # v0.3.26: "Job Post Expired" expired-page (BuiltIn/builtinchicago) — the
+        # JD gets replaced by an expired notice + a rail of other postings.
+        r"job post(?:ing)? (?:has )?expired",
+        r"\bjob post expired\b",
+        r"this (?:job|posting) (?:is|has) (?:now )?(?:expired|been removed)",
     )
 ]
 

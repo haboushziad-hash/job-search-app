@@ -228,6 +228,147 @@ def _is_realistic_annual_salary(amount: int) -> bool:
 
 
 # ----------------------------------------------------------------------------
+# v0.3.26 — page-chrome, currency, and multi-region helpers
+# ----------------------------------------------------------------------------
+
+# S2: a "Similar Jobs" / "Recommended jobs" rail lives in the same HTML the
+# scraper captured. Without cutting it, salary extraction (and the LLM scorer)
+# read a NEIGHBORING posting — e.g. Loftware (no salary) inherited Oklo's
+# "220K-280K Annually" from the Similar Jobs box.
+# STRONG rail markers only — these phrases do not occur in normal JD prose, so
+# the FIRST occurrence reliably marks where the real posting ends and the
+# similar/recommended rail begins. (Deliberately NOT "view all jobs" / "browse
+# jobs" — those are nav links that appear mid-page and caused an early false cut.)
+_CHROME_BOUNDARY_RE = re.compile(
+    r"(?:similar jobs|similar companies|jobs you might (?:also )?like|"
+    r"recommended (?:jobs|for you)|more jobs (?:at|from|like)|related jobs|"
+    r"other jobs (?:you|at|from)|people also viewed|set (?:a |an )?alert for similar)",
+    re.IGNORECASE,
+)
+
+
+def strip_page_chrome(text: str) -> str:
+    """Cut a trailing "Similar Jobs"/"Recommended jobs" rail so salary + scoring
+    never read a neighboring posting. Cuts at the first STRONG rail marker that
+    appears past the first 150 chars (so a JD can't be truncated to nothing)."""
+    if not text:
+        return text
+    m = _CHROME_BOUNDARY_RE.search(text)
+    if m and m.start() > 150:
+        return text[:m.start()]
+    return text
+
+
+# S5: a $ amount is NON-USD only when a foreign currency token sits next to it
+# AND no explicit USD marker is present. "$130,000" with nothing else = USD.
+_NON_USD_RE = re.compile(
+    r"\b(?:CAD|C\$|AUD|A\$|NZD|NZ\$|GBP|EUR|SGD|S\$|INR|MXN|BRL|JPY|CHF|DKK|SEK|NOK)\b|£|€|₹",
+    re.IGNORECASE,
+)
+_USD_MARKER_RE = re.compile(r"\bUSD\b|\bUS\$|\bU\.S\.\s*dollar", re.IGNORECASE)
+
+# S3: region qualifiers. Multi-region postings list a high-cost-metro band first
+# (which we were wrongly picking) and a broad "all other locations" band second.
+# Prefer the national band; if none, avoid the metro band; else take the lowest.
+_HIGH_METRO_RE = re.compile(
+    r"\b(?:san francisco|sf bay|bay area|new york city|new york metro|nyc|"
+    r"greater seattle|seattle|los angeles|zone\s*1|tier\s*1|premium\s*(?:market|metro))\b",
+    re.IGNORECASE,
+)
+_NATIONAL_RE = re.compile(
+    r"\b(?:all other|other us|other location|other geograph|national(?:ly|wide)?|"
+    r"rest of (?:the )?(?:us|country)|zone\s*2|tier\s*2)\b",
+    re.IGNORECASE,
+)
+
+
+def _is_usd(ctx: str) -> bool:
+    if _NON_USD_RE.search(ctx) and not _USD_MARKER_RE.search(ctx):
+        return False
+    return True
+
+
+def _collect_ranges(text: str) -> list[dict]:
+    """Find EVERY plausible salary range (not just the first), each tagged with
+    its position, a confidence rank, the surrounding context, and a USD flag.
+    Selection (currency + region) happens in _select_range."""
+    out: list[dict] = []
+
+    def add(g1, g2, start, end, conf):
+        smin = _parse_amount(g1) if isinstance(g1, str) else g1
+        smax = _parse_amount(g2) if isinstance(g2, str) else g2
+        if not (smin and smax):
+            return
+        if smin > smax:
+            smin, smax = smax, smin
+        if not (_is_realistic_annual_salary(smin) and _is_realistic_annual_salary(smax)):
+            return
+        if smax > smin * 5:  # absurdly wide => two unrelated numbers
+            return
+        # Region context is wide (the "All Other US Locations:" label can precede
+        # the range by a few words). Currency context is TIGHT — the token sits
+        # immediately after the range ("…125K CAD", "…$90K USD") — so a USD label
+        # elsewhere in the JD can't whitewash a CAD range (the Harris bug).
+        region_ctx = text[max(0, start - 90): start + 90]
+        # Currency is read from a TIGHT window: the matched span (the K-range
+        # pattern can CONSUME a trailing "USD") plus ~6 chars after, where a
+        # "$X - $Y CAD/USD" suffix lives. Crucially it must NOT reach a following
+        # clause like "For Canadian employees:" that belongs to the NEXT range —
+        # that bled across and mislabeled Instacart's US range as CAD.
+        cur_ctx = text[max(0, start - 4): end + 6]
+        out.append({"min": smin, "max": smax, "start": start, "conf": conf,
+                    "usd": _is_usd(cur_ctx),
+                    "explicit_usd": bool(_USD_MARKER_RE.search(cur_ctx)),
+                    "ctx": region_ctx})
+
+    for m in PATTERN_LABELED_RANGE.finditer(text):
+        add(m.group(1), m.group(2), m.start(), m.end(), 3)
+    for m in PATTERN_LISTED_BELOW.finditer(text):
+        add(m.group(1), m.group(2), m.start(), m.end(), 3)
+    for m in PATTERN_RANGE.finditer(text):
+        # Accept on a salary keyword OR a region qualifier — multi-region comp
+        # blocks list "<City>: $X-$Y" where the trigger is the region, not a
+        # salary word (Komodo/Wilson Sonsini "All Other US Locations: $…").
+        ctx_l = text[max(0, m.start() - 100): m.end()].lower()
+        if (any(w in ctx_l for w in ("salary", "pay", "compensation", "comp",
+                                     "base", "annual", "ttc", "total target"))
+                or _HIGH_METRO_RE.search(ctx_l) or _NATIONAL_RE.search(ctx_l)):
+            add(m.group(1), m.group(2), m.start(), m.end(), 1)
+    for m in PATTERN_PROXIMITY.finditer(text):
+        add(m.group(1), m.group(2), m.start(), m.end(), 1)
+    for m in PATTERN_K_RANGE_BARE.finditer(text):
+        ctx_l = text[max(0, m.start() - 50): m.end() + 30].lower()
+        if any(w in ctx_l for w in ("salary", "pay", "compensation", "comp", "base",
+                                    "annual", "annually", "/year", "/yr", "per year", "usd")):
+            add(int(m.group(1)) * 1000, int(m.group(2)) * 1000, m.start(), m.end(), 2)
+
+    # dedup identical (min,max), keeping the highest-confidence occurrence
+    best: dict = {}
+    for c in out:
+        k = (c["min"], c["max"])
+        if k not in best or c["conf"] > best[k]["conf"]:
+            best[k] = c
+    return list(best.values())
+
+
+def _select_range(cands: list[dict]) -> dict:
+    """Pick one range. Multi-region: prefer national/"all other" band, else avoid
+    the high-metro band, else lowest (conservative). Single-tier: highest
+    confidence, then earliest position (preserves prior 'labeled-first' behavior)."""
+    if len(cands) == 1:
+        return cands[0]
+    region_signal = any(_HIGH_METRO_RE.search(c["ctx"]) or _NATIONAL_RE.search(c["ctx"]) for c in cands)
+    if region_signal:
+        nat = [c for c in cands if _NATIONAL_RE.search(c["ctx"])]
+        if nat:
+            return min(nat, key=lambda c: c["max"])
+        non_metro = [c for c in cands if not _HIGH_METRO_RE.search(c["ctx"])]
+        pool = non_metro or cands
+        return min(pool, key=lambda c: c["max"])
+    return sorted(cands, key=lambda c: (-c["conf"], c["start"]))[0]
+
+
+# ----------------------------------------------------------------------------
 # Main extraction function
 # ----------------------------------------------------------------------------
 
@@ -266,51 +407,39 @@ def extract_salary_from_jd(jd_text: str) -> tuple[Optional[str], Optional[int], 
     # commonly look like <span>$147,500</span><span>—</span><span>$192,500</span>
     text = _strip_html_preserving_text(jd_text)
 
+    # v0.3.26 (S2): cut the "Similar Jobs" rail so we never read a neighbor's pay.
+    text = strip_page_chrome(text)
+
     # Truncate to first ~8K chars — salary is almost always in the top section
     # (raised from 5K because some JDs have intro paragraphs before salary)
     text = text[:8000]
 
-    # 1. Labeled range — most reliable
-    result = _try_range(PATTERN_LABELED_RANGE, text)
-    if result:
-        return result
+    # v0.3.26 (S3/S5): collect EVERY plausible range, then choose — prefer USD,
+    # and for multi-region postings prefer the national / "all other locations"
+    # band rather than the first (highest-cost-metro) one. Replaces the old
+    # "return the first pattern that matches" logic that picked SF/NYC over
+    # "All Other US" (Komodo/Wilson Sonsini) and crossed a CAD high with a USD
+    # low (Harris).
+    cands = _collect_ranges(text)
+    usd = [c for c in cands if c["usd"]]
+    # When the JD mixes currencies (e.g. "110K-125K CAD / 79K-90K USD"), trust
+    # ranges with an EXPLICIT USD marker over USD-by-default ones — this avoids
+    # picking a board's mis-combined "79K-125K" card summary (USD low + CAD high).
+    if usd and any(not c["usd"] for c in cands):
+        explicit = [c for c in usd if c.get("explicit_usd")]
+        if explicit:
+            usd = explicit
+    if usd:  # if ONLY non-USD ranges exist, don't mislabel a foreign number as USD
+        c = _select_range(usd)
+        return (f"${c['min']:,} - ${c['max']:,}", c["min"], c["max"])
 
-    # 2. "Listed below" + bullet-style amounts (Toast/Instacart pattern)
-    result = _try_range(PATTERN_LISTED_BELOW, text)
-    if result:
-        return result
-
-    # 3. Unlabeled range — only trust when the surrounding text contains a
-    # salary-context word, to avoid matching e.g. "$5M-$10M revenue".
-    m = PATTERN_RANGE.search(text)
-    if m:
-        # Look at 100 chars before the match for salary context
-        ctx_start = max(0, m.start() - 100)
-        context = text[ctx_start:m.end()].lower()
-        if any(w in context for w in ("salary", "pay", "compensation", "comp",
-                                       "base", "annual", "ttc", "total target")):
-            smin = _parse_amount(m.group(1))
-            smax = _parse_amount(m.group(2))
-            if smin and smax and smin > smax:
-                smin, smax = smax, smin
-            if (smin and smax and _is_realistic_annual_salary(smin)
-                    and _is_realistic_annual_salary(smax)
-                    and smax <= smin * 5):
-                return (f"${smin:,} - ${smax:,}", smin, smax)
-
-    # 4. Proximity fallback — two amounts within 200 chars of a salary word
-    result = _try_range(PATTERN_PROXIMITY, text)
-    if result:
-        return result
-
-    # 5. Labeled single value
+    # No trustworthy range — fall back to a labeled single value, then hourly.
     m = PATTERN_LABELED_SINGLE.search(text)
     if m:
         amount = _parse_amount(m.group(1))
         if amount and _is_realistic_annual_salary(amount):
             return (f"${amount:,}", amount, amount)
 
-    # 6. Hourly — convert to annual estimate (~2080 hours)
     m = PATTERN_HOURLY.search(text)
     if m:
         try:
@@ -320,27 +449,6 @@ def extract_salary_from_jd(jd_text: str) -> tuple[Optional[str], Optional[int], 
                 return (f"${hourly}/hr (~${annual:,}/yr)", annual, annual)
         except ValueError:
             pass
-
-    # 7. Wave-2B Phase 2 (FIX 22): K-range without $ sign — last resort.
-    # Only match when surrounded by salary context (within 50 chars before
-    # OR within 30 chars after — most BuiltIn/Indeed cards put "Annually"
-    # right after the range).
-    for m in PATTERN_K_RANGE_BARE.finditer(text):
-        # Look at 50 chars before AND the matched suffix for context.
-        ctx_start = max(0, m.start() - 50)
-        context = text[ctx_start:m.end() + 30].lower()
-        if any(w in context for w in (
-            "salary", "pay", "compensation", "comp", "base", "annual",
-            "annually", "/year", "/yr", "per year", "usd",
-        )):
-            smin = int(m.group(1)) * 1000
-            smax = int(m.group(2)) * 1000
-            if smin > smax:
-                smin, smax = smax, smin
-            if (_is_realistic_annual_salary(smin)
-                    and _is_realistic_annual_salary(smax)
-                    and smax <= smin * 5):
-                return (f"${smin:,} - ${smax:,}", smin, smax)
 
     return (None, None, None)
 

@@ -28,6 +28,7 @@ from typing import Optional
 from backend.models import Role
 from backend.scraper.base import BaseScraper
 from backend.scraper.greenhouse import _strip_html
+from backend.filter.salary_extractor import strip_page_chrome
 
 
 SEARCH_URL = "https://builtin.com/jobs"
@@ -197,7 +198,11 @@ class BuiltInScraper(BaseScraper):
             return ""
         body = resp.text or ""
 
-        # Pull the JD section
+        # Pull the JD section. v0.3.26 (S2): strip the trailing "Similar Jobs"
+        # rail BEFORE returning — BuiltIn detail pages append a sidebar of
+        # neighboring postings (with their OWN salaries) that otherwise polluted
+        # both salary extraction (Loftware inherited Oklo's $220-280K) AND the
+        # LLM scorer (it read other companies' jobs as if part of this posting).
         for pat in (
             r'<div[^>]+class="[^"]*job-description[^"]*"[^>]*>([\s\S]+?)</div>\s*</div>',
             r'<section[^>]+data-testid="job-description"[^>]*>([\s\S]+?)</section>',
@@ -205,8 +210,8 @@ class BuiltInScraper(BaseScraper):
         ):
             m = re.search(pat, body, re.IGNORECASE)
             if m:
-                return _strip_html(m.group(1))[:8000]
-        return _strip_html(body)[:8000]
+                return strip_page_chrome(_strip_html(m.group(1)))[:8000]
+        return strip_page_chrome(_strip_html(body))[:8000]
 
 
 # Helper extractors for company/location around a job anchor.

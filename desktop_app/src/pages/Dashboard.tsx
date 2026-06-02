@@ -7,6 +7,7 @@ import { TierCard } from '@/components/TierCard'
 import { RoleCard } from '@/components/RoleCard'
 import { Confetti } from '@/components/Confetti'
 import { useAppStore } from '@/stores/appStore'
+import { FreshnessButton } from '@/components/FreshnessButton'
 import { exportToExcel, exportToCSV, exportToMarkdown } from '@/services/export'
 import { submitFeedback } from '@/services/api'
 import type { Tier, Role } from '@/types'
@@ -18,6 +19,7 @@ export default function Dashboard() {
   const lastSummary = useAppStore((s) => s.lastSummary)
   const roleStatuses = useAppStore((s) => s.roleStatuses)
   const activeRunId = useAppStore((s) => s.activeRunId)
+  const staleUrls = useAppStore((s) => s.staleUrls)
   const [filterTier, setFilterTier] = useState<Tier | null>(null)
   const [showConfetti, setShowConfetti] = useState(false)
   const [exportMenuOpen, setExportMenuOpen] = useState(false)
@@ -173,7 +175,7 @@ export default function Dashboard() {
               : 'Upload your resume to get personalized job matches.'}
           </p>
           <button
-            onClick={() => navigate(profile ? '/run' : '/welcome')}
+            onClick={() => navigate(profile ? '/start-search' : '/welcome')}
             className="mt-6 inline-flex items-center gap-2 px-5 py-2.5 rounded-lg
                        bg-white text-base-950 font-medium text-sm
                        hover:bg-base-200 transition-colors
@@ -181,7 +183,7 @@ export default function Dashboard() {
           >
             {profile ? (
               <>
-                <Play size={14} /> Run new search
+                <Play size={14} /> Run Search
               </>
             ) : (
               <>
@@ -194,11 +196,15 @@ export default function Dashboard() {
     )
   }
 
+  // v0.3.26: roles a freshness re-check confirmed dead are excluded everywhere —
+  // tier counts AND the visible list — so the header total stays honest.
+  const staleSet = new Set(staleUrls)
+  const liveRoles = lastRoles.filter((r) => !(r.job_url && staleSet.has(r.job_url)))
   const counts = {
-    STRONG: lastRoles.filter((r) => r.final_tier === 'STRONG').length,
-    GOOD: lastRoles.filter((r) => r.final_tier === 'GOOD').length,
-    MAYBE: lastRoles.filter((r) => r.final_tier === 'MAYBE').length,
-    STRETCH: lastRoles.filter((r) => r.final_tier === 'STRETCH').length,
+    STRONG: liveRoles.filter((r) => r.final_tier === 'STRONG').length,
+    GOOD: liveRoles.filter((r) => r.final_tier === 'GOOD').length,
+    MAYBE: liveRoles.filter((r) => r.final_tier === 'MAYBE').length,
+    STRETCH: liveRoles.filter((r) => r.final_tier === 'STRETCH').length,
   }
   // Header count = sum of the four tier cards. Using lastRoles.length
   // here is wrong because lastRoles can include roles whose final_tier
@@ -224,8 +230,8 @@ export default function Dashboard() {
   const hiddenCount = lastRoles.filter(isRoleHidden).length
 
   const tierFiltered = filterTier
-    ? lastRoles.filter((r) => r.final_tier === filterTier)
-    : lastRoles
+    ? liveRoles.filter((r) => r.final_tier === filterTier)
+    : liveRoles
   const afterHiddenFilter = tierFiltered.filter((r) => !isRoleHidden(r))
   const afterSalaryFilter = hideSalarylessRoles
     ? afterHiddenFilter.filter((r) => r.salary_min != null || r.salary_max != null || !!r.salary_text)
@@ -408,17 +414,16 @@ export default function Dashboard() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
           <p className="text-sm text-base-400 mt-1 flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
-            <span className="text-base-100 font-medium whitespace-nowrap">{counts.STRONG + counts.GOOD} strong matches</span>
-            {qualifyingCount - counts.STRONG - counts.GOOD > 0 && (
-              <span className="whitespace-nowrap">· +{qualifyingCount - counts.STRONG - counts.GOOD} more</span>
-            )}
+            <span className="text-base-100 font-medium whitespace-nowrap">Total Matches: {qualifyingCount}</span>
             {lastSummary && (
               <span className="whitespace-nowrap">· {lastSummary.roles_scraped.toLocaleString()} scanned</span>
             )}
             <span className="whitespace-nowrap text-base-500">· {runDate}</span>
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {/* v0.3.26: re-validate this run's links live without a new search */}
+          <FreshnessButton roles={liveRoles} runDate={lastSummary?.run_date} />
           {/* Home — return to Welcome page */}
           <button
             onClick={() => navigate('/welcome')}
@@ -489,14 +494,14 @@ export default function Dashboard() {
           </div>
 
           <button
-            onClick={() => navigate('/run')}
+            onClick={() => navigate('/start-search')}
             className="flex items-center gap-2 px-4 py-2 rounded-lg
                        bg-white text-base-950 text-sm font-medium
                        hover:bg-base-200 transition-colors
                        shadow-lg shadow-black/30"
           >
             <Play size={14} />
-            New Search
+            Run Search
           </button>
         </div>
       </div>
@@ -530,7 +535,7 @@ export default function Dashboard() {
               }
               description={
                 tier === 'STRONG' ? 'DAMN! Apply!'
-                : tier === 'GOOD' ? 'Yeah, apply'
+                : tier === 'GOOD' ? 'You should apply'
                 : tier === 'MAYBE' ? 'Hmm, read it'
                 : 'long shots'
               }

@@ -303,3 +303,111 @@ def title_off_target_for_profile(title: Optional[str], profile) -> Optional[str]
         if rx.search(title) and not any(t in hay for t in _OFF_CATEGORIES[cat]["target"]):
             return cat
     return None
+
+
+# ---------------------------------------------------------------------------
+# SC1 (v0.3.26): HARD experience / seniority cut-offs. The scorer rewards
+# FUNCTIONAL overlap (AI strategy/enablement/governance) and ignored hard gates
+# — roles demanding far more experience than the candidate has ("10+/15+
+# years") or executive-level titles (Chief / VP / equity Partner) well above
+# the candidate's target level. Profile-gated off years_experience +
+# target_seniority so it never fires on roles AT the candidate's level. Caller
+# caps at STRETCH (still visible, just not an apply-now match).
+# ---------------------------------------------------------------------------
+_YEARS_PLUS_RE = re.compile(r"(\d{1,2})\s*\+\s*years?", re.IGNORECASE)
+_YEARS_CTX_RE = re.compile(
+    r"(\d{1,2})\s*(?:\+\s*)?years?\s+(?:of\s+)?(?:relevant\s+|progressive\s+|professional\s+)?"
+    r"(?:experience|leadership|management|industry|hands[\-\s]?on)",
+    re.IGNORECASE,
+)
+# Company-AGE phrasing that follows a "N+ years" that is NOT a requirement
+# ("40+ years in business", "serving clients for 30+ years"). Excluded so we
+# don't read a firm's tenure as a candidate requirement.
+_YEARS_AGE_CTX_RE = re.compile(
+    r"^\s*(?:in business|of business|in operation|serving|of service|old\b|"
+    r"history|anniversary|established|founded|of growth|of excellence|of experience serving)",
+    re.IGNORECASE,
+)
+# Unambiguous executive titles. Spelled-out "Chief X Officer" (NOT bare "CIO/CTO"
+# — those collide with "CIO Advisory Consultant", a role that ADVISES CxOs).
+# "Director" is intentionally excluded (borderline); the years gate catches
+# Director-level roles that carry a 10+/15+ yr requirement.
+_EXEC_TITLE_RE = re.compile(
+    r"\b(?:chief\s+(?:\w+\s+){0,2}officer|"
+    r"(?:senior |sr\.? |executive |group |global )?vice[\-\s]?president\b|\bsvp\b|\bevp\b|\bvp\b|"
+    r"managing director\b|equity partner\b)",
+    re.IGNORECASE,
+)
+_EXEC_TARGET_TERMS = ("director", "vice president", " vp", "chief", "head of", "executive", "partner")
+
+
+def required_years_from_jd(jd_text: Optional[str]) -> Optional[int]:
+    """Highest plausible 'N+ years' / 'N years of experience' requirement in the
+    JD's top section. Requires the '+' sign OR an experience/leadership word so
+    it won't trip on prose like 'founded 10 years ago'; excludes company-age
+    phrasing ("40+ years in business") and caps at 25 (anything higher is noise,
+    not a hiring requirement)."""
+    if not jd_text:
+        return None
+    sample = jd_text[:4000]
+    yrs: list[int] = []
+    for m in _YEARS_PLUS_RE.finditer(sample):
+        if _YEARS_AGE_CTX_RE.match(sample[m.end():m.end() + 24]):
+            continue  # company tenure, not a candidate requirement
+        yrs.append(int(m.group(1)))
+    yrs += [int(m.group(1)) for m in _YEARS_CTX_RE.finditer(sample)]
+    yrs = [y for y in yrs if 1 <= y <= 25]
+    return max(yrs) if yrs else None
+
+
+def experience_seniority_gate(role, profile) -> Optional[str]:
+    """Return a short reason if the role sits materially ABOVE the candidate's
+    experience/seniority (a hard cut-off), else None. Conservative + profile-
+    gated; caller caps at STRETCH."""
+    if profile is None:
+        return None
+    title = role.job_title or ""
+    jd = getattr(role, "job_description_full", None) or getattr(role, "job_description_essence", None) or ""
+
+    # 1) Years requirement far above the candidate (>= cand+5; >=12 if unknown).
+    cand_years = getattr(profile, "years_experience", None)
+    req = required_years_from_jd(jd)
+    if req is not None:
+        cap = (cand_years + 5) if (isinstance(cand_years, int) and cand_years > 0) else 12
+        if req >= cap:
+            return f"requires {req}+ yrs vs candidate's ~{cand_years or 'entry'}"
+
+    # 2) Executive-level TITLE when the candidate targets IC/Manager (not exec).
+    target = (getattr(profile, "target_seniority", "") or "").lower()
+    target_is_exec = any(t in target for t in _EXEC_TARGET_TERMS)
+    if not target_is_exec and _EXEC_TITLE_RE.search(title):
+        return "executive-level title above candidate's IC/Manager target"
+    return None
+
+
+# ---------------------------------------------------------------------------
+# SC2 (v0.3.26): non-standard engagements that aren't real full-time roles for
+# this candidate — SkillBridge (military transition), internships, fellowships,
+# apprenticeships, co-ops, volunteer. Title-first (most reliable), plus a
+# SkillBridge scan of the JD top. Caller caps at SKIP.
+# ---------------------------------------------------------------------------
+_ENGAGEMENT_TITLE_RE = re.compile(
+    r"\b(skill\s?bridge|internship|interns?|fellowship|apprenticeship|apprentice|"
+    r"co[\-\s]?op program|volunteer|practicum|work[\-\s]?study)\b",
+    re.IGNORECASE,
+)
+_SKILLBRIDGE_RE = re.compile(r"\bskill\s?bridge\b", re.IGNORECASE)
+
+
+def offtarget_engagement(role) -> Optional[str]:
+    """Return the engagement type if the role is a SkillBridge / internship /
+    fellowship / apprenticeship / volunteer posting (not a target FT role),
+    else None. Caller caps at SKIP."""
+    title = role.job_title or ""
+    m = _ENGAGEMENT_TITLE_RE.search(title)
+    if m:
+        return m.group(1)
+    jd = getattr(role, "job_description_full", None) or ""
+    if _SKILLBRIDGE_RE.search(jd[:1500]):
+        return "SkillBridge"
+    return None
