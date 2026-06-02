@@ -37,6 +37,16 @@ const TIER_STYLES = {
   },
 }
 
+// User-facing tier names. The raw enums (STRONG/GOOD/MAYBE/STRETCH) stay the
+// source of truth internally; these are display-only labels that read as a
+// confidence ladder rather than a pass/fail verdict.
+const TIER_LABEL: Record<TierCardProps['tier'], string> = {
+  STRONG: 'Top match',
+  GOOD: 'Great match',
+  MAYBE: 'Maybe',
+  STRETCH: 'Reach',
+}
+
 export function TierCard({ tier, count, scoreRange, description, onClick, selected }: TierCardProps) {
   const style = TIER_STYLES[tier]
   return (
@@ -69,7 +79,7 @@ export function TierCard({ tier, count, scoreRange, description, onClick, select
       <div className="relative">
         <div className="flex items-baseline justify-between mb-1">
           <span className={cn('text-[10px] font-mono tracking-widest uppercase', style.color)}>
-            {tier}
+            {TIER_LABEL[tier]}
           </span>
           <span className="text-[10px] text-base-500 font-mono">{scoreRange}</span>
         </div>

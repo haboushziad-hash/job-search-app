@@ -130,6 +130,7 @@ class Config:
     # API keys (used in LOCAL mode only — when LLM_PROXY_URL is unset)
     GOOGLE_API_KEY: str = os.getenv("GOOGLE_API_KEY", "")
     ANTHROPIC_API_KEY: str = os.getenv("ANTHROPIC_API_KEY", "")
+    OPENROUTER_API_KEY: str = os.getenv("OPENROUTER_API_KEY", "")
     CLOUDFLARE_ACCOUNT_ID: str = os.getenv("CLOUDFLARE_ACCOUNT_ID", "")
     CLOUDFLARE_API_TOKEN: Optional[str] = os.getenv("CLOUDFLARE_API_TOKEN")
 
@@ -227,6 +228,19 @@ class Config:
     STAGE1_MODEL: str = "gemini-2.5-flash"                # Phase 1B candidate: -> "gemini-2.5-flash-lite" (P1.14)
     STAGE2_MODEL: str = "gemini-2.5-flash"                # Phase 1B candidate: -> "gemini-2.5-flash-lite" (P1.18)
     STAGE3_MODEL: str = "gemini-2.5-pro"                  # Deep eval — keep Pro quality
+
+    # v0.3.25 scorer migration: Stage-3 backend switch. Gemini 2.5 Pro
+    # deprecates ~2026-06-17 AND over-scores; a cross-family model (default
+    # GPT-5-mini via OpenRouter) beats it on accuracy + over-scoring at ~7x
+    # lower cost and generalises across industries. v0.3.25: default flipped to
+    # "stack" — the migrated production scorer (cheap cross-family 2-voter).
+    STAGE3_BACKEND: str = os.getenv("STAGE3_BACKEND", "stack")           # "gemini" | "openrouter" | "stack"
+    STAGE3_OPENROUTER_MODEL: str = os.getenv("STAGE3_OPENROUTER_MODEL", "openai/gpt-5-mini")
+    OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
+    # v0.3.25 stack backend: cross-family judges blended into the Stage-3 score.
+    # Default = the validated 70/30 deepseek-weighted 2-voter (see _MEMBER_WEIGHTS
+    # in stack_client.py). Add ",qwen" for 3-voter or ",selene" for local cheap4.
+    STAGE3_STACK_MODELS: str = os.getenv("STAGE3_STACK_MODELS", "gpt5mini,deepseek")
 
     # Wave-1 (2026-05-11) cost-reduction levers:
     # PAIR_B = drop `concerns` from Stage 3 response schema.
@@ -415,6 +429,10 @@ class Config:
         "claude-sonnet-4-5":        {"input": 3.00,  "output": 15.00},
         "claude-3-5-sonnet-latest": {"input": 3.00,  "output": 15.00},
         "claude-haiku-4-5":         {"input": 1.00,  "output":  5.00},
+        # OpenRouter — cross-family Stage-3 candidates (v0.3.25 scorer migration)
+        "openai/gpt-5-mini":        {"input": 0.25,  "output":  2.00},
+        "qwen/qwen3.6-flash":       {"input": 0.065, "output":  0.26},
+        "deepseek/deepseek-chat":   {"input": 0.14,  "output":  0.28},
     }
 
     # v0.3.15: Pro long-context tier threshold (Google's pricing breakpoint).

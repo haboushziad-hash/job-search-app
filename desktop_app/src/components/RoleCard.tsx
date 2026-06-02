@@ -182,7 +182,7 @@ export function RoleCard({ role, onClick, condensed = false }: RoleCardProps) {
           tier === 'STRETCH' && 'bg-base-700/40 border-base-600/40 text-base-300',
           tier === 'SKIP' && 'bg-base-700/40 border-base-600/40 text-base-400',
         )}>
-          {tier}
+          {tier === 'STRONG' ? 'Top' : tier === 'GOOD' ? 'Great' : tier === 'STRETCH' ? 'Reach' : tier === 'SKIP' ? 'Skip' : 'Maybe'}
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
@@ -252,7 +252,7 @@ export function RoleCard({ role, onClick, condensed = false }: RoleCardProps) {
           tier === 'SKIP' && 'bg-base-700/40 border-base-600/40 text-base-400',
         )}>
           <span className="text-[11px] font-semibold uppercase tracking-wider leading-none">
-            {tier}
+            {tier === 'STRONG' ? 'Top' : tier === 'GOOD' ? 'Great' : tier === 'STRETCH' ? 'Reach' : tier === 'SKIP' ? 'Skip' : 'Maybe'}
           </span>
           <span className="text-[8px] text-base-400 mt-1 tracking-wider">MATCH</span>
         </div>

@@ -17,7 +17,7 @@ from pydantic import BaseModel, Field
 # ----------------------------------------------------------------------------
 
 class Tier(str, Enum):
-    STRONG = "STRONG"     # 85+
+    STRONG = "STRONG"     # absolute 85+ (FINAL tier is set by percentile tiering, v0.3.25)
     GOOD = "GOOD"         # 70-84
     MAYBE = "MAYBE"       # 55-69
     STRETCH = "STRETCH"   # 40-54
@@ -27,6 +27,10 @@ class Tier(str, Enum):
 def score_to_tier(score: int | float) -> Tier:
     """Convert numeric score to tier label."""
     s = float(score)
+    # Standard absolute bands — used for per-stage tiers and as a fallback. v0.3.25:
+    # the FINAL displayed tier is assigned by percentile tiering (assign_percentile_tiers
+    # in orchestrator.py), which OVERRIDES this for the qualifying pool. So these bands
+    # are the per-stage/absolute interpretation, not the final dashboard shape.
     if s >= 85: return Tier.STRONG
     if s >= 70: return Tier.GOOD
     if s >= 55: return Tier.MAYBE

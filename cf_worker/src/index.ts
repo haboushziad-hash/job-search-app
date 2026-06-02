@@ -37,6 +37,9 @@ export interface Env {
   GOOGLE_API_KEY_2?: string;
   GOOGLE_API_KEY_3?: string;
   ANTHROPIC_API_KEY: string;
+  // v0.3.25 — OpenRouter key for the cheap cross-family Stage-3 stack
+  // (gpt5-mini + deepseek). Lets testers run the stack without their own key.
+  OPENROUTER_API_KEY?: string;
   ADMIN_TOKEN: string;
 
   // v0.1.4 — keyed-scraper secrets, proxied through Worker so testers
@@ -196,6 +199,9 @@ export default {
         }
         if (path.startsWith("/v1/llm/anthropic")) {
           return await proxyAnthropicDeep(req, env, url, ctx, testerUuid);
+        }
+        if (path.startsWith("/v1/llm/openrouter")) {
+          return await proxyOpenRouterDeep(req, env, url);
         }
       }
 
@@ -408,6 +414,43 @@ async function proxyAnthropicDeep(
     status: resp.status,
     headers: {
       "Content-Type": respContentType || "application/json",
+      "X-Proxied-By": "fmsdj-worker",
+    },
+  });
+}
+
+// v0.3.25 — OpenRouter proxy for the cheap cross-family Stage-3 stack
+// (gpt5-mini + deepseek). Mirrors proxyAnthropicDeep: strip the /v1/llm/openrouter
+// prefix, forward to OpenRouter's OpenAI-compatible API, inject the Bearer key
+// from the Worker secret. The UUID gate already ran in the dispatcher. Stack cost
+// is tracked client-side (cost_tracker), so no Worker cost counter here.
+async function proxyOpenRouterDeep(
+  req: Request,
+  env: Env,
+  reqUrl: URL,
+): Promise<Response> {
+  if (!env.OPENROUTER_API_KEY) {
+    return json({ error: "openrouter_key_not_configured" }, 500);
+  }
+  const upstreamPath = reqUrl.pathname.replace(/^\/v1\/llm\/openrouter/, "") || "/";
+  const upstreamUrl = `https://openrouter.ai/api/v1${upstreamPath}${reqUrl.search}`;
+
+  const upstreamHeaders = new Headers();
+  upstreamHeaders.set("Content-Type", req.headers.get("Content-Type") || "application/json");
+  upstreamHeaders.set("Authorization", `Bearer ${env.OPENROUTER_API_KEY}`);
+  upstreamHeaders.set("HTTP-Referer", "https://findmesomedamnjobz.com");
+  upstreamHeaders.set("X-Title", "job-search-stage3");
+
+  const resp = await fetch(upstreamUrl, {
+    method: req.method,
+    headers: upstreamHeaders,
+    body: req.method === "GET" || req.method === "HEAD" ? undefined : req.body,
+  });
+
+  return new Response(resp.body, {
+    status: resp.status,
+    headers: {
+      "Content-Type": resp.headers.get("Content-Type") || "application/json",
       "X-Proxied-By": "fmsdj-worker",
     },
   });

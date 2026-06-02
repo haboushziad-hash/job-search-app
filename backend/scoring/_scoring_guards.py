@@ -230,3 +230,76 @@ def scan_excluded_body_signals(jd_text: Optional[str], check_eng: bool = True, c
     out["eng_high"] = eng_high
     out["sales_high"] = sales_high
     return out
+
+
+# ---------------------------------------------------------------------------
+# P0-4 (v0.3.25): PRECISE off-target TITLE screen. Titles whose FUNCTION is
+# clearly outside an AI-strategy/enablement/governance/PM candidate's targets —
+# legal/counsel, partnerships/BD, revenue-ops, pre-sales/solutions-consulting,
+# recruiting, market research, finance/accounting. These are high-precision
+# (the off-target function is NAMED in the title) and validated to catch the
+# Opus-SKIP junk with zero false-rejects on this profile. The caller gates on
+# the profile (apply only for users who do NOT target these areas) and caps at
+# SKIP. TODO before general ship: per-category profile gating (a recruiter
+# targets "recruiter", a lawyer "counsel", etc.).
+# ---------------------------------------------------------------------------
+_OFF_TITLE_RE = re.compile(
+    r"\b(counsel|attorney|paralegal|lawyer|"
+    r"account executive|business development|\bbdr\b|\bsdr\b|partnerships?|partner solutions|"
+    r"revenue (?:operations|strategy|technology)|field cto|pre[\-\s]?sales|sales engineer|"
+    r"solutions consultant|recruiter|talent acquisition|sourcer|market research|"
+    r"\baccountant\b|controller|auditor|finance & strategy)\b",
+    re.IGNORECASE,
+)
+
+
+def title_clearly_off_target(title: Optional[str]) -> bool:
+    """True if the role TITLE names a function clearly outside the candidate's
+    targets (legal / BD / revenue-ops / pre-sales / recruiting / market research
+    / finance). Profile-agnostic union; prefer title_off_target_for_profile()."""
+    return bool(title and _OFF_TITLE_RE.search(title))
+
+
+# v0.3.25 P0-4 GENERALIZED: per-CATEGORY off-target screen. Each category lists
+# (a) the title patterns that NAME that function and (b) the profile-target terms
+# that mean the CANDIDATE wants it. A title is off-target only when it names a
+# category the candidate does NOT target — so a lawyer keeps "Counsel" roles, a
+# recruiter keeps "Recruiter" roles, a seller keeps "Account Executive" roles, etc.
+_OFF_CATEGORIES = {
+    "legal": {
+        "title": r"\b(counsel|attorney|paralegal|lawyer)\b",
+        "target": ("legal", "counsel", "attorney", "lawyer", "litigation", "paralegal", "law firm"),
+    },
+    "sales/BD": {
+        "title": (r"\b(account executive|business development|\bbdr\b|\bsdr\b|partnerships?|partner solutions|"
+                  r"revenue (?:operations|strategy|technology)|field cto|pre[\-\s]?sales|sales engineer|solutions consultant)\b"),
+        "target": ("sales", "account executive", "account manager", "business development",
+                   "bdr", "sdr", "gtm", "go-to-market", "revenue", "quota", "partnership"),
+    },
+    "recruiting": {
+        "title": r"\b(recruiter|talent acquisition|sourcer)\b",
+        "target": ("recruit", "talent acquisition", "sourcing", "staffing", "human resources"),
+    },
+    "marketing": {
+        "title": r"\b(market research|content marketing|brand manager|demand generation|seo specialist|social media manager)\b",
+        "target": ("marketing", "brand", "seo", "demand gen", "growth marketing", "content strategy"),
+    },
+    "finance/acct": {
+        "title": r"\b(accountant|controller|auditor|financial analyst|bookkeeper|finance & strategy)\b",
+        "target": ("finance", "accounting", "accountant", "audit", "controller", "fp&a", "financial"),
+    },
+}
+_OFF_CAT_RE = {k: re.compile(v["title"], re.IGNORECASE) for k, v in _OFF_CATEGORIES.items()}
+
+
+def title_off_target_for_profile(title: Optional[str], profile) -> Optional[str]:
+    """Return the off-target CATEGORY a title names IF the candidate does NOT
+    target that category, else None. Profile-gated so it never rejects the
+    candidate's OWN field. Caller caps the role at SKIP."""
+    if not title:
+        return None
+    hay = _profile_haystack(profile)
+    for cat, rx in _OFF_CAT_RE.items():
+        if rx.search(title) and not any(t in hay for t in _OFF_CATEGORIES[cat]["target"]):
+            return cat
+    return None

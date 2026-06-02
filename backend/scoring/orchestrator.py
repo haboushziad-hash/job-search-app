@@ -111,7 +111,22 @@ def _apply_scoring_guards(role: Role, profile: Optional[CandidateProfile] = None
     from backend.scoring._scoring_guards import (
         jd_is_capturable, scan_excluded_body_signals,
         profile_targets_engineering, profile_targets_sales,
+        title_off_target_for_profile,
     )
+
+    # P0-4 (v0.3.25): off-target TITLE → SKIP, PER-CATEGORY profile-gated. Flags a
+    # legal/BD/revenue-ops/pre-sales/recruiting/marketing/finance title ONLY when
+    # the candidate does NOT target that category — so a lawyer keeps "Counsel"
+    # roles, a recruiter keeps "Recruiter" roles, a seller keeps "Account Exec"
+    # roles, etc. (Engineering stays handled by the JD-body scan below.)
+    off_cat = title_off_target_for_profile(role.job_title, profile)
+    if off_cat:
+        role.final_score = 30
+        role.final_tier = Tier.SKIP
+        flag = f"[off-target title ({off_cat}) — not in candidate's targets — capped at SKIP]"
+        role.stage3_analysis = f"{flag} {role.stage3_analysis or ''}"[:2000]
+        return
+
     jd = role.job_description_full or role.job_description_essence or ""
 
     # P0-1: stub / uncapturable JD → cap at MAYBE (55) + re-scrape flag.
@@ -146,6 +161,51 @@ def _apply_scoring_guards(role: Role, profile: Optional[CandidateProfile] = None
             )[:1000]
 
 
+# v0.3.25: tier score-bands (must match score_to_tier in models.py). Used to
+# reconcile a displayed score with its final tier when a floor/resolver/guard
+# moved one without the other.
+_TIER_BANDS = {
+    Tier.STRONG: (85, 100), Tier.GOOD: (70, 84), Tier.MAYBE: (55, 69),
+    Tier.STRETCH: (40, 54), Tier.SKIP: (0, 39),
+}
+
+# v0.3.25 PERCENTILE TIERING — the FINAL tier authority. The cheap stack's scores
+# compress/cluster, so fixed score-band cutoffs are fragile run-to-run and squeeze
+# the bands. Instead we assign the final tier by RANK within each run's qualifying
+# pool, using shares from the 4-run Opus consensus, with score FLOORS so a weak
+# search can't manufacture fake STRONG/GOOD. Validated vs consensus: 50% exact /
+# 91% within-1, reproduces the ~12/27/28/34% shape, adapts per run. (score_to_tier
+# still gives each role its absolute per-stage tier; this overrides final_tier.)
+_PCT_CUM = ((0.115, Tier.STRONG), (0.38, Tier.GOOD), (0.657, Tier.MAYBE))  # cumulative rank shares
+_PCT_FLOOR = ((82, Tier.STRONG), (55, Tier.GOOD), (47, Tier.MAYBE))        # min score per tier
+_TIER_ORD = {Tier.STRONG: 4, Tier.GOOD: 3, Tier.MAYBE: 2, Tier.STRETCH: 1, Tier.SKIP: 0}
+
+
+def assign_percentile_tiers(qualifying: list) -> None:
+    """Override final_tier by rank within the (score-desc sorted) qualifying pool,
+    capped by score floors — the more conservative of rank-tier vs floor-tier. The
+    displayed final_score is untouched; the tier becomes a per-run relative rank."""
+    n = len(qualifying)
+    if n == 0:
+        return
+    for rank, role in enumerate(qualifying):
+        frac = rank / n
+        rank_tier = Tier.STRETCH
+        for cum, t in _PCT_CUM:
+            if frac < cum:
+                rank_tier = t
+                break
+        s = role.final_score or 0
+        floor_tier = Tier.STRETCH
+        for fl, t in _PCT_FLOOR:
+            if s >= fl:
+                floor_tier = t
+                break
+        # take the lower (more conservative) of rank vs floor; never re-promote SKIP
+        if role.final_tier != Tier.SKIP:
+            role.final_tier = rank_tier if _TIER_ORD[rank_tier] <= _TIER_ORD[floor_tier] else floor_tier
+
+
 def _finalize_score(role: Role, profile: Optional[CandidateProfile] = None) -> None:
     """Pick the final score + tier for a role.
 
@@ -173,6 +233,16 @@ def _finalize_score(role: Role, profile: Optional[CandidateProfile] = None) -> N
     # Anti-inflation guards (v0.3.24 FIX 29) — applied last so they cap the
     # final tier regardless of which stage produced the base score.
     _apply_scoring_guards(role, profile)
+
+    # v0.3.25: reconcile score <-> tier so the dashboard never shows a number
+    # that disagrees with the tier. Drift sources: the Stage-2 title-floor raises
+    # the score without re-tiering; the contradiction-resolver lowers the tier
+    # without re-scoring. The TIER is the authoritative judgment, so clamp the
+    # displayed score into the tier's band (minimal move to the nearest edge).
+    if role.final_score is not None and role.final_tier is not None:
+        band = _TIER_BANDS.get(role.final_tier)
+        if band and not (band[0] <= role.final_score <= band[1]):
+            role.final_score = band[1] if role.final_score > band[1] else band[0]
 
 
 def _backpop_salary_from_reasoning(role: Role) -> None:
@@ -453,6 +523,10 @@ async def score_roles(
 
     qualifying = [r for r in scored if (r.final_score or 0) >= 40]
     qualifying.sort(key=lambda r: r.final_score or 0, reverse=True)
+
+    # v0.3.25: percentile tiering is the FINAL tier authority — rank-based + floors
+    # over the whole qualifying pool (replaces fragile fixed score-band cutoffs).
+    assign_percentile_tiers(qualifying)
 
     # ---- 5b. Persist newly-scored roles to JD score cache ----
     # v0.3.15 (P1.7): cache ALL scored roles, not just qualifying. Prior

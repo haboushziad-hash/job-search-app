@@ -407,13 +407,15 @@ export default function Dashboard() {
       <div className="flex items-center justify-between mb-1">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
-          <p className="text-sm text-base-400 mt-1">
-            Last run · {runDate} · {qualifyingCount} qualifying roles
-            {lastSummary && (
-              <>
-                {' '}from {lastSummary.roles_scraped.toLocaleString()} scraped
-              </>
+          <p className="text-sm text-base-400 mt-1 flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
+            <span className="text-base-100 font-medium whitespace-nowrap">{counts.STRONG + counts.GOOD} strong matches</span>
+            {qualifyingCount - counts.STRONG - counts.GOOD > 0 && (
+              <span className="whitespace-nowrap">· +{qualifyingCount - counts.STRONG - counts.GOOD} more</span>
             )}
+            {lastSummary && (
+              <span className="whitespace-nowrap">· {lastSummary.roles_scraped.toLocaleString()} scanned</span>
+            )}
+            <span className="whitespace-nowrap text-base-500">· {runDate}</span>
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -521,16 +523,16 @@ export default function Dashboard() {
               tier={tier}
               count={counts[tier]}
               scoreRange={
-                tier === 'STRONG' ? '85–100'
-                : tier === 'GOOD' ? '70–84'
-                : tier === 'MAYBE' ? '55–69'
-                : '40–54'
+                tier === 'STRONG' ? 'top ~12%'
+                : tier === 'GOOD' ? 'next ~26%'
+                : tier === 'MAYBE' ? 'next ~28%'
+                : 'bottom ~34%'
               }
               description={
                 tier === 'STRONG' ? 'DAMN! Apply!'
                 : tier === 'GOOD' ? 'Yeah, apply'
                 : tier === 'MAYBE' ? 'Hmm, read it'
-                : 'Ehhhhh'
+                : 'long shots'
               }
               onClick={() => setFilterTier(filterTier === tier ? null : tier)}
               selected={filterTier === tier}
@@ -777,10 +779,10 @@ function TierGroupedList({
   }
   const tierOrder: Tier[] = ['STRONG', 'GOOD', 'MAYBE', 'STRETCH']
   const tierMeta: Record<Tier, { label: string; sub: string; condensed: boolean }> = {
-    STRONG:  { label: 'Strong matches',  sub: 'apply this week',     condensed: false },
-    GOOD:    { label: 'Good matches',    sub: 'apply within 2 weeks',condensed: false },
-    MAYBE:   { label: 'Maybe',           sub: 'worth reading',       condensed: false },
-    STRETCH: { label: 'Stretch',         sub: 'long shots — review if interested', condensed: true },
+    STRONG:  { label: 'Top matches',    sub: 'apply now',  condensed: false },
+    GOOD:    { label: 'Great matches',  sub: 'apply',      condensed: false },
+    MAYBE:   { label: 'Maybe',          sub: 'give it a read',       condensed: false },
+    STRETCH: { label: 'Reach',          sub: 'long shots — review if interested', condensed: true },
     SKIP:    { label: 'Skip',            sub: '',                    condensed: true },
   }
 
