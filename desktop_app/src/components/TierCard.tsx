@@ -47,7 +47,7 @@ const TIER_LABEL: Record<TierCardProps['tier'], string> = {
   STRETCH: 'Reach',
 }
 
-export function TierCard({ tier, count, scoreRange, description, onClick, selected }: TierCardProps) {
+export function TierCard({ tier, count, description, onClick, selected }: TierCardProps) {
   const style = TIER_STYLES[tier]
   return (
     <motion.button
