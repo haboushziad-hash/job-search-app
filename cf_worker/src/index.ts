@@ -93,7 +93,15 @@ export interface Env {
 // comfortably covers iteration without losing the runaway-loop guardrail
 // (any single user hitting 5000 calls in a day is a bug).
 const DAILY_CALL_CAP = 5000;       // per UUID per day
-const MONTHLY_SPEND_CAP_USD = 5.0; // per UUID per month
+// v0.3.30: the owner UUID gets a higher dev/testing cap (~10 searches/day; a
+// search ≈ ~1000 LLM calls) so the operator's own iteration isn't throttled,
+// while real testers keep the 5k guardrail. Raise later if needed.
+const OWNER_UUID = "12adac92-d156-49ee-a670-51b7779e439e";
+const DAILY_CALL_CAP_OWNER = 10000; // ~10 searches/day for the owner
+function dailyCapFor(uuid: string): number {
+  return uuid === OWNER_UUID ? DAILY_CALL_CAP_OWNER : DAILY_CALL_CAP;
+}
+const MONTHLY_SPEND_CAP_USD = 5.0; // per UUID per month (declared; not actively enforced)
 const MAX_AUDIT_JSON_BYTES = 5 * 1024 * 1024; // 5 MB
 
 // Feedback constraints — prevent the public form from being a spam vector.
@@ -184,7 +192,7 @@ export default {
         const capCheck = await checkAndIncrementCallCap(env, testerUuid);
         if (capCheck.over) {
           return json(
-            { error: "daily_cap_exceeded", reason: capCheck.reason, cap: DAILY_CALL_CAP },
+            { error: "daily_cap_exceeded", reason: capCheck.reason, cap: dailyCapFor(testerUuid) },
             429,
           );
         }
@@ -823,14 +831,15 @@ async function checkBudget(env: Env, uuid: string): Promise<Response> {
   const key = `cap:${uuid}:${today}`;
   const cur = await env.TESTER_KV.get(key);
   const used = cur ? parseInt(cur, 10) : 0;
-  const remaining = Math.max(0, DAILY_CALL_CAP - used);
+  const cap = dailyCapFor(uuid);
+  const remaining = Math.max(0, cap - used);
   // A typical full search burns ~1000 LLM calls (post v0.1.4). Anything
   // under that is "not enough headroom for a full run."
   const TYPICAL_RUN_CALLS = 1000;
   const can_run = remaining >= TYPICAL_RUN_CALLS;
   return json({
     used,
-    cap: DAILY_CALL_CAP,
+    cap,
     remaining,
     typical_run_calls: TYPICAL_RUN_CALLS,
     can_run,
@@ -846,8 +855,9 @@ async function checkAndIncrementCallCap(
   const key = `cap:${uuid}:${today}`;
   const cur = await env.TESTER_KV.get(key);
   const n = cur ? parseInt(cur, 10) : 0;
-  if (n >= DAILY_CALL_CAP) {
-    return { over: true, reason: `daily call cap of ${DAILY_CALL_CAP} reached`, current: n };
+  const cap = dailyCapFor(uuid);
+  if (n >= cap) {
+    return { over: true, reason: `daily call cap of ${cap} reached`, current: n };
   }
   // Sample 1-in-CAP_SAMPLE_EVERY requests; on a hit, write +CAP_SAMPLE_EVERY.
   // On a miss, return the unchanged read value — no PUT.

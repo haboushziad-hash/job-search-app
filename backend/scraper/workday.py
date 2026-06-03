@@ -479,6 +479,74 @@ def _parse_posted_on(posted_on: str) -> Optional[str]:
     return posted.isoformat()
 
 
+# ---------------------------------------------------------------------------
+# Persistent facet-incompatibility cache (v0.3.30)
+# ---------------------------------------------------------------------------
+# Many Workday tenants reject our appliedFacets with HTTP 400/422; we then retry
+# without. Re-discovering this every run wastes a doomed request per such tenant
+# (several at high concurrency, before the in-run flag propagates). We persist
+# the "rejects facets" set across runs so they skip the doomed attempt.
+# SAFETY — never trusts stale info:
+#   * Negative-only: we only cache "tenant rejected facets". Skipping facets
+#     cannot drop a real job (facets only narrow server-side; we client-filter
+#     regardless), so a stale entry cannot corrupt results.
+#   * TTL: entries expire after _FACET_TTL_DAYS and are re-probed (facets tried;
+#     if still rejected, re-confirmed). Each tenant self-re-verifies weekly.
+#   * Only tenants CONFIRMED-incompatible this run refresh their timestamp;
+#     cache-skipped tenants keep their original timestamp and thus still age out.
+_FACET_TTL_DAYS = 7
+
+
+def _facet_blocklist_path():
+    return config.ARCHIVE_DIR / "workday_facet_blocklist.json"
+
+
+def _facet_fresh(ts: str, now: datetime) -> bool:
+    try:
+        seen = datetime.fromisoformat(ts)
+        if seen.tzinfo is None:
+            seen = seen.replace(tzinfo=timezone.utc)
+        return (now - seen) <= timedelta(days=_FACET_TTL_DAYS)
+    except Exception:
+        return False
+
+
+def _load_facet_blocklist() -> set[str]:
+    """Tenant slugs known to reject facets, excluding entries older than the TTL
+    (those get re-probed, so we never trust stale info)."""
+    try:
+        p = _facet_blocklist_path()
+        if not p.exists():
+            return set()
+        data = json.loads(p.read_text(encoding="utf-8")) or {}
+        now = datetime.now(timezone.utc)
+        return {slug for slug, ts in data.items() if _facet_fresh(ts, now)}
+    except Exception:
+        return set()
+
+
+def _save_facet_blocklist(confirmed_this_run: set[str]) -> None:
+    """Drop expired entries, keep still-fresh ones at their original timestamp,
+    refresh (to now) only the tenants re-confirmed incompatible THIS run."""
+    try:
+        p = _facet_blocklist_path()
+        p.parent.mkdir(parents=True, exist_ok=True)
+        now = datetime.now(timezone.utc)
+        existing = {}
+        if p.exists():
+            try:
+                existing = json.loads(p.read_text(encoding="utf-8")) or {}
+            except Exception:
+                existing = {}
+        out = {slug: ts for slug, ts in existing.items() if _facet_fresh(ts, now)}
+        now_iso = now.isoformat()
+        for slug in confirmed_this_run:
+            out[slug] = now_iso
+        p.write_text(json.dumps(out), encoding="utf-8")
+    except Exception:
+        pass
+
+
 class WorkdayScraper(BaseScraper):
     source_name = "Workday"
 
@@ -492,7 +560,11 @@ class WorkdayScraper(BaseScraper):
         # entirely (avoid wasting 1 doomed request per keyword). Empty set
         # at construction; populated by _search_tenant_keyword as it
         # discovers failures during the scrape.
-        self._tenants_without_facet_support: set[str] = set()
+        # Seed from the persistent cross-run cache (fresh entries only). Newly
+        # confirmed-this-run tenants are tracked separately so only THEY refresh
+        # their cache timestamp — cache-skipped tenants still age out → re-probe.
+        self._tenants_without_facet_support: set[str] = _load_facet_blocklist()
+        self._facet_confirmed_this_run: set[str] = set()
 
     async def search(
         self,
@@ -508,9 +580,31 @@ class WorkdayScraper(BaseScraper):
         # endpoint (no shared rate limit), so the ceiling is mostly about
         # network egress and per-tenant rate limits. Likely 40-80 is fine.
         # Per-tenant-keyword timeout (30s wall-clock) preserved as safety.
+        # v0.3.30: bumped 20 → 80. Workday CXS calls use the RAW httpx client
+        # (bypass the 1.5-3.5s domain pacing) and tenants are independent
+        # servers, so high concurrency is safe. Measured: full 560-tenant set
+        # at conc=150/pool=220 = 4.2 min for 25 kw vs ~35 min at 20/100 (~8x).
+        # Paired with the raised ScraperClient pool (max_connections=150).
         import os as _os
-        concurrency = int(_os.environ.get("WORKDAY_CONCURRENCY", "20"))
+        concurrency = int(_os.environ.get("WORKDAY_CONCURRENCY", "80"))
         sem = asyncio.Semaphore(concurrency)
+        # v0.3.30: per-tenant concurrency cap. High GLOBAL concurrency is safe
+        # (tenants are independent servers), but a single tenant getting all ~25
+        # of its keyword requests at once trips ITS rate limit — measured 8,607
+        # HTTP 429s at conc=150 without this. Cap simultaneous requests per
+        # tenant so the global pool stays fast while no one tenant is hammered.
+        # Acquired BEFORE the global sem so a busy tenant's queued requests don't
+        # occupy global slots. Rarely binds (e.g. 150 global / hundreds of
+        # tenants = <1 per tenant on average), so it does not reduce throughput.
+        per_tenant = int(_os.environ.get("WORKDAY_PER_TENANT_CONCURRENCY", "4"))
+        _tenant_sems: dict[str, asyncio.Semaphore] = {}
+
+        def _tenant_sem(key: str) -> asyncio.Semaphore:
+            s = _tenant_sems.get(key)
+            if s is None:
+                s = asyncio.Semaphore(per_tenant)
+                _tenant_sems[key] = s
+            return s
 
         # Per-tenant 500-error tracker. If a tenant returns 500 to >=3 keyword
         # queries in a row, skip remaining keywords for that tenant. Run 3
@@ -520,28 +614,34 @@ class WorkdayScraper(BaseScraper):
         SKIP_THRESHOLD = 3
 
         async def bounded(display_name, base_url, board, kw):
-            async with sem:
-                # Fast-path skip if tenant has a 500-error streak
-                if tenant_500_count.get(display_name, 0) >= SKIP_THRESHOLD:
-                    return []
-                try:
-                    result = await asyncio.wait_for(
-                        self._search_tenant_keyword(
-                            display_name, base_url, board, kw, limit_per_keyword,
-                            posted_within_days=posted_within_days,
-                            error_counter=tenant_500_count,
-                        ),
-                        timeout=30.0,
-                    )
-                    return result
-                except asyncio.TimeoutError:
-                    return []
+            # Per-tenant cap first (don't hold a global slot while queued behind a
+            # busy tenant), then the global cap.
+            async with _tenant_sem(base_url):
+                async with sem:
+                    # Fast-path skip if tenant has a 500-error streak
+                    if tenant_500_count.get(display_name, 0) >= SKIP_THRESHOLD:
+                        return []
+                    try:
+                        result = await asyncio.wait_for(
+                            self._search_tenant_keyword(
+                                display_name, base_url, board, kw, limit_per_keyword,
+                                posted_within_days=posted_within_days,
+                                error_counter=tenant_500_count,
+                            ),
+                            timeout=30.0,
+                        )
+                        return result
+                    except asyncio.TimeoutError:
+                        return []
 
         tasks = []
         for display_name, base_url, board in WORKDAY_TENANTS:
             for kw in keywords:
                 tasks.append(bounded(display_name, base_url, board, kw))
         results = await asyncio.gather(*tasks, return_exceptions=True)
+        # Persist tenants re-confirmed facet-incompatible this run (TTL-bounded,
+        # negative-only — see _save_facet_blocklist). Best-effort; never raises.
+        _save_facet_blocklist(self._facet_confirmed_this_run)
 
         cutoff = (
             datetime.now(timezone.utc) - timedelta(days=posted_within_days)
@@ -677,6 +777,7 @@ class WorkdayScraper(BaseScraper):
                 )
                 facets_disabled = True
                 self._tenants_without_facet_support.add(tenant_slug)
+                self._facet_confirmed_this_run.add(tenant_slug)
                 continue
             if response.status_code >= 400:
                 # FIX 37 (Wave-2B Phase 1, 2026-05-29): distinguish 429

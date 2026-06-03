@@ -116,6 +116,12 @@ class ScraperClient:
             follow_redirects=True,
             http2=False,  # http2 occasionally breaks with stricter sites
             headers=merged_headers if merged_headers else None,
+            # v0.3.30: raise the pool above httpx's default max_connections=100
+            # so Workday's high tenant-fanout concurrency (Semaphore 80) isn't
+            # bottlenecked by the connection pool. Per-domain pacing still guards
+            # shared-domain sources; this mainly lets independent-domain fan-out
+            # (Workday/Greenhouse/etc.) actually run in parallel.
+            limits=httpx.Limits(max_connections=150, max_keepalive_connections=40),
         )
         return self
 
@@ -131,7 +137,18 @@ class ScraperClient:
     def _pacing_for(self, url: str) -> DomainPacing:
         domain = urlparse(url).netloc.lower()
         if domain not in self._domain_pacing:
-            override = DOMAIN_OVERRIDES.get(domain, {})
+            override = DOMAIN_OVERRIDES.get(domain)
+            if override is None:
+                # Suffix overrides for ATS hosts where every tenant is its own
+                # subdomain (e.g. tenant.wd5.myworkdayjobs.com), so an exact-match
+                # override can't catch them. The 1.5-3.5s default made the paced
+                # liveness HEAD phase the dominant search cost (~546s/749 roles).
+                # Workday tolerates faster pacing; 0.6-1.2s is ~3x quicker and
+                # gentle for the ~4-5 HEADs/tenant liveness does (no 429s — and a
+                # rate-limited HEAD only lowers confidence, never drops a role).
+                if domain.endswith("myworkdayjobs.com"):
+                    override = {"min_delay_seconds": 0.6, "max_delay_seconds": 1.2}
+            override = override or {}
             self._domain_pacing[domain] = DomainPacing(
                 min_delay_seconds=override.get("min_delay_seconds", 1.5),
                 max_delay_seconds=override.get("max_delay_seconds", 3.5),

@@ -714,7 +714,15 @@ def write_audit_files(
         # the scraper orchestrator. Tells us at audit time which scrapers
         # produced 0/few results, so we can quickly flag breakage.
         "per_source_health": summary_dump.get("per_source_counts") or {},
-        "all_qualifying_roles": [_role_to_audit_dict(r) for r in qualifying],
+        # Sort by final_score DESC so the canonical export is score-ranked.
+        # Any consumer that previews the first N entries (e.g. the run dashboard's
+        # role preview) then shows the BEST matches first. Without this the list
+        # came out in pipeline/source order, so a well-ranked run could surface
+        # its lowest-scoring MAYBE roles in the preview and look mistargeted.
+        "all_qualifying_roles": [
+            _role_to_audit_dict(r)
+            for r in sorted(qualifying, key=lambda r: (getattr(r, "final_score", None) or 0), reverse=True)
+        ],
         "near_miss_roles_for_audit": [_role_to_audit_dict(r) for r in near_miss[:30]],
         "company_distribution": _company_distribution(qualifying),
         "salary_coverage": _salary_buckets(qualifying),

@@ -47,6 +47,7 @@ from backend.scraper.higheredjobs import HigherEdJobsScraper
 from backend.scraper.biospace import BioSpaceScraper
 from backend.scraper.jobicy import JobicyScraper
 from backend.scraper.nodesk import NoDeskScraper
+from backend.scraper.governmentjobs import GovernmentJobsScraper
 from backend.scraper import _keyword_match as _kw_match
 
 
@@ -155,6 +156,12 @@ SCRAPER_REGISTRY: dict[str, type[BaseScraper]] = {
     # in the upstream feed; scraper uses lxml recover-mode parser
     # (or regex pre-clean fallback) so we never lose items to that.
     "NoDesk":         NoDeskScraper,
+    # v0.3.30: GovernmentJobs.com (NEOGOV) — state & local government roles via
+    # per-agency RSS (curated ~31 high-volume agencies, strong VA + CA + WA + TX
+    # coverage). Closes the public-sector gap USAJOBS (federal-only) leaves.
+    # Free, no key. Rich feed: inline JD + structured salary. Expandable agency
+    # list (Workday-tenant pattern).
+    "GovernmentJobs": GovernmentJobsScraper,
 }
 
 # Deferred — anti-bot blocked, would require Playwright + ongoing maintenance

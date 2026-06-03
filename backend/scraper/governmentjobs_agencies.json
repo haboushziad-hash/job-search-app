@@ -1,0 +1,437 @@
+{
+  "alabama": {
+    "name": "Alabama, State of (AL)",
+    "location": "Alabama, State of (AL), AL",
+    "state": "AL"
+  },
+  "alaska": {
+    "name": "State of Alaska",
+    "location": "State of Alaska, AK",
+    "state": "AK"
+  },
+  "alexandria": {
+    "name": "Arlington Police Department (TX)",
+    "location": "Arlington Police Department (TX), TX",
+    "state": "TX"
+  },
+  "anaheim": {
+    "name": "City of Anaheim",
+    "location": "City of Anaheim, CA",
+    "state": "CA"
+  },
+  "atlanta": {
+    "name": "City of Atlanta",
+    "location": "City of Atlanta, GA",
+    "state": "GA"
+  },
+  "austin": {
+    "name": "Austin",
+    "location": "Austin, MN",
+    "state": "MN"
+  },
+  "bakersfield": {
+    "name": "City of Bakersfield",
+    "location": "City of Bakersfield, CA",
+    "state": "CA"
+  },
+  "baltimorecounty": {
+    "name": "Baltimore County",
+    "location": "Baltimore County, MD",
+    "state": "MD"
+  },
+  "boston": {
+    "name": "City of Boston (MA)",
+    "location": "City of Boston (MA), MA",
+    "state": "MA"
+  },
+  "boulder": {
+    "name": "Boulder County",
+    "location": "Boulder County, CO",
+    "state": "CO"
+  },
+  "broward": {
+    "name": "Broward County",
+    "location": "Broward County, FL",
+    "state": "FL"
+  },
+  "cambridge": {
+    "name": "Cambridge",
+    "location": "Cambridge, MN",
+    "state": "MN"
+  },
+  "cincinnati": {
+    "name": "City of Cincinnati",
+    "location": "City of Cincinnati, OH",
+    "state": "OH"
+  },
+  "cityofchesapeake": {
+    "name": "City of Chesapeake",
+    "location": "City of Chesapeake, VA",
+    "state": "VA"
+  },
+  "cityoffresno": {
+    "name": "City of Fresno",
+    "location": "City of Fresno, CA",
+    "state": "CA"
+  },
+  "clarkcounty": {
+    "name": "Clark County",
+    "location": "Clark County, NV",
+    "state": "NV"
+  },
+  "cleveland": {
+    "name": "City of Cleveland",
+    "location": "City of Cleveland, OH",
+    "state": "OH"
+  },
+  "cobbcounty": {
+    "name": "Cobb County Government",
+    "location": "Cobb County Government, GA",
+    "state": "GA"
+  },
+  "colorado": {
+    "name": "State of Colorado",
+    "location": "State of Colorado, CO",
+    "state": "CO"
+  },
+  "columbus": {
+    "name": "Columbus",
+    "location": "Columbus, NC",
+    "state": "NC"
+  },
+  "contracosta": {
+    "name": "County of Contra Costa",
+    "location": "County of Contra Costa, CA",
+    "state": "CA"
+  },
+  "dallas": {
+    "name": "City of Dallas",
+    "location": "City of Dallas, TX",
+    "state": "TX"
+  },
+  "delaware": {
+    "name": "State of Delaware",
+    "location": "State of Delaware, DE",
+    "state": "DE"
+  },
+  "denver": {
+    "name": "City and County of Denver",
+    "location": "City and County of Denver, CO",
+    "state": "CO"
+  },
+  "desmoines": {
+    "name": "City of Des Moines",
+    "location": "City of Des Moines, IA",
+    "state": "IA"
+  },
+  "detroit": {
+    "name": "City of Detroit",
+    "location": "City of Detroit, MI",
+    "state": "MI"
+  },
+  "dupage": {
+    "name": "DuPage Township",
+    "location": "DuPage Township, IL",
+    "state": "IL"
+  },
+  "elpaso": {
+    "name": "City of El Paso",
+    "location": "City of El Paso, TX",
+    "state": "TX"
+  },
+  "fairfaxcounty": {
+    "name": "Fairfax County",
+    "location": "Fairfax County, VA",
+    "state": "VA"
+  },
+  "franklincounty": {
+    "name": "Franklin County Department of Human Resources",
+    "location": "Franklin County Department of Human Resources, OH",
+    "state": "OH"
+  },
+  "gwinnett": {
+    "name": "Gwinnett County",
+    "location": "Gwinnett County, GA",
+    "state": "GA"
+  },
+  "hampton": {
+    "name": "City of Hampton",
+    "location": "City of Hampton, VA",
+    "state": "VA"
+  },
+  "hawaii": {
+    "name": "State of Hawai'i",
+    "location": "State of Hawai'i, HI",
+    "state": "HI"
+  },
+  "henderson": {
+    "name": "City of Henderson",
+    "location": "City of Henderson, NV",
+    "state": "NV"
+  },
+  "hennepin": {
+    "name": "Hennepin County",
+    "location": "Hennepin County, MN",
+    "state": "MN"
+  },
+  "honolulu": {
+    "name": "City and County of Honolulu",
+    "location": "City and County of Honolulu, HI",
+    "state": "HI"
+  },
+  "houston": {
+    "name": "City of Houston",
+    "location": "City of Houston, TX",
+    "state": "TX"
+  },
+  "huntsville": {
+    "name": "City of Huntsville",
+    "location": "City of Huntsville, AL",
+    "state": "AL"
+  },
+  "idaho": {
+    "name": "State of Idaho",
+    "location": "State of Idaho, ID",
+    "state": "ID"
+  },
+  "illinois": {
+    "name": "State of Illinois",
+    "location": "State of Illinois, IL",
+    "state": "IL"
+  },
+  "indianapolis": {
+    "name": "City of Indianapolis and Marion County",
+    "location": "City of Indianapolis and Marion County, IN",
+    "state": "IN"
+  },
+  "iowa": {
+    "name": "State of Iowa",
+    "location": "State of Iowa, IA",
+    "state": "IA"
+  },
+  "irvine": {
+    "name": "City of Irvine",
+    "location": "City of Irvine, CA",
+    "state": "CA"
+  },
+  "kingcounty": {
+    "name": "King County",
+    "location": "King County, WA",
+    "state": "WA"
+  },
+  "lacounty": {
+    "name": "County of Los Angeles",
+    "location": "County of Los Angeles, CA",
+    "state": "CA"
+  },
+  "lasvegas": {
+    "name": "City of Las Vegas",
+    "location": "City of Las Vegas, NV",
+    "state": "NV"
+  },
+  "lexington": {
+    "name": "Lexington",
+    "location": "Lexington, MN",
+    "state": "MN"
+  },
+  "lincoln": {
+    "name": "Lincoln County",
+    "location": "Lincoln County, OR",
+    "state": "OR"
+  },
+  "littlerock": {
+    "name": "City of Little Rock",
+    "location": "City of Little Rock, AR",
+    "state": "AR"
+  },
+  "longbeach": {
+    "name": "City of Long Beach",
+    "location": "City of Long Beach, CA",
+    "state": "CA"
+  },
+  "loudoun": {
+    "name": "Loudoun County Government",
+    "location": "Loudoun County Government, VA",
+    "state": "VA"
+  },
+  "louisiana": {
+    "name": "State of Louisiana",
+    "location": "State of Louisiana, LA",
+    "state": "LA"
+  },
+  "lynchburg": {
+    "name": "City of Lynchburg",
+    "location": "City of Lynchburg, VA",
+    "state": "VA"
+  },
+  "massachusetts": {
+    "name": "Commonwealth of Massachusetts",
+    "location": "Commonwealth of Massachusetts, MA",
+    "state": "MA"
+  },
+  "michigan": {
+    "name": "State of Michigan",
+    "location": "State of Michigan, MI",
+    "state": "MI"
+  },
+  "mississippi": {
+    "name": "State of Mississippi",
+    "location": "State of Mississippi, MS",
+    "state": "MS"
+  },
+  "montgomery": {
+    "name": "Montgomery County",
+    "location": "Montgomery County, OH",
+    "state": "OH"
+  },
+  "montgomerycountymd": {
+    "name": "Montgomery County (MD)",
+    "location": "Montgomery County (MD), MD",
+    "state": "MD"
+  },
+  "nashville": {
+    "name": "Metropolitan Government of Nashville & Davidson County",
+    "location": "Metropolitan Government of Nashville & Davidson County, TN",
+    "state": "TN"
+  },
+  "newjersey": {
+    "name": "New Jersey Civil Service Commission",
+    "location": "New Jersey Civil Service Commission, NJ",
+    "state": "NJ"
+  },
+  "neworleans": {
+    "name": "City of New Orleans",
+    "location": "City of New Orleans, LA",
+    "state": "LA"
+  },
+  "norfolk": {
+    "name": "City of Norfolk",
+    "location": "City of Norfolk, VA",
+    "state": "VA"
+  },
+  "northcarolina": {
+    "name": "State of North Carolina",
+    "location": "State of North Carolina, NC",
+    "state": "NC"
+  },
+  "pittsburgh": {
+    "name": "City of Pittsburgh",
+    "location": "City of Pittsburgh, PA",
+    "state": "PA"
+  },
+  "portland": {
+    "name": "Portland - City of",
+    "location": "Portland - City of, ME",
+    "state": "ME"
+  },
+  "reno": {
+    "name": "City of Reno",
+    "location": "City of Reno, NV",
+    "state": "NV"
+  },
+  "rhodeisland": {
+    "name": "State of Rhode Island",
+    "location": "State of Rhode Island, RI",
+    "state": "RI"
+  },
+  "richmond": {
+    "name": "City of Richmond",
+    "location": "City of Richmond, VA",
+    "state": "VA"
+  },
+  "riverside": {
+    "name": "County of Riverside",
+    "location": "County of Riverside, CA",
+    "state": "CA"
+  },
+  "roanoke": {
+    "name": "City of Roanoke, Virginia",
+    "location": "City of Roanoke, Virginia, VA",
+    "state": "VA"
+  },
+  "sacramento": {
+    "name": "County of Sacramento",
+    "location": "County of Sacramento, CA",
+    "state": "CA"
+  },
+  "sanbernardino": {
+    "name": "San Bernardino County",
+    "location": "San Bernardino County, CA",
+    "state": "CA"
+  },
+  "sandiego": {
+    "name": "City of San Diego",
+    "location": "City of San Diego, CA",
+    "state": "CA"
+  },
+  "santaclara": {
+    "name": "County of Santa Clara",
+    "location": "County of Santa Clara, CA",
+    "state": "CA"
+  },
+  "savannah": {
+    "name": "City of Savannah",
+    "location": "City of Savannah, GA",
+    "state": "GA"
+  },
+  "seattle": {
+    "name": "City of Seattle",
+    "location": "City of Seattle, WA",
+    "state": "WA"
+  },
+  "snohomish": {
+    "name": "Snohomish County",
+    "location": "Snohomish County, WA",
+    "state": "WA"
+  },
+  "stlouis": {
+    "name": "St. Louis County",
+    "location": "St. Louis County, MO",
+    "state": "MO"
+  },
+  "stockton": {
+    "name": "City of Stockton",
+    "location": "City of Stockton, CA",
+    "state": "CA"
+  },
+  "stpaul": {
+    "name": "City of Saint Paul",
+    "location": "City of Saint Paul, MN",
+    "state": "MN"
+  },
+  "tacoma": {
+    "name": "City of Tacoma",
+    "location": "City of Tacoma, WA",
+    "state": "WA"
+  },
+  "traviscounty": {
+    "name": "Travis County",
+    "location": "Travis County, TX",
+    "state": "TX"
+  },
+  "utah": {
+    "name": "State of Utah",
+    "location": "State of Utah, UT",
+    "state": "UT"
+  },
+  "virginia": {
+    "name": "Virginia",
+    "location": "Virginia, MN",
+    "state": "MN"
+  },
+  "washington": {
+    "name": "State of Washington",
+    "location": "State of Washington, WA",
+    "state": "WA"
+  },
+  "wichita": {
+    "name": "City of Wichita",
+    "location": "City of Wichita, KS",
+    "state": "KS"
+  },
+  "wyoming": {
+    "name": "State of Wyoming",
+    "location": "State of Wyoming, WY",
+    "state": "WY"
+  }
+}

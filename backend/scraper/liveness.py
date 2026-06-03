@@ -48,6 +48,12 @@ async def _verify_one(
 
     async with semaphore:
         try:
+            # NOTE: must use the ScraperClient wrapper (.head), NOT the raw
+            # client._client.head — the wrapper applies the browser-like headers
+            # Workday and other ATS hosts require. A/B (2026-06-03) showed the
+            # raw client marks 400/400 ACTIVE roles "dead" (404 on header-less
+            # HEAD) — a total false-positive. Speed of this phase is addressed
+            # via concurrency, not by bypassing the wrapper.
             response = await client.head(role.job_url, follow_redirects=True)
             status = response.status_code
             final_url = str(response.url)
@@ -120,7 +126,7 @@ async def _verify_one(
 async def verify_liveness(
     roles: list[Role],
     *,
-    concurrency: int = 20,
+    concurrency: int = 60,
     fetch_body_check: bool = False,
     drop_dead: bool = True,
     log: bool = True,
