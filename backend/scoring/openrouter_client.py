@@ -100,7 +100,17 @@ class OpenRouterClient(LLMClient):
             # them and _score_one parses via data.get(...).
             body["response_format"] = {"type": "json_object"}
 
-        headers = {"Content-Type": "application/json"}
+        headers = {
+            "Content-Type": "application/json",
+            # v0.3.27 FIX: Cloudflare's WAF on the Worker domain bans the default
+            # urllib User-Agent ("Python-urllib/x") with a 1010 "browser signature
+            # banned" 403 — which silently killed EVERY Stage-3 call in proxy mode
+            # (2/2 tester runs: 0/332 succeeded). Local/direct OpenRouter has no
+            # such WAF, so Stage 3 worked there and masked the bug. Send a normal
+            # browser UA so proxied Stage-3 calls aren't bot-blocked.
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                          "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        }
         if self._proxy:
             # Worker injects the OpenRouter key + referer; authenticate as a tester.
             headers["X-Tester-UUID"] = self._tester_uuid

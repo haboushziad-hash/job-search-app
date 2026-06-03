@@ -72,6 +72,16 @@ from backend.models import Role, score_to_tier
 CACHE_DB_PATH = config.ARCHIVE_DIR / "jd_score_cache.db"
 CACHE_TTL_SECONDS = 7 * 24 * 3600  # 7 days
 
+# v0.3.27 (FIX): scoring-logic version, folded into the cache key (profile_hash)
+# so that ANY change to scoring code / prompts auto-invalidates this cache for
+# EVERY user — no manual DB rotation, and shipped updates can't silently replay
+# stale scores. The (profile_hash, jd_hash) key previously contained NO scoring
+# version, so e.g. the v0.3.27 AI on-target gate + tiered SC1 would never have
+# fired on any JD seen in the prior 7 days (cache hit → Stage 2 skipped). BUMP
+# THIS whenever scoring behavior changes (new gate, prompt edit, model swap,
+# tier-floor change, …).
+SCORING_VERSION = "v0.3.28"
+
 # v0.3.21 (FIX 26 — cost): diagnostic logging gate. When True, prints the
 # profile_hash being used + cache hit/miss counts so we can verify the
 # cache fix is actually delivering hits in production. Default False to
@@ -115,27 +125,29 @@ def profile_hash(profile_dump: dict[str, Any]) -> str:
     profile dumps that pre-date FIX 26 — they don't carry the
     `_input_cache_key` field and would otherwise produce no hash.
     """
-    # v0.3.21 (FIX 26): primary path — input-derived deterministic key
+    # v0.3.21 (FIX 26): primary path — input-derived deterministic key.
     input_key = profile_dump.get("input_cache_key")
     if input_key and isinstance(input_key, str) and len(input_key) >= 16:
-        # The profile cache key is 32 hex chars; truncate to 16 to match
-        # the existing hash width and avoid bloating the SQLite index.
-        return input_key[:16]
+        base = input_key
+    else:
+        # Fallback — output-field hashing (pre-FIX-26 dumps).
+        relevant = {
+            "headline": profile_dump.get("headline"),
+            "target_functions": sorted(profile_dump.get("target_functions") or []),
+            "target_industries": sorted(profile_dump.get("target_industries") or []),
+            "target_seniority": profile_dump.get("target_seniority"),
+            "excluded_title_patterns": sorted(profile_dump.get("excluded_title_patterns") or []),
+            "negative_signals": sorted(profile_dump.get("negative_signals") or []),
+            "salary_minimum": profile_dump.get("salary_minimum"),
+            "work_arrangements": sorted(profile_dump.get("work_arrangements") or []),
+            "excluded_locations": sorted(profile_dump.get("excluded_locations") or []),
+        }
+        base = json.dumps(relevant, sort_keys=True, separators=(",", ":"))
 
-    # Fallback — output-field hashing (pre-FIX-26 dumps).
-    relevant = {
-        "headline": profile_dump.get("headline"),
-        "target_functions": sorted(profile_dump.get("target_functions") or []),
-        "target_industries": sorted(profile_dump.get("target_industries") or []),
-        "target_seniority": profile_dump.get("target_seniority"),
-        "excluded_title_patterns": sorted(profile_dump.get("excluded_title_patterns") or []),
-        "negative_signals": sorted(profile_dump.get("negative_signals") or []),
-        "salary_minimum": profile_dump.get("salary_minimum"),
-        "work_arrangements": sorted(profile_dump.get("work_arrangements") or []),
-        "excluded_locations": sorted(profile_dump.get("excluded_locations") or []),
-    }
-    canonical = json.dumps(relevant, sort_keys=True, separators=(",", ":"))
-    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:16]
+    # v0.3.27: fold in SCORING_VERSION so scoring-logic changes auto-invalidate
+    # the cache (both key paths re-hash through here, so the input-key path is no
+    # longer returned verbatim — that's fine, it just namespaces the entries).
+    return hashlib.sha256((SCORING_VERSION + "|" + base).encode("utf-8")).hexdigest()[:16]
 
 
 def _ensure_cache_db():

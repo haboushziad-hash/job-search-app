@@ -128,6 +128,16 @@ class Role(BaseModel):
     stage2_reasoning: Optional[str] = None
     stage2_confidence: Optional[float] = None
 
+    # v0.3.27 gates (set in Stage 2 / scoring guards, read by orchestrator):
+    #   off_target_function — Stage 2's off-target FUNCTION bucket (CS / product /
+    #     policy / sales / generic-pm / engineering / other) when the core duties
+    #     fall outside the candidate's target_functions; None/"none" = on-target.
+    #     The orchestrator caps any flagged role at STRETCH.
+    #   seniority_demote_one — SC1 tiered: a 3-6yr experience gap → demote one tier
+    #     (applied inside assign_percentile_tiers, the final tier authority).
+    off_target_function: Optional[str] = None
+    seniority_demote_one: Optional[bool] = None
+
     stage3_score: Optional[int] = None
     stage3_tier: Optional[Tier] = None
     stage3_analysis: Optional[str] = None

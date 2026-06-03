@@ -24,7 +24,7 @@ they can run inline in the scoring path with zero added cost/latency.
 from __future__ import annotations
 
 import re
-from typing import Optional
+from typing import Optional, Tuple
 
 
 # ---------------------------------------------------------------------------
@@ -360,28 +360,47 @@ def required_years_from_jd(jd_text: Optional[str]) -> Optional[int]:
     return max(yrs) if yrs else None
 
 
-def experience_seniority_gate(role, profile) -> Optional[str]:
-    """Return a short reason if the role sits materially ABOVE the candidate's
-    experience/seniority (a hard cut-off), else None. Conservative + profile-
-    gated; caller caps at STRETCH."""
+def experience_seniority_gate(role, profile) -> Optional[Tuple[str, str]]:
+    """Return (severity, reason) if the role sits materially ABOVE the
+    candidate's experience/seniority, else None. Conservative + profile-gated.
+
+    severity is graded (v0.3.27), per the user's calibration:
+      - "stretch"  — a HARD cut-off: a years gap >= 7 (e.g. a ~7yr candidate vs
+                     a "15+ years" role), or an executive title (Chief/VP/Partner)
+                     above an IC/Manager target. Caller caps the score at STRETCH.
+      - "one_tier" — a MODERATE stretch: a years gap of 3-6 (e.g. ~7yr vs "10+").
+                     Caller demotes the role a single tier (inside the percentile
+                     tiering pass), rather than hard-capping it.
+
+    When the candidate's years are unknown we fall back to absolute bars
+    (>=12 => stretch, 9-11 => one_tier), assuming a mid-level default."""
     if profile is None:
         return None
     title = role.job_title or ""
     jd = getattr(role, "job_description_full", None) or getattr(role, "job_description_essence", None) or ""
 
-    # 1) Years requirement far above the candidate (>= cand+5; >=12 if unknown).
+    # 1) Years requirement above the candidate, graded by the size of the gap.
     cand_years = getattr(profile, "years_experience", None)
     req = required_years_from_jd(jd)
     if req is not None:
-        cap = (cand_years + 5) if (isinstance(cand_years, int) and cand_years > 0) else 12
-        if req >= cap:
-            return f"requires {req}+ yrs vs candidate's ~{cand_years or 'entry'}"
+        if isinstance(cand_years, int) and cand_years > 0:
+            gap = req - cand_years
+            if gap >= 7:
+                return ("stretch", f"requires {req}+ yrs vs candidate's ~{cand_years}")
+            if gap >= 3:
+                return ("one_tier", f"requires {req}+ yrs vs candidate's ~{cand_years}")
+        else:
+            if req >= 12:
+                return ("stretch", f"requires {req}+ yrs (candidate's years unknown)")
+            if req >= 9:
+                return ("one_tier", f"requires {req}+ yrs (candidate's years unknown)")
 
-    # 2) Executive-level TITLE when the candidate targets IC/Manager (not exec).
+    # 2) Executive-level TITLE when the candidate targets IC/Manager (not exec)
+    #    — always a hard cut-off.
     target = (getattr(profile, "target_seniority", "") or "").lower()
     target_is_exec = any(t in target for t in _EXEC_TARGET_TERMS)
     if not target_is_exec and _EXEC_TITLE_RE.search(title):
-        return "executive-level title above candidate's IC/Manager target"
+        return ("stretch", "executive-level title above candidate's IC/Manager target")
     return None
 
 

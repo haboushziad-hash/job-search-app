@@ -145,14 +145,42 @@ def _apply_scoring_guards(role: Role, profile: Optional[CandidateProfile] = None
         role.stage3_analysis = f"{flag} {role.stage3_analysis or ''}"[:2000]
         return
 
-    # SC1 (v0.3.26): HARD experience / seniority cut-off (JD demands far more years
-    # than the candidate has, or an exec-level title above their IC/Manager target)
-    # → cap at STRETCH so it can't surface as an apply-now match. Profile-gated.
+    # SC1 (v0.3.26 → tiered in v0.3.27): experience / seniority cut-off, GRADED.
+    # The gate returns (severity, reason): "stretch" (years gap >= 7, or an exec
+    # title above an IC/Manager target) → hard-cap the score at STRETCH; "one_tier"
+    # (a 3-6yr gap) → demote a single tier later, inside the percentile pass (the
+    # final tier authority — setting the tier here would be overwritten). Profile-
+    # gated. Per the user: ~7yr candidate vs "15+" → stretch; vs "10+" → one_tier.
     gate = experience_seniority_gate(role, profile)
-    if gate and (role.final_score or 0) > 46:
+    if gate:
+        severity, reason = gate
+        if severity == "stretch" and (role.final_score or 0) > 46:
+            role.final_score = 46
+            role.final_tier = score_to_tier(46)
+            flag = f"[seniority-gate ({reason}) — capped at STRETCH]"
+            if role.stage3_analysis:
+                role.stage3_analysis = f"{flag} {role.stage3_analysis}"[:2000]
+            else:
+                role.stage3_application_strategy = f"{flag} {role.stage3_application_strategy or ''}"[:1000]
+        elif severity == "one_tier":
+            role.seniority_demote_one = True
+            flag = f"[seniority-gate ({reason}) — demote one tier]"
+            if role.stage3_analysis:
+                role.stage3_analysis = f"{flag} {role.stage3_analysis}"[:2000]
+            else:
+                role.stage3_application_strategy = f"{flag} {role.stage3_application_strategy or ''}"[:1000]
+
+    # SC3 (v0.3.27): off-target FUNCTION. Stage 2 (which reads every JD) classified
+    # the role's CORE function as outside the candidate's target_functions (customer-
+    # success / product-mgmt / policy-analyst / sales-gtm / generic-pm / engineering).
+    # This is the AI catch for "false-friend" titles a regex can't see — e.g. an
+    # "AI Strategy" title whose actual job is customer success. Separate from the
+    # fit score; cap at STRETCH so it can't surface as an apply-worthy match.
+    otf = getattr(role, "off_target_function", None)
+    if otf and (role.final_score or 0) > 46:
         role.final_score = 46
         role.final_tier = score_to_tier(46)
-        flag = f"[seniority-gate ({gate}) — capped at STRETCH]"
+        flag = f"[off-target-function ({otf}) — capped at STRETCH]"
         if role.stage3_analysis:
             role.stage3_analysis = f"{flag} {role.stage3_analysis}"[:2000]
         else:
@@ -207,14 +235,23 @@ _TIER_BANDS = {
 # search can't manufacture fake STRONG/GOOD. Validated vs consensus: 50% exact /
 # 91% within-1, reproduces the ~12/27/28/34% shape, adapts per run. (score_to_tier
 # still gives each role its absolute per-stage tier; this overrides final_tier.)
-_PCT_CUM = ((0.115, Tier.STRONG), (0.38, Tier.GOOD), (0.657, Tier.MAYBE))  # cumulative rank shares
-_PCT_FLOOR = ((72, Tier.STRONG), (55, Tier.GOOD), (47, Tier.MAYBE))        # min score per tier
+# v0.3.28 retune: relaxed toward the Opus-consensus distribution (Opus put 18%
+# STRONG / 45% cumulative GOOD on the d37c6037 grade) to cut the under-tiering the
+# v0.3.27 full grade surfaced — the old caps (11.5%/38%) were tighter than Opus,
+# so legit roles got buried. Floors lowered in step so the freed rank slots can
+# actually fill (a slot is useless if no role clears the floor). Validated by
+# re-scoring d37c6037 against the existing Opus grades before shipping.
+_PCT_CUM = ((0.15, Tier.STRONG), (0.42, Tier.GOOD), (0.67, Tier.MAYBE))    # cumulative rank shares
+_PCT_FLOOR = ((68, Tier.STRONG), (54, Tier.GOOD), (46, Tier.MAYBE))        # min score per tier
 # ^ v0.3.26: STRONG floor 82→72. The cheap stack's scores compress into discrete
 # clusters (a run's top band is ~76-81, then 63, 57…). At 82 the floor sat ABOVE
 # the entire top cluster, so EVERY top-ranked role got floor-capped to GOOD →
 # STRONG=0. 72 lets the real top cluster qualify; the rank share (top ~11.5%)
 # still caps how many become STRONG, so a weak search can't manufacture fakes.
 _TIER_ORD = {Tier.STRONG: 4, Tier.GOOD: 3, Tier.MAYBE: 2, Tier.STRETCH: 1, Tier.SKIP: 0}
+# v0.3.27: one-tier demotion map for the SC1 "one_tier" (moderate 3-6yr gap) case.
+_DEMOTE_ONE = {Tier.STRONG: Tier.GOOD, Tier.GOOD: Tier.MAYBE, Tier.MAYBE: Tier.STRETCH,
+               Tier.STRETCH: Tier.STRETCH, Tier.SKIP: Tier.SKIP}
 
 
 def assign_percentile_tiers(qualifying: list) -> None:
@@ -240,6 +277,12 @@ def assign_percentile_tiers(qualifying: list) -> None:
         # take the lower (more conservative) of rank vs floor; never re-promote SKIP
         if role.final_tier != Tier.SKIP:
             role.final_tier = rank_tier if _TIER_ORD[rank_tier] <= _TIER_ORD[floor_tier] else floor_tier
+            # SC1 tiered (v0.3.27): a moderate 3-6yr experience gap demotes a single
+            # tier. Applied HERE because percentile tiering is the FINAL tier
+            # authority — a demotion set during the scoring guards would be
+            # overwritten by the rank/floor assignment just above.
+            if getattr(role, "seniority_demote_one", False):
+                role.final_tier = _DEMOTE_ONE.get(role.final_tier, role.final_tier)
 
 
 def _finalize_score(role: Role, profile: Optional[CandidateProfile] = None) -> None:

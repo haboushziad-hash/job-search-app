@@ -357,6 +357,58 @@ HANDLING THIN/MISSING JDS
   score 35-45 with low confidence.
 - Never score 80+ without substantive JD evidence.
 
+============================================================
+OFF-TARGET FUNCTION FLAG (v0.3.27) — a GATE, separate from the score
+============================================================
+Independently of the score, classify whether this role's CORE day-to-day
+FUNCTION sits clearly OUTSIDE the candidate's target_functions. This is a
+yes/no gate on the KIND of job, NOT a score nudge — a strong-fit fit-score and
+an off-target function can BOTH be true (e.g. a great-sounding "AI Strategy"
+title whose actual job is customer success).
+
+Set `off_target_function` to the matching bucket ONLY when the core duties
+clearly are NOT one of the candidate's target functions:
+  - "customer-success" — driving an EXTERNAL customer's success/renewal/adoption
+                         of a product (CSM, account management, customer
+                         engagement/experience). This is about OUTSIDE customers,
+                         NOT about enabling the company's own teams.
+  - "product-mgmt"     — owning a product roadmap/backlog (vs strategy/enablement)
+  - "policy-analyst"   — policy / intelligence / research analyst, advisory non-AI
+  - "sales-gtm"        — quota-carrying, BD, pre-sales, revenue
+  - "generic-pm"       — program/project management with NO AI/data substance
+                         (plain defense/IT/ops PM that merely mentions AI)
+  - "engineering"      — hands-on software/ML/data build
+  - "other"            — clearly off-target but none of the above
+
+CRITICAL — "on-target vs off-target" is decided ONLY against THIS candidate's
+own target_functions (listed in the profile, and repeated as an explicit
+on-target whitelist below if present). The SAME role can be on-target for one
+candidate and off-target for another — do NOT carry a fixed notion of which
+functions are "good". Whatever this candidate targets (e.g. AI strategy, nursing,
+skilled trades, sales, software engineering, finance, operations), a role whose
+CORE duties match those targets is "none" (on-target), even when the title
+carries "Manager", "Lead", "Success", "Specialist", "Partner", "Analyst", or
+"Consultant".
+
+General disambiguation (apply RELATIVE to this candidate's targets — NOT as a
+universal whitelist):
+  - A role that serves the company's OWN INTERNAL teams (internal enablement,
+    adoption, change management, transformation, governance, or program/project
+    management that carries real domain substance) is NOT "customer-success" —
+    that bucket is for serving EXTERNAL customers — and is NOT "generic-pm" when
+    it carries real substance. It is "none" ONLY when that work matches THIS
+    candidate's target_functions; otherwise pick the bucket that fits.
+  - An engineering role is "none" for a candidate who targets hands-on
+    engineering, but "engineering" for a candidate who does not.
+
+Set it to the string "none" (on-target) when the core function IS one of THIS
+candidate's target_functions — EVEN IF seniority, domain, industry, years, or
+salary are a stretch (those are score deductions, not off-target). Set the
+matching off-target bucket when the core duties clearly fall OUTSIDE this
+candidate's target_functions. When genuinely unsure, use "none": this gate is
+for CLEAR function mismatches only. Always judge against the candidate's stated
+target_functions, not the title's keywords.
+
 Respond with strict JSON:
 {
   "score": <integer 0-100>,
@@ -365,6 +417,7 @@ Respond with strict JSON:
   "key_match_signals": ["<signal1>", "<signal2>"],
   "key_concerns": ["<concern1>", "<concern2>"],
   "industry": "<one-word industry tag: Tech, Healthcare, Finance, CPG, Retail, Manufacturing, Energy, Government, Consulting, Education, Media, RealEstate, Logistics, Hospitality, Pharma, Insurance, Telecom, Other>",
+  "off_target_function": <"none" if the core function is one of the candidate's targets; else one of "customer-success","product-mgmt","policy-analyst","sales-gtm","generic-pm","engineering","other">,
   "is_dead_listing": <true if JD says 'no longer accepting applications', 'this position has been filled', or 'we are no longer hiring' — false otherwise>
 }
 """
@@ -378,9 +431,22 @@ _RESPONSE_SCHEMA = {
         "key_match_signals": {"type": "array", "items": {"type": "string"}},
         "key_concerns": {"type": "array", "items": {"type": "string"}},
         "industry": {"type": "string"},
+        "off_target_function": {
+            "type": "string",
+            "enum": ["none", "customer-success", "product-mgmt", "policy-analyst",
+                     "sales-gtm", "generic-pm", "engineering", "other"],
+        },
         "is_dead_listing": {"type": "boolean"},
     },
     "required": ["score", "reasoning", "confidence"],
+}
+
+# v0.3.27 off-target FUNCTION gate buckets. Stage 2 emits one of these (or
+# "none") in `off_target_function`; the orchestrator caps any flagged role at
+# STRETCH. Kept in sync with the OFF-TARGET FUNCTION FLAG prompt section above.
+_OFF_TARGET_BUCKETS = {
+    "customer-success", "product-mgmt", "policy-analyst",
+    "sales-gtm", "generic-pm", "engineering", "other",
 }
 
 
@@ -672,6 +738,15 @@ async def _score_one(
             ind = data.get("industry")
             if ind and isinstance(ind, str):
                 role.industry = ind.strip()[:30]
+            # v0.3.27: off-target FUNCTION gate, recorded separately from the
+            # fit score. Stage 2 classifies whether the role's CORE function is
+            # outside the candidate's target_functions; the orchestrator caps
+            # those at STRETCH (the deterministic catch for CS/product/policy
+            # "false-friends" a title regex misses). "none"/null/unknown =>
+            # on-target, no gate.
+            otf = data.get("off_target_function")
+            if isinstance(otf, str) and otf.strip().lower() in _OFF_TARGET_BUCKETS:
+                role.off_target_function = otf.strip().lower()
             # AI-B: dead-listing flag — if Stage 2 detected the JD says
             # "no longer accepting applications" / "filled", drop the score
             # and flag inactive so the role doesn't show in qualifying.
@@ -760,6 +835,35 @@ def build_dynamic_stage2_prompt(profile: CandidateProfile) -> str:
             "\nWhen capped, your reasoning MUST cite the specific user "
             "exclusion that triggered it (e.g., \"matches negative_signal: "
             "TS/SCI clearance required for this role\").\n"
+        )
+
+    # v0.3.28: inject THIS candidate's own target_functions as the explicit
+    # on-target whitelist for the off_target_function GATE. This REPLACES the
+    # previously hardcoded AI-specific list in the static prompt — which silently
+    # tailored every user's gate to one (AI-strategy) candidate. By deriving the
+    # whitelist from each profile's real target_functions, the gate is universal:
+    # an "AI Governance Manager" role is on-target for an AI-strategy candidate
+    # but off-target for a nurse, a sales AE, or a tradesperson. Mirrors the v0.3.8
+    # finding (a rule in the SYSTEM prompt is treated as hard; the same content as
+    # user-message DATA is treated as a soft hint).
+    if profile.target_functions:
+        base += "\n\n" + "=" * 60 + "\n"
+        base += "THIS CANDIDATE'S TARGET FUNCTIONS — on-target whitelist for the GATE\n"
+        base += "=" * 60 + "\n"
+        base += (
+            "For the off_target_function GATE ONLY: a role whose CORE day-to-day "
+            "duties match ANY of the following IS \"none\" (on-target), even when "
+            "the title carries Manager/Lead/Success/Specialist/Partner/Analyst/"
+            "Consultant, and even if seniority / industry / years / salary are a "
+            "stretch (those are score deductions, not an off-target flag). Treat "
+            "close synonyms and adjacent sub-functions as matches too:\n\n"
+        )
+        for fn in profile.target_functions:
+            base += f"  - {fn}\n"
+        base += (
+            "\nSet the matching off-target bucket ONLY when the role's core duties "
+            "clearly fall OUTSIDE all of these target functions. Judge by the "
+            "actual duties described in the JD, not by title keywords.\n"
         )
 
     return base

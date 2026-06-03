@@ -25,13 +25,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
-import { ArrowRight, ArrowLeft, Upload, Loader2, Check, FileText, Sparkles, Clock, ChevronDown, X, MapPin, DollarSign } from 'lucide-react'
+import { ArrowRight, ArrowLeft, Upload, Loader2, Check, FileText, Sparkles, Clock, ChevronDown, X, MapPin, DollarSign, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { ZMark } from '@/components/ZMark'
 import { SparkleBurst } from '@/components/SparkleBurst'
 import { LocationAutocomplete } from '@/components/LocationAutocomplete'
 import { useAppStore } from '@/stores/appStore'
-import { runSearch, getRecentProfiles, ApiError } from '@/services/api'
+import { runSearch, getRecentProfiles, deleteRun, ApiError } from '@/services/api'
 import type { RecentProfile } from '@/services/api'
 import type { CandidateProfile } from '@/types'
 import { cn } from '@/lib/utils'
@@ -55,6 +55,10 @@ export default function StartSearch() {
   const [submitting, setSubmitting] = useState(false)
   // Increment to trigger the SparkleBurst animation on the Re-Run button.
   const [burstTrigger, setBurstTrigger] = useState(0)
+
+  // Profile pending deletion (drives the confirm popup); deleting = in-flight.
+  const [confirmDelete, setConfirmDelete] = useState<RecentProfile | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   // Inline "Adjust salary or locations" expansion. Auto-populates from
   // the selected profile so the user can tweak before re-running
@@ -206,6 +210,30 @@ export default function StartSearch() {
     }
   }
 
+  // Delete a saved profile (its most-recent run) after the confirm popup.
+  // Optimistically drops it from the list so it vanishes immediately. NOTE:
+  // a profile with multiple historical runs can resurface from an older run
+  // on a hard reload — a proper "delete all runs for this profile" backend
+  // endpoint lands in the ship build; this fully removes single-run profiles.
+  const handleConfirmDelete = async () => {
+    if (!confirmDelete || deleting) return
+    const target = confirmDelete
+    setDeleting(true)
+    try {
+      await deleteRun(target.run_id)
+      setProfiles((prev) => prev.filter((p) => p.run_id !== target.run_id))
+      if (selectedRunId === target.run_id) setSelectedRunId(null)
+      const name = target.profile.resumes?.[0]?.filename || 'Profile'
+      toast.success(`Removed ${name}`)
+      setConfirmDelete(null)
+    } catch (e) {
+      const msg = e instanceof ApiError ? e.detail : (e instanceof Error ? e.message : 'Unknown error')
+      toast.error(`Couldn't delete: ${msg}`)
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   const selectedProfile = cards.find((c) => c.run_id === selectedRunId)?.profile
   const selectedResumeName = selectedProfile?.resumes?.[0]?.filename
 
@@ -242,7 +270,8 @@ export default function StartSearch() {
                   profile={card}
                   selected={selectedRunId === card.run_id}
                   onSelect={() => setSelectedRunId(card.run_id)}
-                  disabled={submitting}
+                  onDelete={card.run_id !== 'local' ? () => setConfirmDelete(card) : undefined}
+                  disabled={submitting || deleting}
                 />
               ))}
             </div>
@@ -442,6 +471,70 @@ export default function StartSearch() {
           </button>
         </div>
       </motion.div>
+
+      {/* Delete-confirm popup — fixed overlay; click-outside or Cancel to dismiss. */}
+      <AnimatePresence>
+        {confirmDelete && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4"
+            onClick={() => !deleting && setConfirmDelete(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.96, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.96, opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="glass-strong w-full max-w-sm rounded-2xl p-6"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-red-500/15 flex items-center justify-center">
+                  <Trash2 size={16} className="text-red-300" />
+                </div>
+                <h3 className="text-base font-semibold text-base-50">Delete this profile?</h3>
+              </div>
+              <p className="text-[13px] text-base-300 leading-relaxed mb-5">
+                This removes{' '}
+                <span className="text-base-100 font-medium">
+                  {confirmDelete.profile.resumes?.[0]?.filename || 'this profile'}
+                </span>{' '}
+                from your saved list. Your other profiles aren't affected. This can't be undone.
+              </p>
+              <div className="flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setConfirmDelete(null)}
+                  disabled={deleting}
+                  className="px-4 py-2 rounded-lg text-sm text-base-200
+                             bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08]
+                             transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmDelete}
+                  disabled={deleting}
+                  className="px-4 py-2 rounded-lg text-sm font-medium text-white
+                             bg-red-600/90 hover:bg-red-600 transition-colors
+                             disabled:opacity-60 flex items-center gap-2"
+                >
+                  {deleting ? (
+                    <>
+                      <Loader2 size={13} className="animate-spin" /> Deleting…
+                    </>
+                  ) : (
+                    'Delete'
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
@@ -452,11 +545,13 @@ function ProfileCard({
   profile: card,
   selected,
   onSelect,
+  onDelete,
   disabled,
 }: {
   profile: RecentProfile
   selected: boolean
   onSelect: () => void
+  onDelete?: () => void
   disabled: boolean
 }) {
   const p = card.profile
@@ -474,7 +569,8 @@ function ProfileCard({
     : null
 
   return (
-    <button
+    <div className="relative group">
+      <button
       type="button"
       onClick={onSelect}
       disabled={disabled}
@@ -519,6 +615,24 @@ function ProfileCard({
           )}
         </div>
       </div>
-    </button>
+      </button>
+      {onDelete && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onDelete() }}
+          disabled={disabled}
+          aria-label={`Delete ${resumeName}`}
+          title="Delete this profile"
+          className={cn(
+            'absolute top-2.5 right-2.5 p-1.5 rounded-md transition-all',
+            'text-base-500 hover:text-red-300 hover:bg-red-500/10',
+            'opacity-0 group-hover:opacity-100 focus:opacity-100',
+            'disabled:opacity-0 disabled:pointer-events-none'
+          )}
+        >
+          <Trash2 size={14} />
+        </button>
+      )}
+    </div>
   )
 }

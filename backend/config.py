@@ -53,7 +53,22 @@ def _find_env_file() -> Optional[Path]:
 
 _env_path = _find_env_file()
 if _env_path is not None:
+    # v0.3.27 FIX: lib.rs injects LLM_PROXY_URL / TESTER_UUID / AUDIT_UPLOAD_URL
+    # into the sidecar environment to enable Worker (proxy) mode. A bundled .env
+    # that contains bare `KEY=` (empty) lines would, under override=True, CLOBBER
+    # those injected values back to "" — silently dropping the app to LOCAL mode,
+    # which kills the Worker-proxied scrapers (JSearch/GoogleJobs route 0 results)
+    # and the Stage-3 stack. Snapshot the non-empty injected values first and
+    # restore any the .env blanks, so an empty .env line can never override a
+    # real injected one. (Verified 2026-06-02: binaries/.env's empty LLM_PROXY_URL=
+    # was forcing local mode and zeroing JSearch + GoogleJobs.)
+    _PROXY_INJECTED = ("LLM_PROXY_URL", "AUDIT_UPLOAD_URL", "TESTER_UUID")
+    _preserve = {k: os.environ[k] for k in _PROXY_INJECTED
+                 if (os.environ.get(k) or "").strip()}
     load_dotenv(_env_path, override=True)
+    for _k, _v in _preserve.items():
+        if not (os.environ.get(_k) or "").strip():
+            os.environ[_k] = _v
 # else: rely on inherited environment variables (LLM_PROXY_URL, etc.) —
 # the Tauri sidecar passes some of these explicitly via lib.rs.
 
