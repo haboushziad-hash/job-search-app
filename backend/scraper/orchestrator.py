@@ -210,11 +210,20 @@ async def scrape_all(
         t0 = time.time()
         try:
             # JSearch gets the expanded keyword list when supplied — paid Pro
-            # tier has plenty of budget for broader fan-out. All other sources
+            # tier has plenty of budget for broader fan-out. Other sources
             # stick with the base list (their per-source budgets are tighter).
+            #
+            # v0.3.31 (Option A — JSearch-outage stopgap): GoogleJobs ALSO uses
+            # the expanded set. Measured (ziad+ryan, JSearch OFF): keeps the
+            # STRONG tier whole (42->43, 51->50) and backfills GOOD volume when
+            # JSearch is capped, for ~+$2/mo DataForSEO. It does NOT recover
+            # JSearch's *specific* roles (~2% overlap), so JSearch stays.
+            # TODO (Option B, see NEXT_UP): make this CONDITIONAL — expand
+            # GoogleJobs only when JSearch is quota_exhausted, so the extra cost
+            # is paid only in months JSearch actually runs dry.
             kw_for_this_source = (
                 extra_jsearch_keywords
-                if (source_name == "JSearch" and extra_jsearch_keywords)
+                if (source_name in ("JSearch", "GoogleJobs") and extra_jsearch_keywords)
                 else keywords
             )
             roles = await _run_scraper(scraper, kw_for_this_source, posted_within_days, log)

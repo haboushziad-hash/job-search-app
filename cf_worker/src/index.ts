@@ -97,7 +97,7 @@ const DAILY_CALL_CAP = 5000;       // per UUID per day
 // search ≈ ~1000 LLM calls) so the operator's own iteration isn't throttled,
 // while real testers keep the 5k guardrail. Raise later if needed.
 const OWNER_UUID = "12adac92-d156-49ee-a670-51b7779e439e";
-const DAILY_CALL_CAP_OWNER = 10000; // ~10 searches/day for the owner
+const DAILY_CALL_CAP_OWNER = 20000; // owner dev/validation headroom (~20 searches/day)
 function dailyCapFor(uuid: string): number {
   return uuid === OWNER_UUID ? DAILY_CALL_CAP_OWNER : DAILY_CALL_CAP;
 }

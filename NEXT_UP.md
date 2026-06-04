@@ -11,6 +11,87 @@ Risk = chance the change breaks/regresses something.
 
 ---
 
+## 2026-06-03 (cont. 3) — FULL 4-persona Opus accuracy report (1148 roles graded, gold-standard)
+Every qualifying role from a full v0.3.30 app run, per persona, read + tier-graded by Opus
+subagents (subscription, $0 API) and compared to the app's own tiers. **This is the validation gate.**
+
+**OVERALL (1148 graded):** exact tier = **50%**, within-1-tier = **89%**,
+**app STRONG+GOOD precision = 81% (380/470)** — of everything the app surfaces as a top match,
+Opus agrees 81% are genuinely >=GOOD.
+
+| persona | graded | within-1 | STRONG-only prec | STRONG+GOOD prec | direction |
+|---------|--------|----------|------------------|------------------|-----------|
+| ziad    | 284    | 90%      | **95%**          | 74% (85/115)     | over-tiers AI-adjacent (over112/under18) |
+| ryan    | 357    | 86%      | **100%**         | 96% (139/145)    | UNDER-tiers tax hard (over38/under159) |
+| zach    | 314    | 87%      | **90%**          | 70% (90/129)     | GOOD noisy (over98/under69) |
+| rana    | 193    | 95%      | **97%**          | 81% (66/81)      | balanced (over44/under36) |
+
+**Headline: the STRONG tier is trustworthy everywhere (90-100% precision).** Only **2 false-STRONGs
+in 1148 roles** — Towne Park valet/parking "Account Manager" (zach, Opus=STRETCH) + Pamunkey Tribe
+Natural Resources Specialist (rana, Opus=STRETCH); neither a SKIP, so not egregious.
+**Weak spots = the GOOD tier (noisier, drags zach/ziad precision to 70-74%) + persona direction:**
+app over-tiers AI/sales-adjacent (ziad, zach) and UNDER-tiers tax (ryan: 159 roles Opus rated
+HIGHER than the app = a recall miss, not a precision miss — what Ryan DOES surface is 96% real).
+**Verdict: STRONG tier is ship-grade; GOOD-tier calibration + Ryan-recall are the v0.4 targets.**
+
+**JSearch provider — Apyflux evaluated + RULED OUT for now (free tier can't validate).** Apyflux
+(`gateway.apyflux.com`) resells the SAME OpenWeb Ninja JSearch — identical schema/endpoints
+(`/search`,`/job-details`,`/estimated-salary`,`/search-filters`)/`job_id` format; auth properly
+enforced (clean 401 on bad key); echoes real queries (not canned). BUT its **free tier returns
+`data:[]` (ZERO jobs) for EVERY query** (`nurse` / `software engineer` / `developer in new york`
+all HTTP 200 + empty) — so you CANNOT validate result quality/freshness without paying **$22.99/mo
+(Basic, 30K req)**. The console's "1 node.js job" was a baked-in MOCK (mismatched query + single
+year-old job). Pricing IS 3× cheaper (30K/$23 vs RapidAPI 10K/$25) IF the paid data is good — but
+it's now a "pay-to-find-out" bet, not a free trial. **DECISION: the free `num_pages 5->2` fix on the
+EXISTING RapidAPI plan (2.5× more searches before the 10K cap) is the real fix for the quota burn —
+$0, zero risk. Revisit Apyflux/OpenWeb-Ninja-direct only if more volume is still needed after.**
+
+**Job-API market — fully mapped + verdict (2026-06-03).** Surveyed the whole space (publicapis.dev/jobs
++ "Best Job APIs 2026"). Verdict: **already well-covered; stop shopping.** App already runs **6** of the
+public list (USAJOBS, TheMuse, Jobicy, Findwork, Arbeitnow, Adzuna) + heavy hitters (GoogleJobs, JSearch,
+Greenhouse/Lever/Ashby/Workday). **Structural filter:** the data-provider tier (Bright Data, Coresignal,
+TheirStack, Techmap, fantastic.jobs) all bill **per-record** — fits low-freq bulk/datasets, NOT a high-freq
+per-user search app; at our volume it explodes (TheirStack $0.039/job @ $59 entry → ~$8-20/search; cheap
+only at the $1,500/mo tier). Our sweet spot stays flat-rate (JSearch $25) / cheap-per-query (DataForSEO
+~$0.10/run) / free (ATS scrapers). Rest of list = redundant aggregators (WhatJobs/Juju/Jooble/Careerjet/
+Reed = same wells) or off-target (Upwork freelance, UK/DE boards, CV-match=scorer-not-source, Revelio=
+workforce-analytics, more remote boards we already have 6 of). Only interesting bucket = **ATS-direct-at-
+scale**: **LinkUp** = our exact philosophy (direct career pages since 2007, no boards/LinkedIn) but
+ENTERPRISE-ONLY/no self-serve = **inaccessible**; **fantastic.jobs/TheirStack** = accessible but net-new is
+only the **ATS long-tail GoogleJobs doesn't already index** (GoogleJobs docstring already aggregates
+Workday/GH/Lever/Ashby/iCIMS/SR career pages). **fantastic.jobs = sole "maybe v0.4" (ATS long-tail) IF a
+cost-model beats just expanding GoogleJobs.** Highest-value move = the GoogleJobs-expanded test (DONE,
+see below) + num_pages, both free.
+
+**GoogleJobs-as-JSearch-replacement test — VALIDATED NO (keep JSearch).** Ran ziad+ryan with **JSearch OFF
++ GoogleJobs on the EXPANDED keyword set** (env-gated `GOOGLEJOBS_EXPANDED_KEYWORDS`, default OFF; **scaffold
+reverted after test** — orchestrator back to JSearch-only expanded kw). Set-level compare vs the JSearch-ON
+baseline: **expanded-GoogleJobs recovered only 2% (1/49) of JSearch's specific unique STRONG+GOOD roles.**
+S+G COUNTS look flat (ziad 115→118, ryan 145→136) but that's **CHURN, not recovery** — GoogleJobs-expanded
+surfaces DIFFERENT roles (ziad +26 net-new/23 lost; ryan +33/42) that numerically offset the loss. The
+lost roles are real on-target gems: **Ryan** — Cherry Bekaert "International Tax Manager" / "Tax Manager
+Corporate Taxation", Keystone "Senior Tax Manager Private Client"; **Ziad** — Anaplan "Mgr AI Transformation
+& Change Mgmt", Colgate "Manager Digital Enablement". **CONFIRMS the standing finding (free/other sources
+can't fully cover JSearch) — now MEASURED at 2%. KEEP JSearch.** Silver lining: the keyword expansion DID
+boost GoogleJobs (ziad S+G 31→42, ryan 88→104) + added net-new roles — but that's **ADDITIVE coverage, NOT
+a JSearch replacement**, and it costs more DataForSEO/run + net-new quality unverified (app over-tiers GOOD).
+Possible v0.4 *additive* lever IF Opus-graded net-new justifies the added cost; NOT now. **DECISION: keep
+JSearch; at ≤50 searches/mo it's fine on the existing $25 plan + free `num_pages 5→2` (~4k of 10k req/mo).
+The recent cap blowout was heavy TESTING (dozens of runs in days), NOT real cadence — so even this is just
+a safety margin.** (Pre-existing scraper issues spotted in the run, unrelated: SmartRecruiters returned 0
+for ryan = likely header/auth bug; Arbeitnow early-returns 0 = missing-cred. Log for later.)
+
+**>> OPTION A — DONE (in-tree, v0.3.31):** `orchestrator.py` now routes the expanded keyword set to
+GoogleJobs too (`source_name in ("JSearch","GoogleJobs")`), always-on. JSearch-outage stopgap: keeps
+STRONG whole + backfills GOOD volume when JSearch is capped, ~+$2/mo DataForSEO (small redundancy/cost
+when JSearch is healthy — accepted for now).
+**>> REMINDER — OPTION B (NOT done, come back to this):** make the GoogleJobs expansion CONDITIONAL —
+trigger it ONLY when JSearch is `quota_exhausted` (persist the flag to disk like the Workday facet cache;
+reset on a JSearch success). That removes Option A's always-on redundancy + the ~$2/mo so the extra cost
+is paid ONLY in months JSearch actually runs dry. Owner explicitly chose "do A now, revisit B later."
+
+---
+
 ## 2026-06-03 (cont.) — friend-resume validation + GovernmentJobs added (IN TREE, not yet shipped)
 Validated on 3 real, diverse personas built from real resumes: **Ziad** (AI strategy),
 **Zach** (CPG ops/finance new-grad — a REAL v0.3.23 tester), **Ryan** (Big-4 tax).

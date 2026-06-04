@@ -104,6 +104,10 @@ class Role(BaseModel):
 
     # Provenance
     primary_source: Optional[str] = None
+    # v0.3.31: for paginated aggregators (JSearch), the 1-indexed result page this
+    # role came from (page = position // page_size). Lets us measure whether deep
+    # pages (3-5) actually contribute QUALIFYING roles before trimming num_pages.
+    source_page: Optional[int] = None
     date_first_seen: Optional[str] = None
     date_last_seen_in_scrape: Optional[str] = None
     posted_date: Optional[str] = None

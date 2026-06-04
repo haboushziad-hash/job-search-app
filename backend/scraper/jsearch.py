@@ -343,10 +343,15 @@ class JSearchScraper(BaseScraper):
 
         items = data.get("data") or []
         out: list[Role] = []
-        for j in items[:limit]:
+        # JSearch returns ALL num_pages results concatenated in one flat,
+        # relevance-ranked array (~10 results/page). Tag each role with its
+        # 1-indexed page so we can later measure whether deep pages (3-5)
+        # contribute any QUALIFYING roles — the data that should decide num_pages.
+        for idx, j in enumerate(items[:limit]):
             try:
                 role = self._item_to_role(j)
                 if role:
+                    role.source_page = idx // 10 + 1
                     out.append(role)
             except Exception:
                 continue
