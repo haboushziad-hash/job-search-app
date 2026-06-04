@@ -90,6 +90,47 @@ trigger it ONLY when JSearch is `quota_exhausted` (persist the flag to disk like
 reset on a JSearch success). That removes Option A's always-on redundancy + the ~$2/mo so the extra cost
 is paid ONLY in months JSearch actually runs dry. Owner explicitly chose "do A now, revisit B later."
 
+**>> CI MAINTENANCE — near-term, before ~2026-06-16 (flagged by the v0.3.31 tag build).** The v0.3.31
+build went GREEN + manifest serves 0.3.31. BUT GHA warned: `actions/checkout@v4`, `setup-python@v5`,
+`setup-node@v4`, `cache@v4`, `upload-artifact@v4` run on **Node.js 20**, which GitHub **force-migrates to
+Node 24 on 2026-06-16** ("may not work as expected" after) → risk of a future release build breaking.
+Bump those action versions in `.github/workflows/build-desktop.yml` before the next tag. Also noted:
+`windows-latest` redirects to `windows-2025-vs2026` by 2026-06-15. Low effort, do before next release.
+(DONE 2026-06-04: bumped to checkout@v6/setup-python@v6/setup-node@v6/cache@v5/upload-artifact@v7/
+download-artifact@v8 — commit c979082; deploy-worker CI re-ran GREEN, build-desktop CI validating.)
+
+**>> WORKDAY 560 LOAD TEST — DONE (ziad+ryan). Verdict: blanket unpark = NO; go INDUSTRY-AWARE.** Unparked
+394 → 560 (merged=560), ran ziad+ryan, **re-parked clean (147 restored — state safe)**. TWO findings:
+1. **JSearch is BACK.** The load test (all sources) pulled JSearch S+G ziad=24, ryan=49 (the JSearch-off
+   `.gjtest` had 0). Quota reset on the new month (2026-06-04) → the "out for the month" crisis is OVER.
+   Implications: (a) the num_pages page-3-10 measurement is now possible (run + read `source_page`);
+   (b) Option A (GJ-expanded stopgap, shipped v0.3.31) is now redundant-but-harmless (~+$2/mo) → prioritize
+   Option B (conditional, only-when-JSearch-exhausted); don't churn a release just to revert A.
+2. **Workday 560 is MARGINAL for non-CPG personas.** Isolated 167→560 (both JSearch-off + GJ-exp, vs
+   `.gjtest`): net-new S+G = **ziad +5, ryan +1**. Total Workday S+G at 560: ziad 25, ryan 6 — the 393
+   EXTRA tenants added almost nothing for AI-gov/tax. (Prior session: Zach/CPG got **9→48** from these same
+   tenants.) So Workday value is **INDUSTRY-DEPENDENT.** Operationally 560 is FINE: timing only +2-8% vs
+   same-config 167; Workday 429s ~2× the 167 rate (~785/run) but absorbed by retries (timing barely moved).
+   **DECISION: do NOT blanket-unpark the 394 — keep parked. Build INDUSTRY-AWARE tenant selection (load only
+   tenants matching the user's `target_industries`) so CPG users get the 5.3× win without everyone else
+   paying 393 tenants' 429-cost for ~0 benefit.** Exactly the parked-comment's intent. This SUPERSEDES the
+   old task-#21 "ship 560 blanket" plan. (Skipped Opus-grading the +5/+1 net-new — the count already settles
+   "marginal"; grading 6 roles can't flip that.)
+
+**>> REVISED DECISION (owner's call — and correct): SHIP WIDE-OPEN 560, NOT industry-aware. → SHIPPED v0.3.32.**
+Owner's reasoning, which supersedes the industry-aware plan above: industry pre-filtering is (a) **LOSSY** — a
+generalist (e.g. a business degree) matches roles across many industries, and company→industry tagging is coarse
+(Coca-Cola has finance/ops/tech roles, not just "CPG"), so it would amputate valid cross-industry matches *before
+the scorer sees them*; (b) **REDUNDANT** — the embedding prefilter is relevance-RANKED (keeps top-500 by
+similarity), so wide-open Workday only displaces *lower*-relevance roles, never pushes out a relevant one, and the
+gates + Stage 2/3 drop the rest. Wide-open can only help, never inject noise. **The only real cost is the 429 rate,
+which we TUNED:** per-tenant cap **4→3** + **429 backoff-retry** (`workday.py`). **Validation (ziad @560): 429
+page-drops 719→61 (92% recovered by backoff), Workday S+G 25→30 (UP), duration 967→910s (faster), re-parked clean.**
+Refined: the 429s are thin per-tenant (~1.3/tenant) so block-risk was low; the tuning's real win is recovering roles
+the old `break`-on-429 dropped + politeness. **SHIPPED v0.3.32: permanent unpark (167→560) + the tuning.
+WORKDAY_CONCURRENCY left at 80 (validation showed 560 fine at 80; raising it would add 429s). Industry-aware
+selection DROPPED — the scorer handles relevance better than a lossy pre-filter.**
+
 ---
 
 ## 2026-06-03 (cont.) — friend-resume validation + GovernmentJobs added (IN TREE, not yet shipped)

@@ -1,0 +1,10 @@
+{
+  "display_name": "AskBio (Asklepios BioPharmaceutical)",
+  "careers_url": "https://askbio.wd12.myworkdayjobs.com/AskBio",
+  "status": "OK",
+  "reason": "",
+  "_grinder_meta": {
+    "discovered_via": "fast-validator-v0.3.30",
+    "active_role_count_at_discovery": 30
+  }
+}

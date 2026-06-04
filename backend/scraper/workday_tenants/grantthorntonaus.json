@@ -1,0 +1,10 @@
+{
+  "display_name": "Grant Thornton Australia",
+  "careers_url": "https://grantthorntonaus.wd105.myworkdayjobs.com/GTA",
+  "status": "OK",
+  "reason": "",
+  "_grinder_meta": {
+    "discovered_via": "fast-validator-v0.3.30",
+    "active_role_count_at_discovery": 30
+  }
+}

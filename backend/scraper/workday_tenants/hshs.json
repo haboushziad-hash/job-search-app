@@ -1,0 +1,10 @@
+{
+  "display_name": "Hospital Sisters Health System (HSHS)",
+  "careers_url": "https://hshs.wd1.myworkdayjobs.com/hshscareers",
+  "status": "OK",
+  "reason": "",
+  "_grinder_meta": {
+    "discovered_via": "fast-validator-v0.3.30",
+    "active_role_count_at_discovery": 30
+  }
+}

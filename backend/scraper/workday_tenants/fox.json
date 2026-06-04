@@ -1,0 +1,10 @@
+{
+  "display_name": "FOX",
+  "careers_url": "https://fox.wd1.myworkdayjobs.com/Domestic",
+  "status": "OK",
+  "reason": "",
+  "_grinder_meta": {
+    "discovered_via": "fast-validator-v0.3.30",
+    "active_role_count_at_discovery": 30
+  }
+}

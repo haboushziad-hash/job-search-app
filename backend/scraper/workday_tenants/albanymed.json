@@ -1,0 +1,10 @@
+{
+  "display_name": "Albany Med Health System",
+  "careers_url": "https://albanymed.wd5.myworkdayjobs.com/Albany_Med_System_Career_Site",
+  "status": "OK",
+  "reason": "",
+  "_grinder_meta": {
+    "discovered_via": "fast-validator-v0.3.30",
+    "active_role_count_at_discovery": 2
+  }
+}

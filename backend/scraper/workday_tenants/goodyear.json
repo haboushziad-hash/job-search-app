@@ -1,0 +1,10 @@
+{
+  "display_name": "Goodyear",
+  "careers_url": "https://goodyear.wd1.myworkdayjobs.com/GoodyearCareers",
+  "status": "OK",
+  "reason": "",
+  "_grinder_meta": {
+    "discovered_via": "fast-validator-v0.3.30",
+    "active_role_count_at_discovery": 30
+  }
+}

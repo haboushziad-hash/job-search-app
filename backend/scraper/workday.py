@@ -596,7 +596,12 @@ class WorkdayScraper(BaseScraper):
         # Acquired BEFORE the global sem so a busy tenant's queued requests don't
         # occupy global slots. Rarely binds (e.g. 150 global / hundreds of
         # tenants = <1 per tenant on average), so it does not reduce throughput.
-        per_tenant = int(_os.environ.get("WORKDAY_PER_TENANT_CONCURRENCY", "4"))
+        # v0.3.31: default lowered 4→3 for the wide-open 560-tenant config. The
+        # cap binds during per-tenant request bursts — which is exactly where
+        # 429s come from (it's what cut the storm 8,607→~400 at 167) — so a
+        # tighter cap trims the 429 rate at higher tenant counts. Paired with the
+        # 429 backoff-retry added to the fetch loop below.
+        per_tenant = int(_os.environ.get("WORKDAY_PER_TENANT_CONCURRENCY", "3"))
         _tenant_sems: dict[str, asyncio.Semaphore] = {}
 
         def _tenant_sem(key: str) -> asyncio.Semaphore:
@@ -744,17 +749,33 @@ class WorkdayScraper(BaseScraper):
                 "offset": offset,
                 "searchText": keyword,
             }
-            try:
-                response = await self.client._client.post(  # type: ignore[union-attr]
-                    endpoint,
-                    json=body,
-                    headers={
-                        "Accept": "application/json",
-                        "Content-Type": "application/json",
-                        "User-Agent": "Mozilla/5.0",
-                    },
-                )
-            except Exception:
+            # v0.3.31: 429 backoff-retry. Previously a 429 fell straight to the
+            # `>= 400` break below, dropping the rest of this keyword's pages.
+            # At the wide-open 560-tenant count that lost more roles, so we now
+            # back off (0.8s, then 1.6s) and retry the SAME request up to twice
+            # before giving up — recovers the page AND spaces requests to a
+            # tenant that's momentarily throttling us. Per-tenant 429s are thin
+            # (~1.4/tenant/run), so a couple of serialized retries are safe.
+            response = None
+            for _attempt_429 in range(3):  # initial try + up to 2 retries
+                try:
+                    response = await self.client._client.post(  # type: ignore[union-attr]
+                        endpoint,
+                        json=body,
+                        headers={
+                            "Accept": "application/json",
+                            "Content-Type": "application/json",
+                            "User-Agent": "Mozilla/5.0",
+                        },
+                    )
+                except Exception:
+                    response = None
+                    break
+                if response.status_code == 429 and _attempt_429 < 2:
+                    await asyncio.sleep(0.8 * (2 ** _attempt_429))  # 0.8s, 1.6s
+                    continue
+                break
+            if response is None:
                 break
             # FIX 11 (Phase 1) + FIX 25 (Phase 2, 2026-05-30): rejection
             # on the first request usually means the tenant rejected one

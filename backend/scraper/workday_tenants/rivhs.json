@@ -1,0 +1,10 @@
+{
+  "display_name": "Riverside Health (Riverside Medical Group)",
+  "careers_url": "https://rivhs.wd1.myworkdayjobs.com/ProviderRHS",
+  "status": "OK",
+  "reason": "",
+  "_grinder_meta": {
+    "discovered_via": "fast-validator-v0.3.30",
+    "active_role_count_at_discovery": 30
+  }
+}

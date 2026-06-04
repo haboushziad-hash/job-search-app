@@ -1,0 +1,10 @@
+{
+  "display_name": "Columbia Sportswear",
+  "careers_url": "https://columbiasportswearcompany.wd5.myworkdayjobs.com/CSC_Careers",
+  "status": "OK",
+  "reason": "",
+  "_grinder_meta": {
+    "discovered_via": "fast-validator-v0.3.30",
+    "active_role_count_at_discovery": 30
+  }
+}

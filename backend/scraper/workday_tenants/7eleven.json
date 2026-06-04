@@ -1,0 +1,10 @@
+{
+  "display_name": "7-Eleven",
+  "careers_url": "https://7eleven.wd3.myworkdayjobs.com/7eleven",
+  "status": "OK",
+  "reason": "",
+  "_grinder_meta": {
+    "discovered_via": "fast-validator-v0.3.30",
+    "active_role_count_at_discovery": 30
+  }
+}

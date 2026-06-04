@@ -1,0 +1,10 @@
+{
+  "display_name": "McKee Foods (Little Debbie)",
+  "careers_url": "https://mckee.wd1.myworkdayjobs.com/mckee",
+  "status": "OK",
+  "reason": "",
+  "_grinder_meta": {
+    "discovered_via": "fast-validator-v0.3.30",
+    "active_role_count_at_discovery": 30
+  }
+}

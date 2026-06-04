@@ -1,0 +1,10 @@
+{
+  "display_name": "Dow Jones / New York Post",
+  "careers_url": "https://dowjones.wd1.myworkdayjobs.com/New_York_Post_Careers",
+  "status": "OK",
+  "reason": "",
+  "_grinder_meta": {
+    "discovered_via": "fast-validator-v0.3.30",
+    "active_role_count_at_discovery": 30
+  }
+}

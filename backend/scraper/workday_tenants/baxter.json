@@ -1,0 +1,10 @@
+{
+  "display_name": "Baxter International",
+  "careers_url": "https://baxter.wd1.myworkdayjobs.com/baxter",
+  "status": "OK",
+  "reason": "",
+  "_grinder_meta": {
+    "discovered_via": "fast-validator-v0.3.30",
+    "active_role_count_at_discovery": 30
+  }
+}

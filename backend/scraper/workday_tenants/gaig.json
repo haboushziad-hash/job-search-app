@@ -1,0 +1,10 @@
+{
+  "display_name": "Great American Insurance Group",
+  "careers_url": "https://gaig.wd1.myworkdayjobs.com/GAIG_External",
+  "status": "OK",
+  "reason": "",
+  "_grinder_meta": {
+    "discovered_via": "fast-validator-v0.3.30",
+    "active_role_count_at_discovery": 30
+  }
+}

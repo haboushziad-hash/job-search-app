@@ -1,0 +1,10 @@
+{
+  "display_name": "Dine Brands Global",
+  "careers_url": "https://dinebrands.wd503.myworkdayjobs.com/RestaurantCareerSite",
+  "status": "OK",
+  "reason": "",
+  "_grinder_meta": {
+    "discovered_via": "fast-validator-v0.3.30",
+    "active_role_count_at_discovery": 30
+  }
+}
