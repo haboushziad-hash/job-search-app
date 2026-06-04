@@ -37,6 +37,89 @@ from backend.scoring import cost_tracker
 
 
 # ----------------------------------------------------------------------------
+# v0.3.34: logging + stdout hardening — runs at IMPORT time (uvicorn loads
+# "backend.api:app", so this always executes for the shipped backend).
+# ----------------------------------------------------------------------------
+# The shipped backend enters via THIS module, NOT backend_main.py — so
+# backend_main's file-logging + stdout reconfigure never ran for testers. Two
+# consequences this fixes:
+#   1. The search-failure handler already logs a full traceback, but the root
+#      logger had no file handler in this entry path → failures like the
+#      Windows "[Errno 22] Invalid argument" left NO stack anywhere. Now they
+#      land in %APPDATA%/JobSearchApp/backend.log.
+#   2. The raw piped stdout (Tauri sidecar) can throw OSError under a log flood
+#      at the 560-tenant scale (hundreds of Workday 429 lines) and crash the
+#      whole run. We wrap stdout/stderr so a write can never do that.
+import logging as _logging
+import os as _os
+import sys as _sys
+from pathlib import Path as _Path
+
+
+class _SafeStream:
+    """stdout/stderr wrapper: a broken/overwhelmed pipe can never crash us."""
+
+    def __init__(self, stream: Any) -> None:
+        self._s = stream
+
+    def write(self, data: Any) -> int:
+        try:
+            if self._s is not None:
+                return self._s.write(data)
+        except (OSError, ValueError):
+            pass
+        return len(data) if isinstance(data, str) else 0
+
+    def flush(self) -> None:
+        try:
+            if self._s is not None:
+                self._s.flush()
+        except (OSError, ValueError):
+            pass
+
+    def isatty(self) -> bool:
+        try:
+            return bool(self._s) and self._s.isatty()
+        except Exception:
+            return False
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._s, name)
+
+
+def _init_logging_and_stdout() -> None:
+    try:
+        _sys.stdout = _SafeStream(_sys.stdout)  # type: ignore[assignment]
+        _sys.stderr = _SafeStream(_sys.stderr)  # type: ignore[assignment]
+    except Exception:
+        pass
+    try:
+        if _sys.platform == "win32":
+            base = _Path(_os.environ.get("APPDATA", _Path.home()))
+        elif _sys.platform == "darwin":
+            base = _Path.home() / "Library" / "Application Support"
+        else:
+            base = _Path.home() / ".config"
+        folder = base / "JobSearchApp"
+        folder.mkdir(parents=True, exist_ok=True)
+        root = _logging.getLogger()
+        if not any(getattr(h, "_jsa_file", False) for h in root.handlers):
+            fh = _logging.FileHandler(str(folder / "backend.log"), encoding="utf-8")
+            fh.setFormatter(_logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s"))
+            fh._jsa_file = True  # type: ignore[attr-defined]
+            root.addHandler(fh)
+            root.setLevel(_logging.INFO)
+        # Quiet the per-request httpx/genai spam so the log stays diagnosable.
+        for _noisy in ("httpx", "httpcore", "google_genai", "google.genai"):
+            _logging.getLogger(_noisy).setLevel(_logging.WARNING)
+    except Exception:
+        pass
+
+
+_init_logging_and_stdout()
+
+
+# ----------------------------------------------------------------------------
 # In-memory registries
 # ----------------------------------------------------------------------------
 # Production version stores in SQLite; this is fine for v0.

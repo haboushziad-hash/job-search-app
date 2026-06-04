@@ -150,6 +150,21 @@ Breakout / Flappy / Space Invaders / Tic-Tac-Toe / Blackjack / Video-Poker, lazy
 Invaders = shoot red-flag listings, Breakout = beat the ATS, Flappy = don't get ghosted, etc.). Pending
 owner's Video-Poker-vs-Hold'em confirm (recommend Video Poker — no opponent AI).
 
+**>> v0.3.34 SHIPPED (2026-06-04): EINVAL crash fix + diagnostics.** Tester search died with
+`OSError [Errno 22] Invalid argument` on the FIRST wide-open-560 search (Gemini 429 was fixed by v0.3.33's
+retry-bump; this was a NEW failure). **Root cause:** the shipped backend enters via `api.py` (uvicorn loads
+`backend.api:app`), NOT `backend_main.py` — so backend_main's file-logging + stdout reconfigure NEVER ran for
+testers. Result: (a) the raw piped stdout (Tauri sidecar) crashed the run with OSError under the 560-scale
+Workday-429 log flood (native runs never hit it — they have a real console); (b) the existing v0.3.26
+search-failure traceback logging had NO file handler in this entry path → tracebacks vanished. **FIX** (`api.py`
+module-top, runs at import so it ALWAYS applies): wrap stdout/stderr in `_SafeStream` (swallow OSError on write
+— no log can ever crash a run) + install a FileHandler → `%APPDATA%/JobSearchApp/backend.log` + quiet
+httpx/genai spam. So v0.3.34 EITHER fixes the EINVAL outright (if stdout-flood was the cause — most likely)
+OR captures the exact traceback (if a deeper Windows-asyncio cause) for a precise follow-up. The v0.3.26
+comment already named this "Windows-asyncio [Errno 22]" → recurring; **root-cause confirmation pending the
+captured traceback if it recurs.** Diagnosis path: scrape-only repro at 560 = OK (6520 roles, native) → not
+scrape/data; native full runs (load test/validate) OK → bundled-env + 560-scale specific.
+
 ---
 
 ## 2026-06-03 (cont.) — friend-resume validation + GovernmentJobs added (IN TREE, not yet shipped)
