@@ -12,6 +12,11 @@ import { exportToExcel, exportToCSV, exportToMarkdown } from '@/services/export'
 import { submitFeedback } from '@/services/api'
 import type { Tier, Role } from '@/types'
 
+// v0.3.33: once-per-app-session flag for the "hide no-salary" disclaimer.
+// Module-level so it resets on app relaunch (a fresh session is told once) but
+// persists across in-app navigation — shown once per session, not per click.
+let _salaryDisclaimerShownThisSession = false
+
 export default function Dashboard() {
   const navigate = useNavigate()
   const profile = useAppStore((s) => s.profile)
@@ -20,7 +25,11 @@ export default function Dashboard() {
   const roleStatuses = useAppStore((s) => s.roleStatuses)
   const activeRunId = useAppStore((s) => s.activeRunId)
   const staleUrls = useAppStore((s) => s.staleUrls)
+  const setHideSalarylessRoles = useAppStore((s) => s.setHideSalarylessRoles)
   const [filterTier, setFilterTier] = useState<Tier | null>(null)
+  // v0.3.33: result sort mode. 'match' = score-ranked tier groups (default);
+  // 'newest'/'salary' flatten + sort across tiers (each card still shows tier).
+  const [sortMode, setSortMode] = useState<'match' | 'newest' | 'salary'>('match')
   const [showConfetti, setShowConfetti] = useState(false)
   const [exportMenuOpen, setExportMenuOpen] = useState(false)
   // Title search + work-arrangement filter. Both narrow the visible
@@ -215,6 +224,21 @@ export default function Dashboard() {
   const qualifyingCount = counts.STRONG + counts.GOOD + counts.MAYBE + counts.STRETCH
 
   const hideSalarylessRoles = useAppStore((s) => s.hideSalarylessRoles)
+  // v0.3.33: dashboard toggle for the salary filter (mirrors the Settings one).
+  // On first ENABLE per app session, surface a one-time disclaimer — salary
+  // parsing isn't perfect, so some "no salary" roles actually list one.
+  const toggleHideSalaryless = () => {
+    const next = !hideSalarylessRoles
+    setHideSalarylessRoles(next)
+    if (next && !_salaryDisclaimerShownThisSession) {
+      _salaryDisclaimerShownThisSession = true
+      toast('Heads up — salary detection isn’t perfect', {
+        description:
+          'Some hidden roles may actually list a salary we missed. Double-check a posting before ruling it out.',
+        duration: 8000,
+      })
+    }
+  }
 
   // Hidden-roles handling. Roles the user has explicitly hidden are
   // ALWAYS suppressed from the dashboard's main list (this fixes the
@@ -269,7 +293,22 @@ export default function Dashboard() {
   // matches are more actionable when comp is known. Score difference > 3
   // means the higher-scored role is genuinely a better fit, regardless of
   // salary disclosure.
+  // v0.3.33: switchable sort. 'match' keeps the score-ranked order (with a
+  // salary-disclosed tiebreaker); 'newest'/'salary' sort by posted date /
+  // disclosed pay, pushing unknowns to the bottom. Score remains the tiebreak.
+  const salaryValue = (r: Role) => r.salary_max ?? r.salary_min ?? -1
+  const dateValue = (r: Role) => {
+    const t = Date.parse(r.posted_date || '')
+    return isNaN(t) ? -1 : t
+  }
   const sortedRoles = [...visibleRoles].sort((a, b) => {
+    if (sortMode === 'salary') {
+      const d = salaryValue(b) - salaryValue(a)
+      if (d !== 0) return d
+    } else if (sortMode === 'newest') {
+      const d = dateValue(b) - dateValue(a)
+      if (d !== 0) return d
+    }
     const scoreDiff = (b.final_score ?? 0) - (a.final_score ?? 0)
     if (Math.abs(scoreDiff) >= 3) return scoreDiff
     const aHasSalary = a.salary_min != null || a.salary_max != null || !!a.salary_text
@@ -621,11 +660,40 @@ export default function Dashboard() {
         {/* Visible-count indicator — shows how the filters narrowed the list.
             Only render when something is actually filtering, otherwise it's
             redundant with the header's "X qualifying roles" total. */}
-        {(searchQuery.trim() || selectedArrangements.size > 0) && (
+        {(searchQuery.trim() || selectedArrangements.size > 0 || hideSalarylessRoles) && (
           <span className="text-xs text-base-500 ml-auto">
             Showing {visibleRoles.length} of {afterHiddenFilter.length}
           </span>
         )}
+      </div>
+
+      {/* Sort + salary controls (v0.3.33) */}
+      <div className="mt-3 flex items-center gap-1.5 flex-wrap">
+        <span className="text-xs text-base-500 mr-0.5">Sort</span>
+        {([['match', 'Best match'], ['newest', 'Newest'], ['salary', 'Top salary']] as const).map(([mode, label]) => (
+          <button
+            key={mode}
+            onClick={() => setSortMode(mode)}
+            className={`px-3 py-1.5 rounded-full text-xs transition-colors ${
+              sortMode === mode
+                ? 'bg-accent-500/20 text-accent-200 border border-accent-500/40'
+                : 'glass-subtle text-base-300 border border-transparent hover:bg-white/[0.06]'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+        <button
+          onClick={toggleHideSalaryless}
+          className={`ml-2 px-3 py-1.5 rounded-full text-xs transition-colors ${
+            hideSalarylessRoles
+              ? 'bg-accent-500/20 text-accent-200 border border-accent-500/40'
+              : 'glass-subtle text-base-300 border border-transparent hover:bg-white/[0.06]'
+          }`}
+          title="Only show roles with a disclosed salary"
+        >
+          {hideSalarylessRoles ? '✓ ' : ''}Has salary only
+        </button>
       </div>
 
       {/* Filter chips — tier filter + hidden-roles toggle. The hidden
@@ -705,12 +773,16 @@ export default function Dashboard() {
           STRONG/GOOD/MAYBE get full cards with accent borders; STRETCH gets
           condensed single-row cards in a separate section so primary matches
           earn the visual weight. */}
-      {filterTier ? (
+      {(filterTier || sortMode !== 'match') ? (
         <div className="mt-8 space-y-2.5">
           <div className="flex items-center gap-2 mb-3">
             <Sparkles size={14} className="text-accent-400" />
             <h2 className="text-sm font-medium text-base-200">
-              {filterTier}-tier roles
+              {filterTier
+                ? `${filterTier}-tier roles`
+                : sortMode === 'newest'
+                ? 'All matches · newest first'
+                : 'All matches · highest salary first'}
             </h2>
             <span className="text-xs text-base-500">({sortedRoles.length})</span>
           </div>

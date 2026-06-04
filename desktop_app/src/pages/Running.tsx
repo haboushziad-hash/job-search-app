@@ -136,6 +136,37 @@ function describeProgress(stepIdx: number, status: SearchStatus | null): string 
   }
 }
 
+// v0.3.33: smooth/continuous progress. The backend only bumps `progress` at
+// phase boundaries, so the raw bar jumps then sits frozen for minutes (esp.
+// the 5-8 min scoring phase). This eases a *display* value continuously toward
+// the next checkpoint so the bar always looks alive, and snaps up instantly
+// whenever real progress jumps ahead. Purely cosmetic — step/done logic stays
+// on the real status. Never reaches 100 until the backend truly says so.
+function useSmoothProgress(real: number): number {
+  const [display, setDisplay] = useState(real)
+  const realRef = useRef(real)
+  realRef.current = real
+  // Snap up immediately when the backend reports more than we're showing.
+  useEffect(() => {
+    setDisplay((d) => (real > d ? real : d))
+  }, [real])
+  // Continuous trickle toward (real + buffer), decelerating, capped < 100.
+  useEffect(() => {
+    const id = setInterval(() => {
+      setDisplay((d) => {
+        const r = realRef.current
+        if (r >= 100) return 100
+        const ceiling = Math.min(r + 15, 97)
+        if (d >= ceiling) return d
+        const step = Math.max(0.08, (ceiling - d) * 0.035)
+        return Math.min(ceiling, d + step)
+      })
+    }, 300)
+    return () => clearInterval(id)
+  }, [])
+  return display
+}
+
 export default function Running() {
   const navigate = useNavigate()
   const runId = useAppStore((s) => s.activeRunId)
@@ -213,6 +244,8 @@ export default function Running() {
   // Map server progress → UI step index
   const activeStep = status ? Math.max(0, status.current_step_index - 1) : 0
   const progress = status?.progress ?? 0
+  // Cosmetic smoothed value for the bar + % (continuous, never frozen).
+  const smoothProgress = useSmoothProgress(progress)
 
   const handleCancel = async () => {
     if (!runId || cancelling) return
@@ -274,12 +307,12 @@ export default function Running() {
             <div className="relative h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
               <motion.div
                 className="absolute inset-y-0 left-0 bg-gradient-to-r from-accent-500 to-accent-400 rounded-full"
-                animate={{ width: `${Math.max(2, progress)}%` }}
-                transition={{ duration: 0.8, ease: 'easeOut' }}
+                animate={{ width: `${Math.max(2, smoothProgress)}%` }}
+                transition={{ duration: 0.4, ease: 'linear' }}
               />
             </div>
             <div className="flex justify-between mt-2 text-xs text-base-500">
-              <span>{Math.round(progress)}%</span>
+              <span>{Math.round(smoothProgress)}%</span>
               {status && status.roles_scraped > 0 && (
                 <span>{status.roles_scraped.toLocaleString()} roles scraped</span>
               )}

@@ -368,7 +368,12 @@ class GeminiClient(LLMClient):
                 return 0.005 if is_pro else 0.0008
             return 0.0001  # "other_retryable" — minimal estimate
 
-        max_attempts = 5
+        # v0.3.33: 5 → 7. A transient Gemini per-minute rate limit (RPM/TPM)
+        # resets every ~60s; the old 5-attempt / ~30s window could outlast a
+        # reset and kill the whole run (2026-06-04 incident: scoring burst +
+        # heavy day → sustained 429 > 30s → run failed). 7 attempts with the
+        # raised backoff cap below give ~150s — crosses ≥2 per-minute resets.
+        max_attempts = 7
         last_exception: Optional[Exception] = None
         response = None
 
@@ -446,8 +451,9 @@ class GeminiClient(LLMClient):
                     raise
                 if attempt_idx >= max_attempts - 1:
                     raise
-                # Exponential backoff (matches old tenacity config)
-                wait_s = min(30, 2 * (2 ** attempt_idx))
+                # Exponential backoff. v0.3.33: cap 30 → 45s so the later
+                # attempts straddle a fresh per-minute quota window.
+                wait_s = min(45, 2 * (2 ** attempt_idx))
                 await asyncio.sleep(wait_s)
 
         if response is None:

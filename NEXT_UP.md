@@ -131,6 +131,25 @@ the old `break`-on-429 dropped + politeness. **SHIPPED v0.3.32: permanent unpark
 WORKDAY_CONCURRENCY left at 80 (validation showed 560 fine at 80; raising it would add 429s). Industry-aware
 selection DROPPED — the scorer handles relevance better than a lossy pre-filter.**
 
+**>> v0.3.33 SHIPPED (2026-06-04): UX polish + Gemini retry-hardening.**
+(a) **Running.tsx smooth progress** — `useSmoothProgress` trickles the bar toward the next checkpoint +
+snaps up on real jumps (caps <100); kills the frozen-mid-phase % (esp the 5-8min scoring stall). Funny
+messages untouched. (b) **Dashboard sort modes** — Best match (default tier-grouped) / Newest (`posted_date`)
+/ Top salary; newest+salary flatten across tiers (cards keep their tier badge). + **"Has salary only" toggle
+on the dashboard** (was Settings-only) + **once-per-app-session disclaimer toast** on first enable (module
+flag `_salaryDisclaimerShownThisSession`, resets on relaunch). (c) **llm_client.py Gemini 429 retry-hardening**
+— budget 5→7 + backoff cap 30→45s (~150s window crosses ≥2 per-minute resets). Fixes the 2026-06-04 incident:
+a transient Gemini **TPM** limit on a Stage-2 burst (8 concurrent full-JD prompts + heavy testing day)
+outlasted the old 30s window → raised → killed the run. Escalation levers if it recurs under NORMAL load:
+`STAGE2_CONCURRENCY` env 8→5 (no rebuild), or **Worker-side rotation across the 3 Gemini keys** on 429 (proxy
+mode holds the keys on the Worker, so app-side rotation is moot). Left concurrency at 8 (retry-bump only costs
+on the rare 429; lowering would slow every run).
+**>> NEXT (v0.3.34, separate build): the job-hunt-themed ARCADE** on the Running page — Snake / Tetris /
+Breakout / Flappy / Space Invaders / Tic-Tac-Toe / Blackjack / Video-Poker, lazy-loaded, retro-on-theme,
+"search finished → View results" pop-up, quit-anytime. Each reskinned to the DAMN!-Jobs universe (Space
+Invaders = shoot red-flag listings, Breakout = beat the ATS, Flappy = don't get ghosted, etc.). Pending
+owner's Video-Poker-vs-Hold'em confirm (recommend Video Poker — no opponent AI).
+
 ---
 
 ## 2026-06-03 (cont.) — friend-resume validation + GovernmentJobs added (IN TREE, not yet shipped)
