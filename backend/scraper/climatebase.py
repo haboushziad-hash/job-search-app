@@ -47,7 +47,7 @@ class ClimatebaseScraper(BaseScraper):
         self,
         *,
         keywords: list[str],
-        limit_per_keyword: int = 50,
+        limit_per_keyword: int = 100,  # v0.3.37: Climatebase SSR returns the full 100-job payload; 50 threw away half (q is ignored server-side => +~50 unique/run, $0, no extra request)
         posted_within_days: Optional[int] = 30,
     ) -> list[Role]:
         sem = asyncio.Semaphore(3)

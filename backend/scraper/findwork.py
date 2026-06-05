@@ -119,25 +119,45 @@ class FindworkScraper(BaseScraper):
         out: list[Role] = []
         next_url: Optional[str] = None
         max_pages = 5
+        retried_429 = False  # v0.3.37: honor Retry-After once before giving up
+
+        async def _fetch(url_next: Optional[str]):
+            # Findwork's 'next' is the absolute URL with cursor already
+            # encoded — pass it directly; else hit base_url with params.
+            if url_next:
+                return await self.client._client.get(  # type: ignore[union-attr]
+                    url_next, headers=headers,
+                )
+            return await self.client._client.get(  # type: ignore[union-attr]
+                base_url, params=params, headers=headers,
+            )
+
         for page_idx in range(max_pages):
             try:
-                if next_url:
-                    # Findwork's 'next' is the absolute URL with cursor
-                    # already encoded — pass it directly.
-                    resp = await self.client._client.get(  # type: ignore[union-attr]
-                        next_url, headers=headers,
-                    )
-                else:
-                    resp = await self.client._client.get(  # type: ignore[union-attr]
-                        base_url, params=params, headers=headers,
-                    )
+                resp = await _fetch(next_url)
             except Exception:
                 break
             if resp.status_code != 200:
-                if resp.status_code in (403, 429):
-                    self.quota_exhausted = True
-                    self.quota_exhausted_reason = f"Findwork HTTP {resp.status_code} (rate limit or quota)"
-                break
+                # v0.3.37: a single 429 previously quota-killed Findwork for the
+                # WHOLE run (~83% of runs hit one => the source zeroed entirely).
+                # Honor Retry-After and retry the SAME page once before giving up
+                # — converts all-or-nothing zeroed runs into reliable small adds.
+                if resp.status_code == 429 and not retried_429:
+                    retried_429 = True
+                    try:
+                        ra = float(resp.headers.get("Retry-After", "") or 0)
+                    except (TypeError, ValueError):
+                        ra = 0.0
+                    await asyncio.sleep(min(max(ra, 1.5), 10.0))
+                    try:
+                        resp = await _fetch(next_url)
+                    except Exception:
+                        break
+                if resp.status_code != 200:
+                    if resp.status_code in (403, 429):
+                        self.quota_exhausted = True
+                        self.quota_exhausted_reason = f"Findwork HTTP {resp.status_code} (rate limit or quota)"
+                    break
             try:
                 data = resp.json()
             except Exception:

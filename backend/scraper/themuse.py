@@ -246,6 +246,8 @@ _MUSE_FANOUT_CATEGORIES = (
     "Education",
     "Project and Program Management",
     "Account Management",
+    "Retail",                          # v0.3.37: 32,788 jobs (API-verified) — was missing; adds non-tech retail/store/district-mgmt breadth for all users
+    "Accounting and Finance",          # v0.3.37: valid category (used in _MUSE_CATEGORIES below) but absent from fan-out; adds finance/accounting breadth
 )
 
 # Wave-2B Phase 2 (FIX 4): same vocabulary corrections as FIX 1. Keys

@@ -67,6 +67,16 @@ from urllib.parse import urlparse
 
 import httpx
 
+# Windows console (cp1252) can't encode the Unicode arrows this script prints
+# in progress lines (→ etc.). Force UTF-8 so a progress print never crashes
+# the run mid-loop — it was aborting AFTER validating tenants but BEFORE
+# _write_results, silently losing the whole pass.
+try:
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
+except Exception:
+    pass
+
 # ---------------------------------------------------------------------------
 # Setup
 # ---------------------------------------------------------------------------
