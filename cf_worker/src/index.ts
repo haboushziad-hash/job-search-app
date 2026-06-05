@@ -93,11 +93,17 @@ export interface Env {
 // comfortably covers iteration without losing the runaway-loop guardrail
 // (any single user hitting 5000 calls in a day is a bug).
 const DAILY_CALL_CAP = 5000;       // per UUID per day
-// v0.3.30: the owner UUID gets a higher dev/testing cap (~10 searches/day; a
-// search ≈ ~1000 LLM calls) so the operator's own iteration isn't throttled,
-// while real testers keep the 5k guardrail. Raise later if needed.
+// v0.3.30: the owner UUID gets a higher dev/testing cap so the operator's own
+// iteration isn't throttled, while real testers keep the 5k guardrail.
+// v0.3.35: bumped 20k -> 100k. Jun-3 forensics proved the 20k cap was the REAL
+// source of the "thousands of 429s" on heavy validation days — those were the
+// Worker's own `daily_cap_exceeded` trips, NOT Gemini quota (the Tier-2 keys
+// showed near-zero real 429s on their dashboards). A search ≈ ~1000 calls and a
+// full multi-persona validation day fires dozens, blowing 20k. 100k (~100
+// searches/day) clears any realistic operator day while still backstopping a
+// true runaway loop (which would burn millions) before it racks up real cost.
 const OWNER_UUID = "12adac92-d156-49ee-a670-51b7779e439e";
-const DAILY_CALL_CAP_OWNER = 20000; // owner dev/validation headroom (~20 searches/day)
+const DAILY_CALL_CAP_OWNER = 100000; // owner dev/validation headroom (~100 searches/day)
 function dailyCapFor(uuid: string): number {
   return uuid === OWNER_UUID ? DAILY_CALL_CAP_OWNER : DAILY_CALL_CAP;
 }
@@ -315,20 +321,37 @@ async function proxyGeminiDeep(
   if (keys.length === 0) {
     return json({ error: "no_google_keys_configured" }, 500);
   }
-  // Pin each tester's Gemini calls to a single deterministic key. This is
-  // REQUIRED for Pro context caching to work — caches are bound to the
-  // key that created them, so all of a tester's Stage 3 calls must hit
-  // the same key to find the cache they created at run start.
-  // Prior random rotation caused ~67% of Stage 3 calls to land on a
-  // different key from the cache owner, returning `403 PERMISSION_DENIED
-  // CachedContent not found` and silently failing Stage 3. Confirmed via
-  // audit 2026-05-29_02-55_f4ea0252 — 121 of 198 Stage 3 attempts (61%)
-  // hit this bug, dumping good roles into MAYBE on stage2_score fallback.
-  // Load balancing still happens across testers (each tester pins to one
-  // key, but different testers hash to different keys).
-  // Wave-2 followup: replace this with Worker-managed per-key caches
-  // (see task #15) for cross-run reuse and N-key generalization.
-  const keyIdx = hashStringToIndex(testerUuid, keys.length);
+  // Key selection — two regimes, split by whether the call carries Gemini
+  // server-side state (a Pro context cache):
+  //
+  //   • Pro + context-cache calls (gemini-2.5-pro:*, /cachedContents, and any
+  //     non-Flash/embedding path) are PINNED to one deterministic key per
+  //     tester. Pro context caches are bound to the key that created them, so
+  //     all of a tester's Stage-3-Pro / profile-build / cache calls must hit
+  //     the SAME key or they 403 `CachedContent not found`. Random rotation
+  //     here broke 61% of Stage 3 — audit 2026-05-29_02-55_f4ea0252 (121/198).
+  //
+  //   • Flash + embedding calls are STATELESS (no context cache), so we
+  //     ROUND-ROBIN them across ALL keys. This is the per-search hot path:
+  //     Stage 1/2 (gemini-2.5-flash[-lite]) plus the ~6.5M-token embedding
+  //     burst (gemini-embedding-001). v0.3.35 forensics: a single 560-tenant
+  //     search pushes ~3M tokens through ONE pinned key in ~2 min, brushing a
+  //     Tier-2 key's 3M-TPM ceiling → the v0.3.34 `RESOURCE_EXHAUSTED`. The
+  //     Gemini dashboards showed key 3 sitting 100% IDLE while one key took all
+  //     the load. Spreading the stateless burst across 3 Tier-2 keys triples
+  //     effective RPM/TPM headroom (~6k RPM / ~9M TPM) and uses the idle key.
+  //     With STAGE3_BACKEND="stack" (OpenRouter, the default) there is no Gemini
+  //     Pro in the hot path at all, so this is pure upside; the pin above still
+  //     covers profile-build Pro and the optional STAGE3_BACKEND="gemini" mode.
+  //
+  // Different testers still hash to different pinned keys, so Pro load stays
+  // balanced across testers too.
+  const isStateless = /gemini-2\.5-flash|gemini-embedding|:embedContent|:batchEmbedContents|text-embedding/i.test(
+    reqUrl.pathname,
+  );
+  const keyIdx = isStateless
+    ? Math.floor(Math.random() * keys.length)
+    : hashStringToIndex(testerUuid, keys.length);
   const key = keys[keyIdx];
 
   // Strip the /v1/llm/gemini prefix to get the upstream path.
