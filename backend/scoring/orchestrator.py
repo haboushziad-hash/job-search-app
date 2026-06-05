@@ -377,7 +377,13 @@ async def score_roles(
     # (cheap). At v0.3.9 grinder scale (800-1200 hard-filter passing), the
     # 500-max cap will fire to keep cost bounded.
     embed_keep_fraction: float = 0.55,
-    embed_max_roles: int = 500,
+    # v0.3.36 (EN1): 500 -> 800. The 500 cap was truncating the qualifying
+    # TAIL — survivors (~550 today) already exceed it, and every new source's
+    # volume would be eaten by the cap before reaching the scorer. Cost: +$0
+    # embeddings (computed pre-cap on all roles), +$0.30-0.60/run downstream
+    # Flash at full grinder scale (~$0.05-0.10 today). Couple with a one-run
+    # tail-yield audit (qualifiers among ranks 501-800) before locking higher.
+    embed_max_roles: int = 800,
     # Wave-1 (2026-05-11): lowered 101 → 88 per Section 14.11.4 empirical
     # validation: 41/41 saved STRONGs in the 18-audit corpus were preserved
     # at threshold 88 (0 quality loss). Roles with stage2 ≥ 88 are clear

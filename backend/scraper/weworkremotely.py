@@ -60,7 +60,7 @@ WWR_CATEGORY_RSS_URLS = [
     "https://weworkremotely.com/categories/remote-product-jobs.rss",
     "https://weworkremotely.com/categories/remote-devops-sysadmin-jobs.rss",
     "https://weworkremotely.com/categories/remote-management-and-finance-jobs.rss",
-    "https://weworkremotely.com/categories/remote-all-other-jobs.rss",
+    "https://weworkremotely.com/categories/all-other-remote-jobs.rss",  # v0.3.36: was remote-all-other-jobs.rss (301-dead → 0 items); verified this returns 200+items
     "https://weworkremotely.com/categories/remote-software-developer-jobs.rss",
 ]
 

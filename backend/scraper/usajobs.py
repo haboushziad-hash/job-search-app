@@ -183,7 +183,11 @@ class USAJobsScraper(BaseScraper):
             or []
         )
         out: list[Role] = []
-        for item in items[:limit]:
+        # v0.3.36: was items[:limit]. ResultsPerPage = min(500, limit*5) already
+        # FETCHED ~250 roles/keyword, then this slice threw away ~200 of them.
+        # Keep every already-fetched federal role (~5x more, zero extra API cost;
+        # the embedding prefilter + EN1 800-cap handle relevance/volume downstream).
+        for item in items:
             try:
                 role = self._item_to_role(item)
                 if role:
