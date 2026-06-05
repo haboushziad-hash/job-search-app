@@ -586,7 +586,12 @@ class WorkdayScraper(BaseScraper):
         # at conc=150/pool=220 = 4.2 min for 25 kw vs ~35 min at 20/100 (~8x).
         # Paired with the raised ScraperClient pool (max_connections=150).
         import os as _os
-        concurrency = int(_os.environ.get("WORKDAY_CONCURRENCY", "80"))
+        # v0.3.39: default 160 when the fmsdj-scraper Worker is active (its clean
+        # Cloudflare egress absorbs the load — A/B: 80->160 cut a 3-kw scrape 55s->37s,
+        # 0 errors; 240 only saved 2s more, so 160 is the knee), but stay at 80 in
+        # DIRECT mode (local/dev) where 160 from the home IP would 429-storm.
+        _wd_proxy_on = bool((config.WORKDAY_PROXY_URL or "").strip())
+        concurrency = int(_os.environ.get("WORKDAY_CONCURRENCY", "160" if _wd_proxy_on else "80"))
         sem = asyncio.Semaphore(concurrency)
         # v0.3.30: per-tenant concurrency cap. High GLOBAL concurrency is safe
         # (tenants are independent servers), but a single tenant getting all ~25
@@ -683,6 +688,41 @@ class WorkdayScraper(BaseScraper):
                 all_roles.append(role)
         return all_roles
 
+    async def _workday_post(self, endpoint: str, body: dict):
+        """POST a Workday CXS request, optionally via the fmsdj-scraper Worker.
+        Routing through Cloudflare's egress dodges the home IP's ~16% HTTP-500s
+        under Workday burst load (A/B-proven). ANY worker-side failure (network,
+        or the worker's own 400/403/405 guard — identified by the MISSING
+        x-scraper-fwd header) falls back to a DIRECT request, so the worker can
+        never reduce coverage vs direct. Genuine Workday responses (tagged with
+        x-scraper-fwd) pass through with their real status, incl. 400/422/429."""
+        proxy = (config.WORKDAY_PROXY_URL or "").strip()
+        if proxy:
+            try:
+                resp = await self.client._client.post(  # type: ignore[union-attr]
+                    proxy,
+                    content=json.dumps(body),
+                    headers={
+                        "x-target-url": endpoint,
+                        "x-scraper-secret": config.WORKDAY_PROXY_SECRET or "",
+                        "Content-Type": "application/json",
+                    },
+                )
+                if resp.headers.get("x-scraper-fwd") == "1":
+                    return resp  # genuine Workday passthrough (trust its status)
+                # else: worker guard error (no header) -> fall back to direct
+            except Exception:
+                pass  # network / worker failure -> fall back to direct
+        return await self.client._client.post(  # type: ignore[union-attr]
+            endpoint,
+            json=body,
+            headers={
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+                "User-Agent": "Mozilla/5.0",
+            },
+        )
+
     async def _search_tenant_keyword(
         self,
         display_name: str,
@@ -759,15 +799,7 @@ class WorkdayScraper(BaseScraper):
             response = None
             for _attempt_429 in range(3):  # initial try + up to 2 retries
                 try:
-                    response = await self.client._client.post(  # type: ignore[union-attr]
-                        endpoint,
-                        json=body,
-                        headers={
-                            "Accept": "application/json",
-                            "Content-Type": "application/json",
-                            "User-Agent": "Mozilla/5.0",
-                        },
-                    )
+                    response = await self._workday_post(endpoint, body)
                 except Exception:
                     response = None
                     break

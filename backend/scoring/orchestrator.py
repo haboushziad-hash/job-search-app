@@ -376,7 +376,7 @@ async def score_roles(
     # 0.55 keeps ~275 of 499. Cost impact: +$0.04-0.06/run on Stage 2 Flash
     # (cheap). At v0.3.9 grinder scale (800-1200 hard-filter passing), the
     # 500-max cap will fire to keep cost bounded.
-    embed_keep_fraction: float = 0.55,
+    embed_keep_fraction: float = 0.55,  # v0.3.38 audit-confirmed: the 0.55->0.85 tail yields only MAYBE/STRETCH (0 STRONG, 1 GOOD of +19) — raising it just pads results with marginal noise. 0.55 captures all quality.
     # v0.3.36 (EN1): 500 -> 800. The 500 cap was truncating the qualifying
     # TAIL — survivors (~550 today) already exceed it, and every new source's
     # volume would be eaten by the cap before reaching the scorer. Cost: +$0

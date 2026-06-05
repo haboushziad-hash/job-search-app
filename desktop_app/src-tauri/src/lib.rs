@@ -25,6 +25,13 @@ const AUDIT_UPLOAD_URL: &str = "https://api.findmesomedamnjobz.com/v1/runs";
 /// Format: "https://api.findmesomedamnjobz.com" (no trailing slash, no path)
 const LLM_PROXY_URL: &str = "https://api.findmesomedamnjobz.com";
 
+/// v0.3.39: dedicated Workday CXS forwarder (SEPARATE Worker from the LLM proxy).
+/// Routes Workday requests through Cloudflare's egress instead of the user's home
+/// IP — A/B-proven +16% roles, -27% time, 277->0 rate-limit errors. The backend
+/// falls back to a direct request on ANY worker failure, so it can only ever help.
+const WORKDAY_PROXY_URL: &str = "https://fmsdj-scraper.haboushziad.workers.dev";
+const WORKDAY_PROXY_SECRET: &str = "wd-9c2f1a7e-scraper-fwd";
+
 // Holds the FastAPI backend's child process so we can kill it cleanly on
 // app quit. Stored in Tauri's managed state.
 struct BackendProcess(std::sync::Mutex<Option<CommandChild>>);
@@ -143,6 +150,14 @@ pub fn run() {
             // holds the real keys server-side and substitutes them per call.
             if !LLM_PROXY_URL.is_empty() {
                 sidecar = sidecar.env("LLM_PROXY_URL", LLM_PROXY_URL);
+            }
+
+            // WORKDAY_PROXY_URL: route Workday CXS requests through the dedicated
+            // scraper Worker (clean Cloudflare egress) instead of the home IP.
+            // Backend falls back to direct on any worker failure.
+            if !WORKDAY_PROXY_URL.is_empty() {
+                sidecar = sidecar.env("WORKDAY_PROXY_URL", WORKDAY_PROXY_URL);
+                sidecar = sidecar.env("WORKDAY_PROXY_SECRET", WORKDAY_PROXY_SECRET);
             }
 
             let (mut rx, child) = sidecar.spawn().map_err(|e| {

@@ -46,6 +46,7 @@ from backend.scraper.working_nomads import WorkingNomadsScraper
 from backend.scraper.higheredjobs import HigherEdJobsScraper
 from backend.scraper.biospace import BioSpaceScraper
 from backend.scraper.jobicy import JobicyScraper
+from backend.scraper.himalayas import HimalayasScraper
 from backend.scraper.nodesk import NoDeskScraper
 from backend.scraper.governmentjobs import GovernmentJobsScraper
 from backend.scraper import _keyword_match as _kw_match
@@ -150,6 +151,10 @@ SCRAPER_REGISTRY: dict[str, type[BaseScraper]] = {
     # rolling feed, broad category mix. Complements RemoteOK/WWR/Working
     # Nomads with a slightly different employer set.
     "Jobicy":         JobicyScraper,
+    # v0.3.38: Himalayas — free no-key JSON API, ~107k remote roles (~52% US-
+    # eligible, filtered client-side on locationRestrictions). Rich structured
+    # salary/seniority/type. Larger + different employer set than Jobicy/WWR.
+    "Himalayas":      HimalayasScraper,
     # v0.3.5 quick-win: NoDesk — free RSS, hand-curated remote roles
     # leaning design / engineering / product. Smaller pool than Jobicy
     # but higher-quality curation (less spam). Has malformed-XML quirk

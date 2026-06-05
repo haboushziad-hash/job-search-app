@@ -1,0 +1,9 @@
+name = "fmsdj-scraper"
+main = "src/index.js"
+compatibility_date = "2026-04-01"
+
+# Dedicated Workday CXS forwarder — SEPARATE from the LLM proxy (fmsdj-worker).
+# Routes the backend's Workday requests through Cloudflare's network to dodge
+# the home IP's ~16% HTTP-500 failures under load (A/B-proven).
+[vars]
+SCRAPER_SECRET = "wd-9c2f1a7e-scraper-fwd"

@@ -777,7 +777,7 @@ async def stage3_deep_eval(
     profile: CandidateProfile,
     roles: list[Role],
     client: Optional[LLMClient] = None,
-    concurrency: int = int(os.environ.get("STAGE3_CONCURRENCY", "3")),
+    concurrency: int = int(os.environ.get("STAGE3_CONCURRENCY", "4")),  # v0.3.38: 3->4 (stack members now run in parallel, so 4 roles x 3 members = ~12 concurrent OpenRouter; safe headroom)
     skip_above: int = 88,
     skip_below: int = 55,
     run_id: Optional[str] = None,

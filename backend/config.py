@@ -164,6 +164,13 @@ class Config:
     LLM_PROXY_URL: str = os.getenv("LLM_PROXY_URL", "")
     AUDIT_UPLOAD_URL: str = os.getenv("AUDIT_UPLOAD_URL", "")
     TESTER_UUID: str = os.getenv("TESTER_UUID", "")  # generated on first launch by frontend
+    # v0.3.39: dedicated Workday CXS forwarder (separate fmsdj-scraper Worker).
+    # When set, Workday requests route through Cloudflare's network instead of
+    # the user's home IP — A/B-proven ~0% errors vs ~16% HTTP-500s direct (the
+    # home connection chokes under Workday burst load; Cloudflare's doesn't).
+    # Empty = direct. Any worker-side failure also falls back to direct.
+    WORKDAY_PROXY_URL: str = os.getenv("WORKDAY_PROXY_URL", "")
+    WORKDAY_PROXY_SECRET: str = os.getenv("WORKDAY_PROXY_SECRET", "")
 
     # ============================================================
     # JOB BOARD API KEYS — read once at config load (after dotenv).

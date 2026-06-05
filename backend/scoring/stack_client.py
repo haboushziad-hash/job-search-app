@@ -149,23 +149,31 @@ class StackClient(LLMClient):
         scores: list[int] = []
         rich: Optional[dict] = None
         used = []
-        for key, kind, slug, sys_prompt in self._members:
+        # v0.3.38: score all members CONCURRENTLY. Was a sequential await-loop
+        # (per-role latency = SUM of member latencies); now max() instead, ~3x
+        # faster Stage-3 with IDENTICAL results — members are independent and
+        # their scores are averaged. Results are collected in member order so
+        # the weighted blend + gpt5mini rich output stay deterministic.
+        async def _score_member(key, kind, slug, sys_prompt):
             try:
                 if kind == "selene":
-                    sc = await self._selene(user)
-                    if sc is not None:
-                        scores.append(sc); used.append(key)
-                else:
-                    resp = await self._or.complete(model=slug, system=sys_prompt, user=user,
-                                                   max_output_tokens=4000, temperature=0.0,
-                                                   json_schema={"type": "object"})
-                    sc = _parse_score(resp.text)
-                    if sc is not None:
-                        scores.append(sc); used.append(key)
-                    if key == "gpt5mini" and isinstance(resp.parsed_json, dict):
-                        rich = resp.parsed_json
+                    return (key, await self._selene(user), None)
+                resp = await self._or.complete(model=slug, system=sys_prompt, user=user,
+                                               max_output_tokens=4000, temperature=0.0,
+                                               json_schema={"type": "object"})
+                rich_j = resp.parsed_json if (key == "gpt5mini" and isinstance(resp.parsed_json, dict)) else None
+                return (key, _parse_score(resp.text), rich_j)
             except Exception:
-                continue
+                return (key, None, None)
+
+        member_results = await asyncio.gather(
+            *(_score_member(*m) for m in self._members)
+        )
+        for key, sc, rich_j in member_results:
+            if rich_j is not None:
+                rich = rich_j
+            if sc is not None:
+                scores.append(sc); used.append(key)
         latency_ms = int((time.perf_counter() - start) * 1000)
         if not scores:
             return LLMResponse(text="", parsed_json=None, model="stack", provider=self.provider_name,
