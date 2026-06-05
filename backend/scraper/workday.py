@@ -892,7 +892,12 @@ class WorkdayScraper(BaseScraper):
     ) -> Role:
         title = posting.get("title") or ""
         external_path = posting.get("externalPath") or ""
-        url = f"{base_url}{external_path}" if external_path else ""
+        # v0.3.39 FIX: candidate-facing URL needs the /en-US/{board} segment.
+        # base_url is host-only (https://tenant.wdN.myworkdayjobs.com) and
+        # external_path is "/job/...". The old "{host}{path}" produced
+        # "{host}/job/..." which 404s -> redirects to community.workday.com/
+        # invalid-url. Verified: {host}/en-US/{board}{path} returns 200.
+        url = f"{base_url}/en-US/{board}{external_path}" if external_path else ""
 
         location_text = posting.get("locationsText") or ""
         loc_low = location_text.lower()
