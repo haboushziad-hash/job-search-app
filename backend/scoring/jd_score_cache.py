@@ -80,7 +80,7 @@ CACHE_TTL_SECONDS = 7 * 24 * 3600  # 7 days
 # fired on any JD seen in the prior 7 days (cache hit → Stage 2 skipped). BUMP
 # THIS whenever scoring behavior changes (new gate, prompt edit, model swap,
 # tier-floor change, …).
-SCORING_VERSION = "v0.3.28"
+SCORING_VERSION = "v0.3.35"
 
 # v0.3.21 (FIX 26 — cost): diagnostic logging gate. When True, prints the
 # profile_hash being used + cache hit/miss counts so we can verify the

@@ -28,66 +28,52 @@ from backend.scoring.stage3_deep_eval import stage3_deep_eval
 def _apply_salary_realism_penalty(
     role: Role, profile_min: Optional[int]
 ) -> None:
-    """Penalize bottom-heavy salary ranges where the actual offer is
-    statistically likely to land below the candidate's minimum.
+    """Gate roles whose pay is ENTIRELY below the candidate's floor.
 
-    v0.3.7 — added in response to Hitachi Vantara case from v0.3.5/v0.3.6:
-    role scored 93 STRONG with salary_min $75K against profile minimum
-    $130K. The salary range was $75K-$138K — the bottom is 42% below
-    minimum and the top barely clears it. Hiring manager negotiations
-    typically anchor on the midpoint, which puts the likely offer at
-    $90-110K — well below the user's threshold. Score 93 is misleading.
+    v0.3.35 (Rules 12 + 19, from the 2026-06 human calibration) — REPLACES the
+    old -15 "bottom-heavy" nudge, which MIS-FIRED on straddling ranges: a
+    $90K-$140K range vs a $130K floor got penalized even though its top clears
+    the floor. New behavior:
+      - ENTIRE range below floor (salary_max < profile_min) → cap tier at MAYBE
+        (cannot be an apply-now match).
+      - Range STRADDLES the floor (salary_max >= profile_min) → NO penalty
+        (negotiation can land at/above the minimum).
+      - Missing salary (no max) → NO penalty (don't punish absent data).
 
-    Trigger conditions (BOTH must be true):
-        salary_min < profile_min * 0.70    (bottom is well below floor)
-        salary_max < profile_min * 1.50    (top doesn't compensate)
-
-    Why both — this avoids penalizing roles like $90K-$200K (max above
-    floor + 50% suggests genuine top-end potential) while catching
-    Hitachi-style bottom-heavy ranges.
-
-    Penalty: -15 to the final score, capped at floor 0. Tagged in
-    stage3_analysis (or stage2_reasoning if no Stage 3) for audit.
-
-    Universal: thresholds are RELATIVE percentages, scaling correctly to
-    any salary_minimum from $50K nurses to $300K execs.
+    Universal: keys purely on the candidate's own salary_minimum, scaling to
+    any floor ($50K nurse, $130K AI strategist, $300K exec).
     """
     if not profile_min:
         return
-    if role.salary_min is None or role.salary_max is None:
+    # Missing top-of-range = unknown pay = no penalty (Rule 12). We key on
+    # salary_max — the TOP of the range.
+    if role.salary_max is None:
         return
     if role.final_score is None or role.final_score <= 0:
         return
-    # v0.3.26 (UI1): idempotency guard. The JD score cache is model-agnostic and
-    # hydrates across runs (even on force_refresh); a hydrated role already carries
-    # the "[salary-penalty:…]" tag in its reasoning AND already had -15 baked into
-    # its cached final_score. Re-finalizing it would subtract another 15 (score
-    # corruption) and prepend a SECOND tag (the doubled "[salary-penalty] [salary-
-    # penalty]" users saw). Skip if the penalty was already applied.
-    if "[salary-penalty" in (role.stage3_analysis or "") or "[salary-penalty" in (role.stage2_reasoning or ""):
+    # Idempotency: a cache-hydrated role may already carry the cap tag.
+    if "[salary-floor" in (role.stage3_analysis or "") or "[salary-floor" in (role.stage2_reasoning or ""):
         return
 
-    min_threshold = profile_min * 0.70
-    max_threshold = profile_min * 1.50
-    if not (role.salary_min < min_threshold and role.salary_max < max_threshold):
+    # Rule 19 (straddle guard): if the TOP of the range reaches the floor, the
+    # role can negotiate to/above the minimum — NO penalty.
+    if role.salary_max >= profile_min:
         return
 
-    # Trigger penalty
-    old_score = role.final_score
-    new_score = max(old_score - 15, 0)
-    tag = (
-        f"[salary-penalty:-15 — ${role.salary_min // 1000}K-"
-        f"${role.salary_max // 1000}K vs ${profile_min // 1000}K floor]"
-    )
-    role.final_score = new_score
-    role.final_tier = score_to_tier(new_score)
-
-    # Tag in whichever reasoning field is populated, prefer stage3 since
-    # it's the user-visible application_strategy text downstream
-    if role.stage3_analysis:
-        role.stage3_analysis = f"{tag} {role.stage3_analysis}"[:2000]
-    if role.stage2_reasoning:
-        role.stage2_reasoning = f"{tag} {role.stage2_reasoning}"[:1000]
+    # Rule 12: the ENTIRE range is below the floor → cap the tier at MAYBE.
+    # 69 = top of the MAYBE band (70 begins GOOD in score_to_tier).
+    maybe_ceiling = 69
+    if role.final_score > maybe_ceiling:
+        role.final_score = maybe_ceiling
+        role.final_tier = score_to_tier(maybe_ceiling)
+        tag = (
+            f"[salary-floor: top ${role.salary_max // 1000}K below "
+            f"${profile_min // 1000}K floor — capped at MAYBE]"
+        )
+        if role.stage3_analysis:
+            role.stage3_analysis = f"{tag} {role.stage3_analysis}"[:2000]
+        if role.stage2_reasoning:
+            role.stage2_reasoning = f"{tag} {role.stage2_reasoning}"[:1000]
 
 
 def _apply_scoring_guards(role: Role, profile: Optional[CandidateProfile] = None) -> None:
@@ -120,6 +106,7 @@ def _apply_scoring_guards(role: Role, profile: Optional[CandidateProfile] = None
         jd_is_capturable, scan_excluded_body_signals,
         profile_targets_engineering, profile_targets_sales,
         title_off_target_for_profile, experience_seniority_gate, offtarget_engagement,
+        detect_required_credential, candidate_holds_credential,
     )
 
     # P0-4 (v0.3.25): off-target TITLE → SKIP, PER-CATEGORY profile-gated. Flags a
@@ -188,12 +175,14 @@ def _apply_scoring_guards(role: Role, profile: Optional[CandidateProfile] = None
 
     jd = role.job_description_full or role.job_description_essence or ""
 
-    # P0-1: stub / uncapturable JD → cap at MAYBE (55) + re-scrape flag.
+    # P0-1 (v0.3.35, Rules 9 + 21): stub / uncapturable JD → SKIP, not MAYBE.
+    # We can't responsibly surface a role we can't actually read; a matching
+    # title is not evidence of fit. (The human calibration ruled "no usable JD
+    # = SKIP"; a future re-fetch path will try a better source before drop.)
     if not jd_is_capturable(jd):
-        if role.final_score > 55:
-            role.final_score = 55
-            role.final_tier = score_to_tier(55)
-        flag = "[jd-not-captured: score capped at MAYBE — re-scrape recommended]"
+        role.final_score = min(role.final_score, 30)
+        role.final_tier = Tier.SKIP
+        flag = "[jd-not-captured: no usable JD — capped at SKIP, re-fetch recommended]"
         role.stage3_application_strategy = (
             f"{flag} {role.stage3_application_strategy or ''}"
         )[:1000]
@@ -218,6 +207,24 @@ def _apply_scoring_guards(role: Role, profile: Optional[CandidateProfile] = None
             role.stage3_application_strategy = (
                 f"{flag} {role.stage3_application_strategy or ''}"
             )[:1000]
+
+    # Credential gate (v0.3.35, Rule 11): a hard-required clearance / license /
+    # certification the candidate does NOT hold caps the role at MAYBE (these are
+    # often obtainable / sponsorable — worth surfacing, not an apply-now match).
+    # Gated OFF unless the profile's `credentials` field is answered: None =>
+    # skip entirely, so every existing profile no-ops until the user fills the
+    # setup-wizard question. An empty list [] means "I hold none" (gate active).
+    if profile is not None and getattr(profile, "credentials", None) is not None:
+        req_cred = detect_required_credential(jd)
+        if req_cred and not candidate_holds_credential(req_cred, profile.credentials):
+            if (role.final_score or 0) > 69:  # 69 = top of the MAYBE band
+                role.final_score = 69
+                role.final_tier = score_to_tier(69)
+            flag = f"[credential-gate: requires {req_cred}, candidate has not indicated holding it — capped at MAYBE]"
+            if role.stage3_analysis:
+                role.stage3_analysis = f"{flag} {role.stage3_analysis}"[:2000]
+            else:
+                role.stage3_application_strategy = f"{flag} {role.stage3_application_strategy or ''}"[:1000]
 
 
 # v0.3.25: tier score-bands (must match score_to_tier in models.py). Used to

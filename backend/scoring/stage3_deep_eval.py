@@ -874,8 +874,9 @@ async def stage3_deep_eval(
         print(f"[stage3] post-processing detector: re-evaluated "
               f"{contradictions_resolved} contradictory roles")
 
-    # Code-level title floor enforcement (v0.3.4) — same belt-and-suspenders
-    # as Stage 2. v0.3.9: graduated mode (matches Stage 2's mode change).
+    # v0.3.35: title-floor DISABLED (Principle 8) — a title never floors a
+    # score. Mirrors Stage 2 (mode="off"). The floor was the #1 false-positive
+    # source: off-target roles surfaced as GOOD purely on a shared title word.
     from backend.scoring.title_floor import apply_floor_to_score
     for role in targets:
         if role.stage3_score is None:
@@ -885,7 +886,7 @@ async def stage3_deep_eval(
             role_title=role.job_title,
             candidate_headline=profile.headline,
             candidate_target_functions=profile.target_functions,
-            mode="graduated",
+            mode="off",  # title-floor DISABLED (Principle 8)
         )
         if tag is not None:
             role.stage3_score = new_score

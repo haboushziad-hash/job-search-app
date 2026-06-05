@@ -430,3 +430,105 @@ def offtarget_engagement(role) -> Optional[str]:
     if _SKILLBRIDGE_RE.search(jd[:1500]):
         return "SkillBridge"
     return None
+
+
+# ---------------------------------------------------------------------------
+# Credential gate (v0.3.35, Rule 11 from the 2026-06 human calibration). A JD
+# that HARD-REQUIRES a security clearance, professional license, or named
+# certification the candidate does NOT hold caps the role at MAYBE — these are
+# often obtainable/sponsorable, so the role is worth surfacing but is not an
+# apply-now match. "Preferred" / "a plus" / "willing to obtain" / "eligible"
+# NEVER fires. Deterministic; the candidate's held credentials come from a
+# profile field they set in the setup wizard. The orchestrator keeps the gate
+# OFF entirely when that field is None (unanswered), so it no-ops for every
+# existing profile until the user answers the question.
+# ---------------------------------------------------------------------------
+
+# canonical credential name -> regex that NAMES it in a JD. Bare ambiguous
+# initialisms (MD, DO, PE, NP) are deliberately spelled out to avoid matching
+# the Maryland abbreviation, the word "do", etc.
+_CREDENTIAL_PATTERNS = (
+    ("TS/SCI clearance",     r"\bTS\s*/\s*SCI\b|\btop\s+secret\s*/\s*sci\b"),
+    ("Top Secret clearance", r"\btop\s+secret\b"),
+    ("Secret clearance",     r"\bsecret\s+clearance\b|\bsecret[-\s]level\s+clearance\b"),
+    ("polygraph",            r"\b(?:ci|counterintelligence|full[-\s]?scope|lifestyle)\s+polygraph\b|\bpolygraph\b"),
+    ("Public Trust",         r"\bpublic\s+trust\b"),
+    ("security clearance",   r"\bsecurity\s+clearance\b|\bgovernment\s+clearance\b|\bactive\s+clearance\b"),
+    ("CPA",                  r"\bCPA\b|certified\s+public\s+accountant"),
+    ("CFA",                  r"\bCFA\b|chartered\s+financial\s+analyst"),
+    ("CFE",                  r"\bCFE\b|certified\s+fraud\s+examiner"),
+    ("PMP",                  r"\bPMP\b|project\s+management\s+professional"),
+    ("CISSP",                r"\bCISSP\b"),
+    ("PE license",           r"\bPE\s+licen[sc]e\b|professional\s+engineer\s+licen[sc]e|licensed\s+professional\s+engineer"),
+    ("RN license",           r"registered\s+nurse|\bRN\s+licen[sc]e\b|nursing\s+licen[sc]e|nurse\s+practitioner"),
+    ("bar admission",        r"\bbar\s+(?:admission|membership)\b|admitted\s+to\s+the\s+bar|licensed\s+attorney|active\s+bar\s+(?:license|membership)"),
+    ("CDL",                  r"\bCDL\b|commercial\s+driver'?s?\s+licen[sc]e"),
+    ("medical license",      r"\bmedical\s+licen[sc]e\b"),
+)
+_CREDENTIAL_RE = [(name, re.compile(pat, re.IGNORECASE)) for name, pat in _CREDENTIAL_PATTERNS]
+
+# A "hard requirement" cue near the credential mention.
+_CRED_HARD_CUE_RE = re.compile(
+    r"\b(required|requires|require\s+an?|must\s+(?:hold|have|possess|be|maintain|currently)|"
+    r"mandatory|active|current(?:ly)?|maintain|minimum\s+of\s+an?)\b",
+    re.IGNORECASE,
+)
+# A "soft / obtainable" cue that DISQUALIFIES the mention from being hard-required.
+_CRED_SOFT_CUE_RE = re.compile(
+    r"\b(preferred|a\s+plus|plus\b|nice\s+to\s+have|desired|desirable|ideally|"
+    r"bonus|helpful|advantage|willing(?:ness)?\s+to\s+obtain|ability\s+to\s+obtain|"
+    r"able\s+to\s+obtain|eligible|or\s+equivalent|not\s+required|sponsor)\b",
+    re.IGNORECASE,
+)
+
+
+def detect_required_credential(jd_text: Optional[str]) -> Optional[str]:
+    """Return the canonical name of a clearance / license / certification the JD
+    HARD-REQUIRES, or None.
+
+    A mention counts as hard-required only when a 'required/must/active/mandatory'
+    cue sits within ~70 chars AND no soft cue ('preferred/a plus/willing to
+    obtain/eligible/sponsor') sits in that same window. Conservative: when in
+    doubt (soft cue present, or no hard cue) returns None — the gate only caps at
+    MAYBE anyway, so it errs toward surfacing the role."""
+    if not jd_text:
+        return None
+    text = jd_text[:6000]
+    for name, rx in _CREDENTIAL_RE:
+        for m in rx.finditer(text):
+            window = text[max(0, m.start() - 70):min(len(text), m.end() + 70)]
+            if _CRED_SOFT_CUE_RE.search(window):
+                continue
+            if _CRED_HARD_CUE_RE.search(window):
+                return name
+    return None
+
+
+# Clearance hierarchy: holding a higher clearance covers a lower requirement.
+_CLEARANCE_RANK = {"public trust": 1, "secret": 2, "top secret": 3, "ts/sci": 4}
+
+
+def candidate_holds_credential(required: str, held: Optional[list]) -> bool:
+    """True if the candidate's held credentials cover the JD's required one.
+
+    Clearances are hierarchical (a TS/SCI holder covers a Secret requirement);
+    everything else is matched by normalized keyword (substring either way).
+    `held` None/empty -> holds nothing -> False. Leans toward False on ambiguity
+    (the caller only caps at MAYBE, so a false-fire merely surfaces the role one
+    tier lower rather than hiding it)."""
+    if not held:
+        return False
+    req = (required or "").strip().lower()
+    req_key = req.replace(" clearance", "").replace(" license", "").replace(" admission", "").strip()
+    held_l = [str(h).strip().lower() for h in held if str(h).strip()]
+    for h in held_l:
+        h_key = h.replace(" clearance", "").replace(" license", "").replace(" admission", "").strip()
+        if req_key and (req_key in h_key or h_key in req_key):
+            return True
+    req_rank = _CLEARANCE_RANK.get(req_key)
+    if req_rank:
+        for h in held_l:
+            for name, rank in _CLEARANCE_RANK.items():
+                if name in h and rank >= req_rank:
+                    return True
+    return False

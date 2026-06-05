@@ -292,6 +292,7 @@ async def profile_build(
     acceptable_locations: str = Form("[]"),
     acceptable_location_radii: str = Form("[]"),
     excluded_locations: str = Form("[]"),
+    credentials: Optional[str] = Form(None),
 ) -> dict[str, Any]:
     """Accept resume file uploads + freeform extra context + preferences.
 
@@ -321,10 +322,15 @@ async def profile_build(
         arr_locations = json.loads(acceptable_locations) if acceptable_locations else []
         arr_radii = json.loads(acceptable_location_radii) if acceptable_location_radii else []
         arr_excluded = json.loads(excluded_locations) if excluded_locations else []
+        arr_credentials = json.loads(credentials) if credentials is not None else None
     except json.JSONDecodeError as e:
         raise HTTPException(status_code=400, detail=f"Invalid JSON in form field: {e}")
 
     user_preferences: dict[str, Any] = {}
+    # credentials: include even when EMPTY ([] = "answered, holds none" => gate
+    # active). Absent only when the client didn't send it (None => gate stays off).
+    if arr_credentials is not None:
+        user_preferences["credentials"] = arr_credentials
     if salary_minimum:
         user_preferences["salary_minimum"] = salary_minimum
     if arr_arrangements:

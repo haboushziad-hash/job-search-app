@@ -121,6 +121,8 @@ export default function Setup() {
     }))
   )
   const [locationInput, setLocationInput] = useState('')
+  // v0.3.35 (Rule 11): clearances / licenses / certs the candidate holds.
+  const [credentials, setCredentials] = useState<string[]>(priorProfile?.credentials ?? [])
 
   const handleFiles = (files: FileList | null) => {
     if (!files) return
@@ -208,6 +210,7 @@ export default function Setup() {
         files: resumes.map((r) => r.file),
         extraContext,
         salaryMinimum: salaryMin,
+        credentials: credentials,
         workArrangements: Object.entries(arrangements)
           .filter(([, v]) => v)
           .map(([k]) => (k === 'onsite' ? 'on-site' : k)),
@@ -569,6 +572,43 @@ export default function Setup() {
               </p>
             </div>
 
+            {/* Clearances / licenses / certifications (v0.3.35, Rule 11) */}
+            <div className="mt-8">
+              <span className="text-xs uppercase tracking-wider text-base-400">
+                Clearances, licenses &amp; certifications
+              </span>
+              <p className="text-xs text-base-500 mt-1 mb-3">
+                Select any you currently hold. Roles that <em>require</em> one you
+                don't have are shown a little lower — they're often obtainable, so we
+                still surface them.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {['TS/SCI', 'Top Secret', 'Secret', 'Public Trust', 'CPA', 'PMP', 'CISSP', 'RN license', 'PE license', 'Bar admission', 'CDL'].map((c) => {
+                  const on = credentials.includes(c)
+                  return (
+                    <button
+                      key={c}
+                      onClick={() =>
+                        setCredentials(on ? credentials.filter((x) => x !== c) : [...credentials, c])
+                      }
+                      className={cn(
+                        'px-3 py-1.5 rounded-lg text-sm border transition-all',
+                        on
+                          ? 'bg-accent-500/15 border-accent-500/40 text-accent-300'
+                          : 'glass-subtle text-base-400 hover:text-base-200'
+                      )}
+                    >
+                      {on && <Check size={12} className="inline mr-1.5" />}
+                      {c}
+                    </button>
+                  )
+                })}
+              </div>
+              <p className="text-xs text-base-500 mt-2">
+                None apply? Leave them unselected — that's perfectly fine.
+              </p>
+            </div>
+
             {/* Locations — only shown if hybrid or on-site is selected */}
             {showLocationSection && (
               <motion.div
@@ -705,6 +745,9 @@ export default function Setup() {
                 value={`${resumes.length} file${resumes.length === 1 ? '' : 's'}`}
               />
               <SummaryRow label="Minimum salary" value={`$${(salaryMin / 1000).toFixed(0)}K`} />
+              {credentials.length > 0 && (
+                <SummaryRow label="Credentials" value={credentials.join(', ')} />
+              )}
               <SummaryRow
                 label="Work arrangements"
                 value={

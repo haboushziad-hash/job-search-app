@@ -219,50 +219,24 @@ PRINCIPLE 7: ROLE FUNCTION OVER COMPANY AFFINITY
   no resume evidence of that function, cap the score at 55 regardless of
   how strong the company/domain alignment looks.
 
-PRINCIPLE 8: TITLE-HEADLINE OVERLAP FLOOR (graduated, v0.3.3)
-  Count CONTENT words from the role title that also appear in the candidate's
-  headline OR target_functions list. Filler words don't count: ignore
-  "and", "or", "of", "the", "for", "a", "an", "to", "with", "in", "on",
-  "at", "by", "as", "manager", "lead", "senior", "junior", "associate",
-  "II", "III", "IV", "principal", "staff" and other standalone seniority
-  modifiers. Look for substantive function/domain nouns ("Operations",
-  "Strategy", "Marketing", "Program", "Engineering", "AI", "Enablement",
-  "Governance", "Federal", "Clinical", "Product", "Design", "Sales",
-  "Finance", etc.).
+PRINCIPLE 8: THE TITLE IS A WEAK SIGNAL — IT NEVER SETS A SCORE FLOOR (v0.3.35)
+  A role's TITLE matching words in the candidate's headline or target_functions
+  earns the role NO minimum score. Title overlap tells you where to LOOK, not
+  whether the role fits. ALWAYS grade by the actual DUTIES and REQUIREMENTS in
+  the JD versus the candidate's resume (Principles 1-7, 9, 10).
 
-  Apply the floor based on overlap count:
+  A strong title match may RAISE YOUR CONFIDENCE that you've identified the
+  role correctly — but if the duties/requirements are off-target, the wrong
+  seniority, technical beyond the candidate, or otherwise a poor fit, score it
+  LOW no matter how well the title matches. Never let a title keyword ("AI",
+  "Strategy", "Consultant", "Manager", "Program", "Governance", etc.) pull a
+  score UP on its own.
 
-    3+ content words match → base score FLOORS at 60
-    2 content words match  → base score FLOORS at 55
-    1 content word matches the candidate's CORE function noun (the
-                             function explicitly named in their headline
-                             or top target_function) → no floor (the
-                             single-word match is too weak to guarantee
-                             a floor; let other principles score it)
-
-  Why graduated: the prior binary 3-word floor failed on legitimate 1-2
-  word overlaps like "Operations Manager" (1 content word after stopword
-  removal) for an Operations-headline candidate. The graduated floor
-  protects partial title matches proportional to overlap strength.
-
-  v0.3.12: floor numbers reconciled to match what the code at
-  title_floor.py:graduated mode actually applies (60/55/none). Previous
-  prompt versions cited 70/65/55 (the legacy mode) — those were stale
-  references that asked the LLM to do reasoning to reach a floor the code
-  was overriding lower. Now prompt and code agree.
-
-  Domain or seniority concerns can reduce by 5-10 points from the floor,
-  but the floor itself holds. This rule still respects PRINCIPLE 1 (title
-  fits, JD disagrees) — if the JD describes meaningfully different work,
-  the floor doesn't apply. But DOMAIN concerns alone (industry mismatch,
-  sector preference) shouldn't push a strong title-headline match below
-  the applicable floor.
-
-  Example: candidate headline "AI Strategy and Enablement Consultant" vs
-  role "AI Strategy Consultant" shares 3+ content words → floor at 60.
-  Candidate headline "Operations and Strategic Support Leader" vs role
-  "Marketing Operations Manager" shares 1 core-function word ("Operations")
-  → no graduated floor; score on title fit, domain, JD content as usual.
+  (History: a code + prompt "title-floor" used to raise such scores to 55-60 on
+  keyword overlap. A 2026 audit found it was the single biggest source of
+  false-positives — off-target roles surfaced as GOOD purely because their
+  title shared a word with the candidate's. It has been removed in BOTH the
+  prompt and the code. Grade the work, not the title.)
 
 PRINCIPLE 9: TITLE PATTERNS REQUIRING CAREFUL JD READING
   Some title patterns reliably mislead. Read the JD carefully before scoring
@@ -348,14 +322,20 @@ A geographic mismatch is a -15 penalty, NOT an auto-reject:
 Do NOT score below 25 just for geography. The fit signal still matters.
 
 ============================================================
-HANDLING THIN/MISSING JDS
+HANDLING THIN / MISSING / UNUSABLE JDS
 ============================================================
-- If JD is missing entirely: score using title + company + seniority signals.
-  Be moderately optimistic — flag confidence as 0.4-0.5.
-- If JD is < 200 chars: same approach.
-- If JD is generic marketing copy (no responsibilities/requirements):
-  score 35-45 with low confidence.
-- Never score 80+ without substantive JD evidence.
+Do NOT be optimistic about a JD you cannot actually read — a matching title is
+not evidence of fit, and we must not surface a role we can't evaluate.
+- If the JD is MISSING, empty, "(not retrieved)", a login wall, a redirect or
+  routing stub (e.g. JSON like {"widget":"redirect",...}), an empty JavaScript
+  shell, site navigation/footer chrome, or otherwise has NO real
+  responsibilities or requirements to evaluate:
+    → score 0-15 with low confidence. Do NOT score on the title alone.
+      (The pipeline will SKIP it or attempt a re-fetch from a better source.)
+- If the JD is < 200 chars, or is generic marketing copy with no
+  responsibilities/requirements: score 25-40 with LOW confidence (0.2-0.4).
+- Never score above 50 without substantive JD evidence of the actual duties
+  and requirements.
 
 ============================================================
 OFF-TARGET FUNCTION FLAG (v0.3.27) — a GATE, separate from the score
@@ -408,6 +388,17 @@ matching off-target bucket when the core duties clearly fall OUTSIDE this
 candidate's target_functions. When genuinely unsure, use "none": this gate is
 for CLEAR function mismatches only. Always judge against the candidate's stated
 target_functions, not the title's keywords.
+
+============================================================
+SCORE <-> REASONING CONSISTENCY (mandatory)
+============================================================
+Your numeric score MUST agree with the verdict in your reasoning. If your
+reasoning names a significant or disqualifying problem — off-target core
+function, a hard requirement the candidate clearly lacks, the wrong seniority,
+a salary entirely below the candidate's floor, or a missing/unusable JD — then
+the score CANNOT land in the GOOD/STRONG range; lower it to match. Likewise, do
+NOT write glowing reasoning and then emit a low score. A reader comparing your
+score to your reasoning must never find them contradictory.
 
 Respond with strict JSON:
 {
@@ -1033,7 +1024,7 @@ async def stage2_triage(
             role_title=role.job_title,
             candidate_headline=profile.headline,
             candidate_target_functions=profile.target_functions,
-            mode="graduated",
+            mode="off",  # v0.3.35: title-floor DISABLED (Principle 8) — a title never floors a score
         )
         if tag is not None:
             role.stage2_score = new_score
@@ -1044,8 +1035,8 @@ async def stage2_triage(
             floors_skipped += 1
 
     print(
-        f"[stage2] floor: applied={floors_applied}, "
-        f"skipped={floors_skipped} (mode=graduated)"
+        f"[stage2] title-floor DISABLED (mode=off, Principle 8); "
+        f"floored={floors_applied} (expected 0)"
     )
     return scored
 

@@ -58,6 +58,9 @@ export interface CandidateProfile {
   domain_expertise: string[]
   soft_skills: string[]
   salary_minimum?: number | null
+  // v0.3.35 (Rule 11): clearances/licenses/certs the candidate HOLDS, set in
+  // the setup wizard. null = unanswered (credential gate stays off).
+  credentials?: string[] | null
   work_arrangements: string[]
   acceptable_locations: string[]
   acceptable_location_radii?: number[]

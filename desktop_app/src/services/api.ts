@@ -64,6 +64,7 @@ export interface BuildProfileInput {
   files: File[]
   extraContext?: string
   salaryMinimum?: number
+  credentials?: string[]
   workArrangements?: string[]
   acceptableLocations?: string[]
   acceptableLocationRadii?: number[]
@@ -90,6 +91,9 @@ export async function startProfileBuild(input: BuildProfileInput): Promise<Build
   for (const f of input.files) fd.append('files', f)
   fd.append('extra_context', input.extraContext || '')
   fd.append('salary_minimum', String(input.salaryMinimum || 0))
+  // Only send credentials when provided so other callers leave the gate OFF
+  // (the backend treats a missing field as "unanswered").
+  if (input.credentials !== undefined) fd.append('credentials', JSON.stringify(input.credentials))
   fd.append('work_arrangements', JSON.stringify(input.workArrangements || []))
   fd.append('acceptable_locations', JSON.stringify(input.acceptableLocations || []))
   fd.append('acceptable_location_radii', JSON.stringify(input.acceptableLocationRadii || []))

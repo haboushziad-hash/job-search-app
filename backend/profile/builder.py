@@ -1507,6 +1507,16 @@ async def build_profile_from_resumes(
         except Exception:
             pass
 
+    # v0.3.35 (Rule 11): the credential gate keys on what the candidate HOLDS —
+    # a user-stated fact, NOT something the LLM should infer. Set it
+    # deterministically from the wizard answer. Key absent => unanswered =>
+    # profile.credentials stays None => the gate stays OFF for this profile.
+    if "credentials" in user_preferences:
+        try:
+            profile.credentials = list(user_preferences.get("credentials") or [])
+        except Exception:
+            pass
+
     return profile
 
 
