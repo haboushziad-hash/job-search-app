@@ -431,6 +431,23 @@ WORKDAY_TENANTS: list[tuple[str, str, str]] = _merge_tenants(
     HARDCODED_WORKDAY_TENANTS,
     _dynamic_tenants,
 )
+# Speed cap (opt-in via WORKDAY_TENANT_CAP). Querying all ~680 tenants triggers a
+# storm of HTTP 429s that drags the scrape stage out for many minutes for little
+# gain (rate-limited tenants return nothing anyway). When the env var is set we
+# keep the curated hardcoded tenants first (they sort to the front of the merge)
+# plus a slice of dynamic ones. Unset / 0 = full list (desktop default unchanged).
+import os as _os_wd
+# Parse defensively: a hand-set env var like "150.0", "1e3", or a fat-finger
+# "150x" must NOT raise at module import (that would abort the whole scraper /
+# app startup). Any unparseable or negative value falls back to 0 = full list.
+try:
+    _WD_CAP = int(float((_os_wd.environ.get("WORKDAY_TENANT_CAP") or "0").strip() or "0"))
+except (ValueError, TypeError):
+    _WD_CAP = 0
+if _WD_CAP < 0:
+    _WD_CAP = 0
+if _WD_CAP > 0 and len(WORKDAY_TENANTS) > _WD_CAP:
+    WORKDAY_TENANTS = WORKDAY_TENANTS[:_WD_CAP]
 
 # v0.3.12: emit a one-line summary at module import so we can verify the
 # tenant loader is actually reading JSON files in production. If you see
@@ -978,19 +995,37 @@ class WorkdayScraper(BaseScraper):
         if cxs_jd:
             return cxs_jd
 
-        # Fallback: public HTML page (often a JS shell, but try anyway)
+        # Fallback: public HTML page (often a JS shell, but try anyway).
+        # v0.4.0: stub-guard the result — Workday answers non-browser clients
+        # with a redirect-JSON artifact; storing that as a "JD" let roles get
+        # scored blind (FIX-21 gate only caught EMPTY bodies). Return "" so the
+        # runner's gate drops the role instead.
         try:
+            from backend.scraper.jd_stub import stub_reason
             response = await self.client.get(role.job_url)
-            return _strip_html(response.text)
+            text = _strip_html(response.text)
+            return "" if stub_reason(text) else text
         except Exception:
             return ""
 
-    async def _fetch_jd_via_cxs(self, job_url: str) -> str:
+    _LOCALE_SEG_RE = re.compile(r"^[a-z]{2}-[A-Z]{2}$")
+
+    async def _fetch_jd_via_cxs(self, job_url: str, _hop: int = 0) -> str:
         """Fetch JD from Workday's CXS detail endpoint.
 
         URL transformation:
-          input:  https://capitalone.wd12.myworkdayjobs.com/job/USA-VA-Mclean/Engineer_R12345
-          output: https://capitalone.wd12.myworkdayjobs.com/wday/cxs/capitalone/Capital_One/job/USA-VA-Mclean/Engineer_R12345
+          input:  https://racetrac.wd5.myworkdayjobs.com/en-US/SSC/job/Title_R10006018
+          output: https://racetrac.wd5.myworkdayjobs.com/wday/cxs/racetrac/SSC/job/Title_R10006018
+
+        v0.4.0 rewrite: the board is derived from the URL path itself
+        (/{locale?}/{board}/job/...) instead of requiring the host to be in
+        WORKDAY_TENANTS — GoogleJobs surfaces arbitrary Workday tenants, and
+        the tenant-list dependency made CXS silently skip all of them (the
+        generic fallback then stored a redirect-JSON stub that got scored
+        blind; live re-probe recovered 7-9k-char JDs for those same roles).
+        Also normalizes trailing /apply, strips locale segments, and follows
+        Workday's {"widget":"redirect","url":...} answer one hop — it contains
+        the canonical posting path.
 
         Returns plain-text JD or "" on any failure (caller falls back).
         """
@@ -998,27 +1033,29 @@ class WorkdayScraper(BaseScraper):
             from urllib.parse import urlparse
             parsed = urlparse(job_url)
             host = parsed.netloc
-            path = parsed.path
-            if not host or not path:
+            segs = [s for s in parsed.path.split("/") if s]
+            if segs and segs[-1].lower() == "apply":
+                segs = segs[:-1]
+            if segs and self._LOCALE_SEG_RE.match(segs[0]):
+                segs = segs[1:]
+            if not host or not segs:
                 return ""
 
-            # Find matching tenant config to get the board name
             board: Optional[str] = None
-            for _name, base_url, b in WORKDAY_TENANTS:
-                base_host = urlparse(base_url).netloc
-                if base_host == host:
-                    board = b
-                    break
-            if not board:
-                return ""
-
-            # Some Workday URLs embed the board ("/Capital_One/job/..."); strip
-            # it so external_path starts with "/job/..." for the CXS endpoint.
-            external_path = path
-            for prefix in (f"/{board}/", f"/en-US/{board}/"):
-                if path.startswith(prefix):
-                    external_path = path[len(prefix) - 1:]  # keep leading slash
-                    break
+            if segs[0] != "job":
+                # Board embedded in the URL: /{board}/job/... (the common shape)
+                if "job" in segs[1:]:
+                    board = segs[0]
+                    external_path = "/" + "/".join(segs[1:])
+            if board is None:
+                # Board-less URL (/job/... directly): fall back to tenant config
+                for _name, base_url, b in WORKDAY_TENANTS:
+                    if urlparse(base_url).netloc == host:
+                        board = b
+                        break
+                if not board:
+                    return ""
+                external_path = "/" + "/".join(segs)
 
             tenant = self._tenant_from_url(f"https://{host}")
             cxs_url = f"https://{host}/wday/cxs/{tenant}/{board}{external_path}"
@@ -1036,10 +1073,17 @@ class WorkdayScraper(BaseScraper):
                 data = resp.json()
             except Exception:
                 return ""
-
-            # Workday CXS detail response: { "jobPostingInfo": { "jobDescription": "<html>...</html>" } }
             if not isinstance(data, dict):
                 return ""
+
+            # Workday may answer with a redirect artifact pointing at the
+            # canonical posting path — follow it once.
+            if data.get("widget") == "redirect" and data.get("url") and _hop == 0:
+                return await self._fetch_jd_via_cxs(
+                    f"https://{host}{data['url']}", _hop=1
+                )
+
+            # CXS detail response: { "jobPostingInfo": { "jobDescription": "<html>...</html>" } }
             jd_info = data.get("jobPostingInfo") or {}
             jd_html = jd_info.get("jobDescription") or ""
             if not jd_html:

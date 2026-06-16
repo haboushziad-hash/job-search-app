@@ -732,6 +732,7 @@ def apply_hard_filters(
     hard_salary_floor: bool = False,
     per_company_cap: int = 0,  # 0 = disabled, all roles enter scoring
     log: bool = True,
+    counts_out: Optional[dict] = None,
 ) -> list[Role]:
     """Run all hard filters in sequence. Returns surviving roles + a brief log.
 
@@ -861,5 +862,11 @@ def apply_hard_filters(
         if title_function_examples:
             print("[hard_filters] title_function drops (sample): " +
                   " | ".join(title_function_examples))
+
+    # Surface the per-reason breakdown to callers (e.g. the live climb feed),
+    # not just stdout. Non-breaking: callers that don't pass counts_out ignore it.
+    if counts_out is not None:
+        counts_out.clear()
+        counts_out.update(counts)
 
     return surviving

@@ -89,11 +89,19 @@ async def filter_roles_by_embedding(
 
     client = client or get_llm_client()
 
-    # Embed profile (one call)
-    profile_emb_list = await client.embed(
-        model=config.EMBEDDING_MODEL,
-        texts=[_profile_to_text(profile)],
-    )
+    # Embed profile (one call). W70: wrap it — an unguarded raise here (429 /
+    # network) would abort the whole run AFTER the full scrape+liveness, the same
+    # expensive-to-lose failure the batch loop below already fails open on. Treat
+    # any embedding error as "skip the semantic pre-filter" and pass roles through.
+    try:
+        profile_emb_list = await client.embed(
+            model=config.EMBEDDING_MODEL,
+            texts=[_profile_to_text(profile)],
+        )
+    except Exception as e:
+        print(f"[embedding_filter] profile embed failed ({e}); failing open, "
+              f"passing {len(roles)} roles unranked to Stage 1")
+        return roles[:max_roles] if max_roles else roles
     if not profile_emb_list:
         return roles  # fail-open: skip filter if embedding fails
     profile_emb = np.array(profile_emb_list[0], dtype=np.float32)
@@ -138,17 +146,36 @@ async def filter_roles_by_embedding(
                 if attempt < 2:
                     await asyncio.sleep(65 * (attempt + 1))
         if last_err is not None or emb is None:
-            # All 3 attempts hit 429. Surface the error so the orchestrator
-            # fails the run cleanly rather than continuing with partial
-            # embeddings (which would silently break similarity ranking).
-            raise last_err if last_err else RuntimeError(
-                "embedding_filter: batch returned no embeddings"
+            # All 3 attempts hit 429 (sustained regional batchEmbed throttle).
+            # FAIL-OPEN rather than abort: the run has already paid for the
+            # full scrape + liveness + JD-fetch by this point, and the two
+            # other failure paths in this function (profile-embed failure
+            # L98, length-mismatch L151) already accept "unranked but
+            # complete" as a degraded mode. Re-raising here was the lone
+            # outlier that threw away 10-25 min of completed work on a
+            # transient throttle. Pass the (capped) pool straight to Stage 1.
+            print(
+                f"[embedding_filter] batch {batch_idx + 1}/{n_batches} exhausted "
+                f"3x429 retries ({last_err}); failing OPEN, passing "
+                f"{len(roles)} roles unranked to Stage 1"
             )
+            return roles[:max_roles] if max_roles else roles
         all_role_embeddings.extend(emb)
 
     if len(all_role_embeddings) != len(roles):
-        # Embedding API failure — fail-open and pass all roles through
-        return roles
+        # Embedding API failure — fail-open, but CAP like the other fail-open
+        # paths (L162). W71: previously returned the FULL uncapped pool here;
+        # on a Workday-scale scrape a BatchEmbed desync could flood Stage 1/2
+        # with an unfiltered pool, fattening the qualifying tail (the suspected
+        # "2x" amplifier). Cap to max_roles so a transient failure can't bypass
+        # the pre-filter budget. Loud WARN so a big run is diagnosable after.
+        print(
+            f"[embedding_filter] FAIL-OPEN (length mismatch: "
+            f"{len(all_role_embeddings)} embeddings != {len(roles)} roles); "
+            f"passing {min(len(roles), max_roles) if max_roles else len(roles)} "
+            f"roles UNRANKED to Stage 1 (capped at max_roles={max_roles})"
+        )
+        return roles[:max_roles] if max_roles else roles
 
     role_matrix = np.array(all_role_embeddings, dtype=np.float32)
     similarities = _cosine_similarity(profile_emb, role_matrix)
@@ -173,4 +200,16 @@ async def filter_roles_by_embedding(
         kept_indices = kept_indices[:max_roles]
     kept_indices.sort()  # restore original ordering
 
-    return [roles[i] for i in kept_indices]
+    result = [roles[i] for i in kept_indices]
+    # W70: if NOTHING cleared min_similarity, that's almost always a degenerate
+    # profile embedding (e.g. all-zeros numerical instability) zeroing every
+    # similarity, not a genuinely irrelevant pool — and silently returning []
+    # produces a 0-qualifying run that looks like a legitimate empty result.
+    # Fail OPEN like every other degraded path in this file (429, length
+    # mismatch): pass the (capped) pool through unranked rather than scoring none.
+    if not result:
+        print("[embedding_filter] zero roles cleared the semantic pre-filter "
+              "(likely a degenerate profile embedding); failing OPEN, passing "
+              f"{len(roles)} roles unranked to Stage 1")
+        return roles[:max_roles] if max_roles else roles
+    return result

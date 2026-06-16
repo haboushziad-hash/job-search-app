@@ -272,7 +272,10 @@ _OFF_CATEGORIES = {
     },
     "sales/BD": {
         "title": (r"\b(account executive|business development|\bbdr\b|\bsdr\b|partnerships?|partner solutions|"
-                  r"revenue (?:operations|strategy|technology)|field cto|pre[\-\s]?sales|sales engineer|solutions consultant)\b"),
+                  r"revenue (?:operations|strategy|technology)|field cto|pre[\-\s]?sales|sales engineer|solutions consultant|"
+                  # W71q (Opus-450 dial-in): clearly-off-target sales/account titles that leaked into GOOD
+                  r"customer engagement manager|client account (?:lead|manager|director)|account lead|"
+                  r"gtm enablement|go[\-\s]?to[\-\s]?market enablement)\b"),
         "target": ("sales", "account executive", "account manager", "business development",
                    "bdr", "sdr", "gtm", "go-to-market", "revenue", "quota", "partnership"),
     },
@@ -281,12 +284,41 @@ _OFF_CATEGORIES = {
         "target": ("recruit", "talent acquisition", "sourcing", "staffing", "human resources"),
     },
     "marketing": {
-        "title": r"\b(market research|content marketing|brand manager|demand generation|seo specialist|social media manager)\b",
+        "title": r"\b(market research|content marketing|brand manager|demand generation|seo specialist|social media manager|marketing operations)\b",
         "target": ("marketing", "brand", "seo", "demand gen", "growth marketing", "content strategy"),
     },
     "finance/acct": {
         "title": r"\b(accountant|controller|auditor|financial analyst|bookkeeper|finance & strategy)\b",
         "target": ("finance", "accounting", "accountant", "audit", "controller", "fp&a", "financial"),
+    },
+    # v0.3.42 (Opus-validation dial-in 2026-06-15): off-target FUNCTIONS that
+    # consistently leaked into GOOD on Ziad's runs. High-precision + profile-gated;
+    # validated against 413 real roles (0 false-rejects on Opus STRONG/GOOD).
+    # Knowledge-management was tried and DROPPED — it false-flagged a "Knowledge
+    # Mgmt + AI Enablement" role Opus rated GOOD.
+    "customer success": {
+        # W71q (Opus-450 dial-in): + CSM variants that leaked into GOOD (customer
+        # advocate, AI-vendor "success/deployment/agent strategy" CSM titles).
+        "title": (r"\b(customer success|customer education|client success|customer experience manager|"
+                  r"customer advocate|customer strategy director|agent strategy manager|"
+                  r"ai success manager|ai deployment manager)\b"),
+        "target": ("customer success", "csm", "customer experience", "account management", "client success", "customer advocate"),
+    },
+    "IT support/ops": {
+        "title": (r"\b(service ?desk|help ?desk|desktop support|deskside support|it support|"
+                  r"systems? administrator|sys ?admin|power platform (?:operations|administrator|admin)|"
+                  r"sharepoint administrator)\b"),
+        "target": ("service desk", "help desk", "it support", "system administration", "sysadmin", "power platform", "sharepoint admin", "infrastructure"),
+    },
+    "architecture": {
+        # W71q: match "architecture" too (was missing GitLab "Enterprise Architecture").
+        "title": r"\b(enterprise architect(?:ure)?|solutions? architect(?:ure)?|technical architect|cloud architect|data architect)\b",
+        "target": ("architect", "architecture", "solution architect"),
+    },
+    # W71q (Opus-450 dial-in): community/devrel management leaked into GOOD.
+    "community": {
+        "title": r"\b(community manager|community management|online community)\b",
+        "target": ("community management", "community manager", "developer relations", "devrel"),
     },
 }
 _OFF_CAT_RE = {k: re.compile(v["title"], re.IGNORECASE) for k, v in _OFF_CATEGORIES.items()}

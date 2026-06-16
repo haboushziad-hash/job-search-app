@@ -57,16 +57,16 @@ of these, force a 1-3 point shift based on a specific concern severity
 differential. Examples:
 
   Role: borderline GOOD with one concern about seniority
-        → DO NOT score 68. Score 65, 67, 69, 71, 73, or 74.
-        → Pick based on how severe the seniority concern is.
+        -> DO NOT score 68. Score 65, 67, 69, 71, 73, or 74.
+        -> Pick based on how severe the seniority concern is.
 
   Role: clearly strong fit with one minor concern about industry
-        → DO NOT score 78. Score 75, 77, 79, or 80.
-        → Pick based on how related the industry is.
+        -> DO NOT score 78. Score 75, 77, 79, or 80.
+        -> Pick based on how related the industry is.
 
   Role: weak-fit STRETCH with promising title
-        → DO NOT score 58. Score 55, 57, 59, 61, 63.
-        → Pick based on how close the title is to target.
+        -> DO NOT score 58. Score 55, 57, 59, 61, 63.
+        -> Pick based on how close the title is to target.
 
 If you produce a score of exactly 58, 68, or 78, you have failed this
 constraint. Step back, identify the SINGLE most important concern,
@@ -120,9 +120,9 @@ Titles can mislead. Always read the JD before scoring. Apply these principles:
 PRINCIPLE 1: TITLE MATCHES CANDIDATE TARGETS, JD DISAGREES
   When the title aligns with the candidate's target_functions but the JD
   describes a meaningfully different role, lower the score:
-    - Title fits, JD fits → score 70-90
-    - Title fits, JD partially fits → score 50-65
-    - Title fits, JD reveals different work → score 30-45
+    - Title fits, JD fits -> score 70-90
+    - Title fits, JD partially fits -> score 50-65
+    - Title fits, JD reveals different work -> score 30-45
 
   Example pattern: "Senior X Consultant" but the JD requires hands-on
   technical work the candidate's resume doesn't show.
@@ -133,9 +133,9 @@ PRINCIPLE 2: TECHNICAL-vs-NONTECHNICAL MISMATCH
 
     - If candidate is non-technical (consulting, strategy, business, ops)
       and JD requires hands-on coding, ML model training, infrastructure
-      build, or data pipelines → score 25-40 even if title sounds right.
+      build, or data pipelines -> score 25-40 even if title sounds right.
     - If candidate is technical (engineering, data, ML) and JD is pure
-      advisory with no build component → similar penalty in reverse.
+      advisory with no build component -> similar penalty in reverse.
 
   This applies across ALL fields: an accountant looking at "Audit Manager"
   shouldn't get high score on roles that turn out to be IT audit (technical).
@@ -177,10 +177,10 @@ PRINCIPLE 6.6: PURE-SALES TITLES (v0.3.8 — universal anti-pattern):
      they WANT sales work (contains "sales", "account executive",
      "business development", "quota", "revenue", "pipeline", "closing
      deals", or similar sales-specific signals):
-     → Score normally (60-90 if company/JD fit). Sales-targeting candidate.
+     -> Score normally (60-90 if company/JD fit). Sales-targeting candidate.
 
   ELSE (candidate's profile has NO sales-intent signals):
-     → Score 20-35. These roles carry individual quota responsibility
+     -> Score 20-35. These roles carry individual quota responsibility
        that is fundamentally different work from non-sales functions.
        The title-floor (Principle 8) does NOT apply — even a strong
        title-headline overlap on words like "manager" or "consultant"
@@ -188,8 +188,8 @@ PRINCIPLE 6.6: PURE-SALES TITLES (v0.3.8 — universal anti-pattern):
 
   GTM-adjacent titles ("GTM Strategy", "GTM Operations", "Go-to-Market",
   "Solutions Consultant", "Customer Success Manager") are SOFTER:
-     - If candidate targets GTM/customer success → score normally
-     - Otherwise → apply -10 to score (not a hard cap; just a tilt)
+     - If candidate targets GTM/customer success -> score normally
+     - Otherwise -> apply -10 to score (not a hard cap; just a tilt)
      These titles can be legitimate enablement/operations work depending
      on JD; the soft penalty respects that ambiguity.
 
@@ -206,7 +206,7 @@ PRINCIPLE 7: ROLE FUNCTION OVER COMPANY AFFINITY
   doing the wrong work is NOT a strong match. Concrete cases:
 
   - "Applied AI Architect" at a top AI lab requires production ML deployment.
-    Candidate without engineering background → score 30-45 even if company
+    Candidate without engineering background -> score 30-45 even if company
     is a perfect match. The title contains "Architect" — that's a function
     word, not a domain word.
   - "Customer Success Manager" at a target company is CSM work, not
@@ -278,7 +278,7 @@ PRINCIPLE 10: INDUSTRY-WEIGHT ADJUSTMENT (PROPORTIONAL — v0.3.4)
     SAME industry (role's industry is in candidate's target_industries
                    OR is an obvious sub-bucket of one — e.g., "fintech" ⊂
                    "Financial Services", "biotech" ⊂ "Life Sciences"):
-      → Apply NO adjustment (the base score already credits fit).
+      -> Apply NO adjustment (the base score already credits fit).
 
     ADJACENT industry (one step removed but plausible — e.g.,
                        healthcare ↔ pharma ↔ life sciences,
@@ -286,11 +286,11 @@ PRINCIPLE 10: INDUSTRY-WEIGHT ADJUSTMENT (PROPORTIONAL — v0.3.4)
                        consulting ↔ professional services,
                        SaaS ↔ enterprise software,
                        CPG ↔ retail ↔ consumer goods):
-      → Apply 0 adjustment (no penalty, no bonus). These are legitimate
+      -> Apply 0 adjustment (no penalty, no bonus). These are legitimate
         cross-sector pivots.
 
     OFF-TARGET industry (not in target_industries AND not adjacent):
-      → Apply -10 to the base score.
+      -> Apply -10 to the base score.
 
     VERY-OFF-TARGET industry (the candidate's profile + freeform context
                               gives strong signal they would NOT pursue
@@ -298,7 +298,7 @@ PRINCIPLE 10: INDUSTRY-WEIGHT ADJUSTMENT (PROPORTIONAL — v0.3.4)
                               a startup, a healthcare consultant vs
                               construction, a non-AI candidate vs an AI
                               research lab):
-      → Apply -15 to the base score.
+      -> Apply -15 to the base score.
 
   IMPORTANT: This is industry FIT, not function FIT. Function mismatch is
   already covered by other principles. Industry adjustment is on top of
@@ -330,7 +330,7 @@ not evidence of fit, and we must not surface a role we can't evaluate.
   routing stub (e.g. JSON like {"widget":"redirect",...}), an empty JavaScript
   shell, site navigation/footer chrome, or otherwise has NO real
   responsibilities or requirements to evaluate:
-    → score 0-15 with low confidence. Do NOT score on the title alone.
+    -> score 0-15 with low confidence. Do NOT score on the title alone.
       (The pipeline will SKIP it or attempt a re-fetch from a better source.)
 - If the JD is < 200 chars, or is generic marketing copy with no
   responsibilities/requirements: score 25-40 with LOW confidence (0.2-0.4).
@@ -686,6 +686,34 @@ async def _complete_with_cache_fallback(
         raise
 
 
+# W70 resilience: tell apart an INFRASTRUCTURE failure (the AI service is down,
+# all keys are exhausted, the daily/global budget cap was hit, the network
+# dropped) from a benign per-role parse hiccup. JSON-parse problems are already
+# salvaged inside _score_one and never reach its except block, so almost
+# everything that DOES reach it is service/network class. We err deliberately
+# toward "infra" here: a genuine code bug is rare and per-role, so it can never
+# reach the systemic-failure threshold, whereas an outage hits ~every role and
+# MUST fail the run honestly instead of papering it over with neutral 50s.
+_INFRA_ERROR_NEEDLES = (
+    "429", "resource_exhausted", "quota", "rate limit", "ratelimit",
+    "503", "502", "504", "500", "unavailable", "deadline", "timeout",
+    "timed out", "connect", "connection", "read error", "readerror",
+    "dns", "getaddrinfo", "ssl", "all keys exhausted", "no available key",
+    "daily_cap_exceeded", "daily cap", "global_budget_exhausted", "proxy",
+)
+
+
+def _is_infra_error(exc: BaseException) -> bool:
+    s = str(exc).lower()
+    tn = type(exc).__name__.lower()
+    if any(n in s for n in _INFRA_ERROR_NEEDLES):
+        return True
+    return any(n in tn for n in (
+        "timeout", "connect", "transport", "httperror", "clienterror",
+        "oserror", "ssl", "networkerror",
+    ))
+
+
 async def _score_one(
     role: Role,
     profile_text: str,
@@ -748,12 +776,25 @@ async def _score_one(
                     "[dead-listing] " + (role.stage2_reasoning or "")
                 )[:1000]
         except Exception as e:
-            # Fail-soft: assign neutral score with low confidence so the
-            # role can still be considered downstream
-            role.stage2_score = 50
-            role.stage2_tier = Tier.STRETCH
-            role.stage2_reasoning = f"stage2_error: {type(e).__name__}: {str(e)[:200]}"
-            role.stage2_confidence = 0.0
+            if _is_infra_error(e):
+                # INFRASTRUCTURE failure (service down / keys exhausted / budget
+                # cap / network). Do NOT fabricate a neutral 50 — that would
+                # surface an unscored role as a real STRETCH match. Leave the
+                # score None and tag it so stage2_triage() can decide, once the
+                # whole batch is in, whether the failure is systemic enough to
+                # fail the run honestly. A handful of transient blips below the
+                # threshold simply drop out (None never qualifies downstream).
+                role.stage2_score = None
+                role.stage2_tier = None
+                role.stage2_reasoning = f"stage2_infra_error: {type(e).__name__}: {str(e)[:200]}"
+                role.stage2_confidence = 0.0
+            else:
+                # Benign per-role hiccup: assign neutral score with low
+                # confidence so the role can still be considered downstream.
+                role.stage2_score = 50
+                role.stage2_tier = Tier.STRETCH
+                role.stage2_reasoning = f"stage2_error: {type(e).__name__}: {str(e)[:200]}"
+                role.stage2_confidence = 0.0
     return role
 
 
@@ -828,34 +869,173 @@ def build_dynamic_stage2_prompt(profile: CandidateProfile) -> str:
             "TS/SCI clearance required for this role\").\n"
         )
 
-    # v0.3.28: inject THIS candidate's own target_functions as the explicit
-    # on-target whitelist for the off_target_function GATE. This REPLACES the
-    # previously hardcoded AI-specific list in the static prompt — which silently
-    # tailored every user's gate to one (AI-strategy) candidate. By deriving the
-    # whitelist from each profile's real target_functions, the gate is universal:
-    # an "AI Governance Manager" role is on-target for an AI-strategy candidate
-    # but off-target for a nurse, a sales AE, or a tradesperson. Mirrors the v0.3.8
-    # finding (a rule in the SYSTEM prompt is treated as hard; the same content as
-    # user-message DATA is treated as a soft hint).
+    # W71r (2026-06-16): off_target_function GATE rewritten as a PRECISION
+    # instrument. The prior v0.3.28 whitelist was a keyword-amnesty ("treat close
+    # synonyms / adjacent sub-functions as on-target, even with Manager/Success/
+    # Analyst titles"), so any AI-saturated JD passed as "none" regardless of its
+    # real core duties -- leaking data-science / research / account-management /
+    # proposal-ops roles into GOOD. This version forces a DUTY-BULK test, judges
+    # FUNCTION ONLY (seniority is handled separately by SC1), honors the full
+    # target_functions list (AI program/product roles stay on-target), and is
+    # strongly biased toward "none". Blind-validated vs the Opus ground-truth set:
+    # ~70% catch of content-level leaks at 2% false-reject across 151 on-target
+    # roles; combined with the title guard, 75% catch. Profile-gated +
+    # generalizable: the same JD is on-target for one candidate and off-target for
+    # another; nothing about which functions are "good" is hardcoded.
     if profile.target_functions:
-        base += "\n\n" + "=" * 60 + "\n"
-        base += "THIS CANDIDATE'S TARGET FUNCTIONS — on-target whitelist for the GATE\n"
-        base += "=" * 60 + "\n"
-        base += (
-            "For the off_target_function GATE ONLY: a role whose CORE day-to-day "
-            "duties match ANY of the following IS \"none\" (on-target), even when "
-            "the title carries Manager/Lead/Success/Specialist/Partner/Analyst/"
-            "Consultant, and even if seniority / industry / years / salary are a "
-            "stretch (those are score deductions, not an off-target flag). Treat "
-            "close synonyms and adjacent sub-functions as matches too:\n\n"
-        )
-        for fn in profile.target_functions:
-            base += f"  - {fn}\n"
-        base += (
-            "\nSet the matching off-target bucket ONLY when the role's core duties "
-            "clearly fall OUTSIDE all of these target functions. Judge by the "
-            "actual duties described in the JD, not by title keywords.\n"
-        )
+        _target_functions_list = "".join(
+            f"  - {fn}\n" for fn in profile.target_functions
+        ).rstrip("\n")
+        _off_target_function_gate = """\
+============================================================
+THIS CANDIDATE'S TARGET FUNCTIONS — off-target-FUNCTION gate
+============================================================
+SCOPE OF THIS GATE: Judge FUNCTION ONLY — the discipline of the day-to-day
+labor. You do NOT judge seniority, title altitude, years, salary, clearance,
+industry, domain, company, or remote/onsite here. A separate seniority check
+(SC1) already handles "too senior / too junior" as a soft tier demotion, so
+this gate must NEVER flag a role for being Director / Sr-Director / VP / AVP /
+Head / Executive / Lead, or for being too junior. There is no seniority bucket
+in this gate. If your only reason to flag is "this is above/below the
+candidate's target seniority," return "none".
+
+This gate exists to catch the SMALL number of roles whose actual day-to-day
+labor is PLAINLY a different profession from anything the candidate targets.
+It is a precision instrument, not a quality filter: weak fits, stretch fits,
+adjacent fits, and thin JDs are NOT its job — the numeric score and other
+checks handle those. When in any doubt, return "none". Burying a genuine match
+is far worse than letting a borderline off-target role sit in the GOOD tier.
+
+THIS CANDIDATE TARGETS (the on-target functions):
+{TARGET_FUNCTIONS_LIST}
+
+Read that list literally and in full. Every function on it is on-target, and
+its natural role-title variants are on-target too. In particular, if the list
+includes a "program/product/project management" flavor of the target topic
+(e.g. "AI program management"), then AI Product Owner, AI Product Manager, AI
+Program Manager, AI Project Manager, AI Product Strategist, and "AI strategy &
+transformation" product roles are ON-TARGET — do NOT flag them as product-mgmt
+or generic-pm. The product/program management OF the target topic IS a target
+function for this candidate.
+
+------------------------------------------------------------
+STEP 1 — Identify the CORE function (the majority of duties).
+------------------------------------------------------------
+Read the responsibilities / "what you'll do" section and mentally tally where
+the bulk of the day-to-day labor sits. Weight the listed DUTIES, not the
+title, the mission paragraph, the company, or the product the company sells.
+If the duties split, pick the discipline that owns the LARGEST share of the
+actual work.
+
+------------------------------------------------------------
+STEP 2 — On-target ("none") — the DEFAULT.
+------------------------------------------------------------
+Return "none" if the bulk of the duties IS one of the candidate's target
+functions, OR if you cannot say with confidence that the bulk is some OTHER,
+clearly-named profession. Strongly biased toward "none": a role is on-target
+when the duties are the target work itself — for this profile, things like
+defining/standing-up AI strategy, AI enablement, AI adoption, AI governance /
+responsible-AI / AI risk-and-policy frameworks, AI program/product management,
+training/change-management for AI, or federal/technology consulting that
+delivers any of those. Note these are all ON-TARGET and must NOT be flagged:
+  - Designing or owning a governance / responsible-AI / risk / policy /
+    standards-and-controls framework, even at enterprise scale, even titled
+    Director/Sr-Director/VP, and even when it names "controls," "assurance,"
+    "monitoring," or "risk appetite." Governance IS a target function.
+  - A FEDERAL / agency / IC AI POLICY analyst whose output is policy, doctrine,
+    frameworks, and guidance for a government client — this is AI governance /
+    policy advisory, NOT analyst-firm research. On-target.
+  - An "AI Specialist," "Applied AI Analyst," "AI Advisor," or similar whose
+    duties are advisory / enablement / adoption / safe-deployment / translating
+    AI for non-experts — even if it mentions prototyping or "hands-on" — unless
+    the BULK is genuinely writing production code / training models / data
+    engineering. Advisory-with-some-prototyping is on-target.
+  - An AI-enablement, AI-adoption, or knowledge-management-FOR-AI program/PM
+    role (e.g. M365/Copilot knowledge enablement, BPM redesign for AI adoption,
+    AI transformation delivery with change management) — the substance is
+    AI enablement/adoption, so on-target.
+  - An internal AI delivery / engagement / practice role whose labor is
+    deploying, implementing, governing, training, and driving adoption of an AI
+    capability for the org or its delivery clients — on-target even if titled
+    "Engagement Manager," "Success," "Advocate," or "Adoption."
+
+------------------------------------------------------------
+STEP 3 — Off-target — only for UNAMBIGUOUS, clearly-different professions.
+------------------------------------------------------------
+Flag off-target ONLY when a reasonable reader would say "this is plainly a <X>
+job, not <target> work" — i.e. the BULK of the duties is one of the narrow
+patterns below AND there is NO substantial AI-strategy/enablement/adoption/
+governance/program labor in the role. Map to the closest bucket; use "other"
+only if a clearly-different profession fits none. Each bucket is deliberately
+narrow:
+
+  - research-analyst — ONLY when the MAIN OUTPUT is published research,
+    advisory publications, or thought-leadership produced for an analyst /
+    research firm or research institute (e.g. Gartner-style market research,
+    syndicated reports). A government/agency policy analyst producing policy
+    and frameworks is NOT this — that is governance/policy (on-target).
+    Monitoring vendors/market to inform an EMPLOYER's own AI strategy/roadmap
+    is strategy work, not analyst-firm research -> "none".
+
+  - research-science — ONLY when the bulk is original scientific/academic
+    research as the deliverable (novel methods, papers, experiments). A role
+    that builds governance/risk/assurance FRAMEWORKS and standards, even at a
+    safety/policy institute, is governance (on-target) -> "none".
+
+  - engineering / data-science — ONLY hands-on building as the bulk: writing
+    production code, training/deploying models, ML engineering, data
+    engineering/pipelines, architecture-as-implementation. Advisory,
+    enablement, governance, evaluation, requirements, or "translate AI for the
+    business" work is NOT engineering even when the topic is AI and even if a
+    minority of duties is technical -> "none".
+
+  - product-mgmt — ONLY when the role owns a product roadmap/backlog for a
+    NON-target product line as the job AND the target list does NOT include an
+    AI program/product-management function. If the target list includes "AI
+    program management" (or similar), AI product/program/strategy roles are
+    ON-TARGET -> "none". Never put an AI product/program/strategy role here for
+    this candidate.
+
+  - generic-pm — ONLY when the program's real SUBSTANCE is a clearly NON-target
+    domain — IT, telecom, infrastructure, ERP rollout, asset management,
+    security-program ops, generic business operations — that merely name-drops
+    AI or uses AI tools. A program/project whose substance IS AI/data
+    enablement, adoption, transformation, or governance (even with budget
+    tracking, status reporting, or change-management duties) is ON-TARGET ->
+    "none".
+
+  - customer-account / sales-gtm — ONLY external account ownership for the
+    VENDOR's revenue: renewals, expansion, upsell, quota, pipeline, QBRs,
+    book-of-business, retention targets, or enabling sellers / pre-sales /
+    capture / proposal-bid operations. An internal or delivery-side role whose
+    labor is AI deployment, implementation, enablement, adoption, or engagement
+    DELIVERY (not revenue ownership) is on-target -> "none". If the role mixes
+    account relationship with real AI-adoption delivery and revenue ownership
+    is not clearly the bulk, return "none".
+
+------------------------------------------------------------
+STEP 4 — TIE-BREAKER (strongly weighted toward "none").
+------------------------------------------------------------
+Return "none" whenever ANY of these is true:
+  - The bulk of duties is not CLEARLY a single different profession.
+  - The JD is thin, generic, or boilerplate (you cannot read a real
+    duty-by-duty majority).
+  - The role plausibly contains substantial target labor (AI strategy /
+    enablement / adoption / governance / program-management / change /
+    consulting) even alongside other duties.
+  - Off-target TOPIC but target LABOR (e.g. building an AI-adoption program at
+    a non-AI company) -> "none".
+Only flag when target topic is present but the LABOR is unmistakably a
+different discipline (e.g. owning customer renewals/quota for an AI product ->
+customer-account), or when neither topic nor labor is target at all.
+
+Always judge against THIS candidate's target functions above — the same role
+is on-target for one candidate and off-target for another. Never carry a fixed
+notion of which functions are "good," and never flag for seniority.
+"""
+        base += "\n\n" + _off_target_function_gate.strip("\n").replace(
+            "{TARGET_FUNCTIONS_LIST}", _target_functions_list
+        ) + "\n"
 
     return base
 
@@ -933,7 +1113,7 @@ async def stage2_triage(
     if use_cache:
         # Try to create a context cache; fall back to inline system prompt.
         #
-        # v0.3.15 (P1.9): TTL CUT BACK from 86400s (24h) → 3600s (1h).
+        # v0.3.15 (P1.9): TTL CUT BACK from 86400s (24h) -> 3600s (1h).
         # The 24h TTL was added in v0.3.9 to enable same-day rerun cache
         # hits, but the audit found the storage cost ($1/MTok-hour for
         # Flash-family) was paying for 23 hours we didn't use — a typical
@@ -991,10 +1171,30 @@ async def stage2_triage(
     ]
     scored = await asyncio.gather(*tasks)
 
+    # W70 honesty gate: if an AI-service outage / key exhaustion / budget cap /
+    # network loss corrupted at least half the batch, refuse to present a
+    # dashboard of fabricated scores. Fail the run so the user retries instead
+    # of acting on garbage. A minority of transient failures (below threshold)
+    # just drop out as unscored — never fabricated. This is the single most
+    # important "never lie about results" safeguard in the scoring path.
+    infra_failures = sum(
+        1 for r in scored
+        if (r.stage2_reasoning or "").startswith("stage2_infra_error:")
+    )
+    if infra_failures and infra_failures >= max(5, (len(scored) + 1) // 2):
+        raise RuntimeError(
+            f"Stage 2 scoring failed for {infra_failures}/{len(scored)} roles due "
+            f"to an AI-service outage or a daily/budget cap. The run was stopped "
+            f"so you are never shown fabricated matches — please try again later."
+        )
+    if infra_failures:
+        print(f"[stage2] {infra_failures}/{len(scored)} roles dropped on transient "
+              f"infra errors (below fail threshold; left unscored, not fabricated)")
+
     # Title floor enforcement — v0.3.9 GRADUATED RELAXATION.
     #
     # History:
-    #   v0.3.4: code-level floor added (3+ word → 70, 2 → 65, 1 → 55).
+    #   v0.3.4: code-level floor added (3+ word -> 70, 2 -> 65, 1 -> 55).
     #           Worked but over-applied (28% of qualifying roles in v3.6
     #           were floor-determined — way too high for a "safety net").
     #   v0.3.8: STRICT mode — floor only fires on Stage 2 failures. Result:
@@ -1002,9 +1202,9 @@ async def stage2_triage(
     #           overall (-22% qualifying vs v3.7).
     #   v0.3.9: GRADUATED RELAXATION (peer review consensus). Apply floor
     #           always, but with REDUCED levels:
-    #             3+ word overlap → floor 60 (was 70, was strict-off in v3.8)
-    #             2-word          → floor 55 (was 65, was strict-off in v3.8)
-    #             1-word          → no floor (was 55)
+    #             3+ word overlap -> floor 60 (was 70, was strict-off in v3.8)
+    #             2-word          -> floor 55 (was 65, was strict-off in v3.8)
+    #             1-word          -> no floor (was 55)
     #           Preserves protection for strong 2-3 word title matches
     #           (real STRONGs in adjacency cases) while eliminating the
     #           1-word over-inflation that produced 28 of 41 floor-

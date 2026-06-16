@@ -15,7 +15,7 @@ from __future__ import annotations
 import asyncio
 import re
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Callable, Optional
 from urllib.parse import urlparse
 
 import httpx
@@ -75,8 +75,14 @@ async def _verify_one(
                 role.verification_confidence = "Low"
                 return role
 
-            # Redirect to expired/closed/careers home
-            if final_url != role.job_url:
+            # Redirect to expired/closed/careers home. Compare NORMALIZED paths so a
+            # bare trailing-slash / query-encoding diff (httpx canonicalizes URLs) is
+            # NOT mistaken for a redirect and used to drop a perfectly live role as
+            # expired_redirect (a real false-positive class).
+            from urllib.parse import urlsplit as _us
+            _a, _b = _us(final_url or ""), _us(role.job_url or "")
+            if (_a.scheme.lower(), _a.netloc.lower(), _a.path.rstrip("/")) != \
+               (_b.scheme.lower(), _b.netloc.lower(), _b.path.rstrip("/")):
                 for pattern in EXPIRED_URL_PATTERNS:
                     if pattern.search(final_url):
                         role.last_verified_result = "expired_redirect"
@@ -126,10 +132,17 @@ async def _verify_one(
 async def verify_liveness(
     roles: list[Role],
     *,
-    concurrency: int = 60,
+    # W71: 60 -> 120. HEADs are cheap and (per _verify_one) a rate-limited HEAD
+    # only lowers confidence, never drops a role, so more in-flight is safe. The
+    # real per-host protection is still the per-domain pacing semaphore + jitter
+    # in ScraperClient, which this does NOT bypass. The win shows up on
+    # domain-diverse runs (Workday's many tenant subdomains) where 60 left most
+    # of the 150-connection pool idle while distinct hosts waited for a slot.
+    concurrency: int = 120,
     fetch_body_check: bool = False,
     drop_dead: bool = True,
     log: bool = True,
+    on_progress: Optional[Callable[[int, int], None]] = None,
 ) -> list[Role]:
     """Run liveness check on every role.
 
@@ -143,8 +156,22 @@ async def verify_liveness(
         return roles
 
     semaphore = asyncio.Semaphore(concurrency)
+    total = len(roles)
+    _done = {"n": 0}
     async with ScraperClient() as client:
-        tasks = [_verify_one(r, client, semaphore, fetch_body_check) for r in roles]
+        async def _tracked(r: Role) -> Role:
+            # W71: fire on_progress per completed check (coarsely, every ~40 or at
+            # the end) so the climb screen shows "verified X/Y" instead of a frozen
+            # line for the minutes this phase takes on a big pool.
+            res = await _verify_one(r, client, semaphore, fetch_body_check)
+            _done["n"] += 1
+            if on_progress and (_done["n"] % 40 == 0 or _done["n"] == total):
+                try:
+                    on_progress(_done["n"], total)
+                except Exception:
+                    pass
+            return res
+        tasks = [_tracked(r) for r in roles]
         verified = await asyncio.gather(*tasks)
 
     # Compute freshness scores

@@ -50,6 +50,7 @@ from backend.scraper.himalayas import HimalayasScraper
 from backend.scraper.nodesk import NoDeskScraper
 from backend.scraper.governmentjobs import GovernmentJobsScraper
 from backend.scraper import _keyword_match as _kw_match
+from backend.scraper.near_dup import collapse_near_duplicates, normalize_company_name
 
 
 # Map source_name → scraper class.
@@ -185,6 +186,8 @@ async def scrape_all(
     health_out: Optional[dict] = None,
     extra_jsearch_keywords: Optional[list[str]] = None,
     user_filters: Optional[dict] = None,
+    on_board=None,
+    collapse_out: Optional[dict] = None,
 ) -> list[Role]:
     """Run all configured scrapers in parallel, return a deduped Role list.
 
@@ -210,9 +213,12 @@ async def scrape_all(
         print(f"[scraper] posted within: {posted_within_days} days")
 
     timings: dict[str, float] = {}
+    _done = {"n": 0}        # boards finished so far (for live scrape progress)
+    _roles_so_far = {"n": 0}  # cumulative raw roles across finished boards (live count)
 
     async def timed_run(source_name: str, scraper: BaseScraper):
         t0 = time.time()
+        n_roles = 0
         try:
             # JSearch gets the expanded keyword list when supplied — paid Pro
             # tier has plenty of budget for broader fan-out. Other sources
@@ -232,11 +238,32 @@ async def scrape_all(
                 else keywords
             )
             roles = await _run_scraper(scraper, kw_for_this_source, posted_within_days, log)
+            n_roles = len(roles)
+            _roles_so_far["n"] += n_roles
             timings[source_name] = time.time() - t0
             return roles
         except Exception as e:
             timings[source_name] = time.time() - t0
             raise
+        finally:
+            # live scrape progress: nudge the bar, name the board, AND report the
+            # running raw-role total so the UI's "scraped" tile climbs live.
+            if on_board:
+                try:
+                    _done["n"] += 1
+                    # W70: report BOTH this board's own count (n_roles, for the
+                    # per-board status line) and the running cumulative total
+                    # (_roles_so_far, for the live "scraped" tile). Nested
+                    # fallbacks keep older on_board signatures working.
+                    try:
+                        on_board(_done["n"], len(valid_sources), source_name, _roles_so_far["n"], n_roles)
+                    except TypeError:
+                        try:
+                            on_board(_done["n"], len(valid_sources), source_name, _roles_so_far["n"])
+                        except TypeError:
+                            on_board(_done["n"], len(valid_sources), source_name)
+                except Exception:
+                    pass
 
     # Keep a reference to each scraper instance so we can read its
     # quota_exhausted state after the run finishes (v0.1.4).
@@ -381,12 +408,33 @@ async def scrape_all(
                 if raw_n > 0 and kept < raw_n:
                     print(f"  {src}: {raw_n} -> {kept}")
 
+    # v0.4.0: normalize aggregator name artifacts ("Acme via Dice" -> "Acme") so
+    # the exact-key dedup below collapses more, then catch the NEAR-duplicates the
+    # exact key misses (same job, reformatted body / "Sr." vs "Senior" title /
+    # munged company name) — keeping the best source. All before the cap + scoring.
+    for _r in filtered_roles:
+        _r.company = normalize_company_name(_r.company)
     deduped = _cross_board_dedupe(filtered_roles)
+    _pre_near = len(deduped)
+    deduped = collapse_near_duplicates(deduped, _source_host_priority)
     capped = _cap_per_company(deduped, max_per_company=50)
+    # Itemized breakdown of the "collapsed" bucket so the climb feed can show the
+    # TRUE proportions (dedup dominates; the per-company cap is a tiny sliver that
+    # only bites Workday mega-tenants), instead of one lump that makes the cap
+    # sound like a headline reason. Components sum to (raw_in - unique).
+    if collapse_out is not None:
+        collapse_out.update({
+            "raw": len(all_roles),
+            "off_topic": max(0, len(all_roles) - len(filtered_roles)),
+            "duplicates": max(0, len(filtered_roles) - len(deduped)),   # exact + near-dup reposts
+            "company_capped": max(0, len(deduped) - len(capped)),
+            "unique": len(capped),
+        })
     if log:
         print(f"[scraper] per-source: {by_source}")
         print(f"[scraper] total before dedup: {len(filtered_roles)} (after sanity filter), "
-              f"after dedup: {len(deduped)}, "
+              f"after exact-dedup: {_pre_near}, "
+              f"after near-dup collapse: {len(deduped)}, "
               f"after per-company cap (max 50): {len(capped)}")
 
     # FIX 35 (Wave-2B Phase 1): persist per-source funnel survival counts so

@@ -22,7 +22,7 @@ from backend.scoring.embedding_filter import filter_roles_by_embedding
 from backend.scoring.llm_client import LLMClient, get_llm_client
 from backend.scoring.stage1_prefilter import stage1_prefilter
 from backend.scoring.stage2_triage import stage2_triage
-from backend.scoring.stage3_deep_eval import stage3_deep_eval
+from backend.scoring.stage3_deep_eval import stage3_deep_eval, needs_stage3
 
 
 def _apply_salary_realism_penalty(
@@ -268,6 +268,16 @@ def assign_percentile_tiers(qualifying: list) -> None:
     n = len(qualifying)
     if n == 0:
         return
+    # W71r (2026-06-16): REVERTED the W70 "rank by score group" experiment. W70
+    # gave every role in a tied-score cluster the rank fraction of the cluster's
+    # FIRST (lowest-index) row, which can ONLY promote tied roles upward, never
+    # down. The cheap stack clusters scores heavily, so a big cluster straddling a
+    # tier boundary got pulled wholly above it. Measured on the real 450-role run:
+    # +92 roles promoted / 0 demoted, +12 net STRONG+GOOD. Reverted to per-row
+    # rank (rank/n) = the behavior of the validated desktop app (v0.3.38/0.3.39,
+    # Opus-graded 86-87% apply-worthy precision). The fairness case W70 addressed
+    # (tied roles split across a boundary by sort order) touches at most ~1 role
+    # per boundary and is not worth the systematic inflation.
     for rank, role in enumerate(qualifying):
         frac = rank / n
         rank_tier = Tier.STRETCH
@@ -419,17 +429,78 @@ async def score_roles(
 
     # Local progress emitter — best-effort 4-arg call, swallows errors so
     # progress callback bugs can't abort the actual scoring run.
-    def _emit(pct: int, stage: str, step_index: int, detail: str = "") -> None:
+    def _emit(pct: int, stage: str, step_index: int, detail: str = "",
+              counts: Optional[dict] = None) -> None:
         if progress is None:
             return
         try:
             try:
-                progress(pct, stage, step_index, detail)
+                progress(pct, stage, step_index, detail, counts)
             except TypeError:
-                progress(pct, stage, step_index)
+                try:
+                    progress(pct, stage, step_index, detail)
+                except TypeError:
+                    progress(pct, stage, step_index)
         except Exception as e:
             if log:
                 print(f"[progress] callback raised (ignored): {e}")
+
+    # ---- Live scoring watcher ------------------------------------------------
+    # The scoring stages run as asyncio.gather black boxes. To make the UI's
+    # "scored" tile climb and the log fill with one line per role AS each role
+    # finishes (instead of jumping at stage boundaries), we run a lightweight
+    # background task alongside each stage that polls the role objects for a
+    # freshly-set score, emits the running count + interpolated %, and pushes a
+    # per-role log line. Purely observational — never mutates roles or scoring.
+    import asyncio as _asyncio
+
+    async def _watch_stage(watch_roles, score_attr, *, base_pct, end_pct, total,
+                           label, kind, emit_scored, scored_base, logged_ids,
+                           emit_qualifying=False):
+        try:
+            while True:
+                await _asyncio.sleep(1.2)
+                done_roles = [r for r in watch_roles
+                              if getattr(r, score_attr, None) is not None]
+                n = len(done_roles)
+                new_lines = []
+                for r in done_roles:
+                    rid = id(r)
+                    if rid in logged_ids:
+                        continue
+                    logged_ids.add(rid)
+                    title = (getattr(r, "job_title", "") or "role").strip()[:46]
+                    company = (getattr(r, "company", "") or "").strip()[:34]
+                    new_lines.append(title + (f" · {company}" if company else ""))
+                pct = base_pct + (end_pct - base_pct) * (n / max(1, total))
+                counts = {"log": new_lines, "kind": kind}
+                if emit_scored:
+                    counts["scored"] = scored_base + n
+                if emit_qualifying:
+                    # W71: live QUALIFYING count = roles whose BEST score so far
+                    # (deep-read if present, else Flash) clears the >=40 floor,
+                    # over the WHOLE pool. Computed every tick so it climbs during
+                    # Stage 2 AND then REFINES during the deep read (the stricter
+                    # stack can push a role below 40), instead of freezing at the
+                    # Stage-2 estimate before the deep read even runs.
+                    # W71i: ALSO count cache-recovered roles. They're scored
+                    # instantly from the JD cache and never enter watch_roles, so on
+                    # a warm re-run the live tile badly undercounted (e.g. showed 104
+                    # when the true qualifying total was ~439 — most were cache hits).
+                    _qual = sum(
+                        1 for r in watch_roles
+                        if max((getattr(r, "stage2_score", 0) or 0),
+                               (getattr(r, "stage3_score", 0) or 0)) >= 40)
+                    _qual += sum(
+                        1 for r in cache_hits
+                        if max((getattr(r, "final_score", 0) or 0),
+                               (getattr(r, "stage2_score", 0) or 0),
+                               (getattr(r, "stage3_score", 0) or 0)) >= 40)
+                    counts["qualifying"] = _qual
+                _emit(int(pct), "Scoring with AI cascade", 5,
+                      f"{label} {n} of {total}", counts)
+        except _asyncio.CancelledError:
+            return
 
     # ---- 0. Cross-run JD score cache check (v0.3.9) ----
     # Before any scoring stages run, check the persistent cache for roles
@@ -452,6 +523,11 @@ async def score_roles(
     if log:
         print(f"[orchestrator] JD score cache: {len(cache_hits)} hits, "
               f"{len(cache_misses)} misses (saving ${len(cache_hits)*0.006:.3f})")
+    # Cache hits are already scored — seed the live "scored" tile with them.
+    if cache_hits:
+        _emit(50, "Scoring with AI cascade", 5,
+              f"{len(cache_hits)} roles recovered from cache",
+              {"scored": len(cache_hits)})
 
     # ---- 1. Embedding pre-filter (only on cache misses) ----
     _emit(50, "Embedding pre-filter", 4, f"Comparing {len(cache_misses):,} new roles against your profile semantically (skipped {len(cache_hits)} cached)...")
@@ -466,6 +542,14 @@ async def score_roles(
     )
     if log:
         print(f"[orchestrator] after embedding pre-filter: {len(after_embed)} / {len(cache_misses)}")
+    # W71i: do NOT refine the SURVIVED-FILTERS tile down here. The embedding
+    # pre-filter PICKS the most-relevant subset to spend AI scoring on — that's the
+    # SCORED funnel, not a filter. Keeping survived out of this emit leaves the tile
+    # at the pre-scoring "cleared your filters + liveness" count (distinct from the
+    # SCORED tile, which climbs to the scoring-pool size). Feed line is preserved.
+    _emit(56, "Embedding pre-filter", 4,
+          f"{len(after_embed) + len(cache_hits):,} roles picked for AI scoring",
+          {"kind": "embed"})
 
     # ---- 2. Stage 1 LLM pre-filter ----
     _emit(60, "Scoring with AI cascade", 5, f"Stage 1 anti-pattern check on {len(after_embed)} roles (Flash)...")
@@ -477,18 +561,43 @@ async def score_roles(
     )
     if log:
         print(f"[orchestrator] after Stage 1: {len(after_stage1)}")
+    _emit(62, "Scoring with AI cascade", 5,
+          f"{len(after_stage1) + len(cache_hits):,} roles passed the anti-pattern gate")
 
     # ---- 3. Stage 2 triage ----
-    _emit(70, "Scoring with AI cascade", 5, f"Stage 2 triage scoring {len(after_stage1)} roles (Flash, ~2s each)...")
-    scored = await stage2_triage(
-        profile=profile,
-        roles=after_stage1,
-        client=client,
-        run_id=run_id,
-    )
+    # Watcher climbs the "scored" tile + logs one line per role AS Flash reads
+    # each one, and glides the % 64->82 across the stage instead of jumping.
+    _emit(64, "Scoring with AI cascade", 5,
+          f"AI is reading {len(after_stage1)} roles against your story...")
+    _s2_logged: set = set()
+    _s2_watch = _asyncio.create_task(_watch_stage(
+        after_stage1, "stage2_score", base_pct=64, end_pct=82,
+        total=len(after_stage1), label="read", kind="score",
+        emit_scored=True, scored_base=len(cache_hits), logged_ids=_s2_logged,
+        emit_qualifying=True))
+    try:
+        scored = await stage2_triage(
+            profile=profile,
+            roles=after_stage1,
+            client=client,
+            run_id=run_id,
+        )
+    finally:
+        # Stop the live watcher. CancelledError subclasses BaseException (NOT
+        # Exception), and a task cancelled before it ever ran re-raises it on
+        # await — so catch it explicitly. The run's own cancellation (if any)
+        # is the original in-flight exception and resumes after this finally.
+        _s2_watch.cancel()
+        try:
+            await _s2_watch
+        except (_asyncio.CancelledError, Exception):
+            pass
     if log:
         s2_qualifying = [r for r in scored if (r.stage2_score or 0) >= 55]
         print(f"[orchestrator] after Stage 2: {len(scored)} scored, {len(s2_qualifying)} qualifying (>=55)")
+    _emit(82, "Scoring with AI cascade", 5,
+          f"read {len(scored)} roles in full",
+          {"scored": len(cache_hits) + sum(1 for r in scored if r.stage2_score is not None)})
 
     # ---- 4. Stage 3 deep eval (in-band roles only) ----
     # v0.3.7: skip_below reverted 58 → 55. v0.3.5 had bumped this to 58
@@ -531,10 +640,16 @@ async def score_roles(
         effective_skip_below = max(stage3_skip_below, cutoff + 1)
     else:
         effective_skip_below = stage3_skip_below
+    # W71: the watcher denominator MUST match the exact set stage3_deep_eval
+    # deep-reads, or the numerator overshoots ("deep read 215 of 199"). That set
+    # is needs_stage3() = primary band [effective_skip_below, skip_above) PLUS the
+    # low-confidence second-look band [35,54] — and stage3_deep_eval (L804) selects
+    # with the same call (skip_above, primary_min=effective_skip_below, second-look
+    # defaults). Counting only the primary band here was the bug. Single source of
+    # truth: every role we'll set stage3_score on is counted exactly once.
     s2_in_band = sum(
         1 for r in scored
-        if r.stage2_score is not None
-        and effective_skip_below <= r.stage2_score < stage3_skip_above
+        if needs_stage3(r, skip_above=stage3_skip_above, primary_min=effective_skip_below)
     )
     # Wave-1 Path B (2026-05-11): pre-Stage-3 LightGBM gate.
     # When PATH_B_GATE_ENABLED=True, the gate predicts likely Stage 3 score
@@ -586,18 +701,39 @@ async def score_roles(
             if path_b_skipped:
                 print(f"[path_b] gated {path_b_skipped} low-band roles out of Stage 3")
 
-    _emit(80, "Scoring with AI cascade", 5, f"Stage 3 deep evaluation on {s2_in_band} top-tier roles (Pro, ~5-10s each)...")
-    scored = await stage3_deep_eval(
-        profile=profile,
-        roles=scored,
-        client=client,
-        skip_above=stage3_skip_above,
-        skip_below=effective_skip_below,
-        run_id=run_id,
-    )
+    # Stage 3 is the dominant time sink (Pro deep-read, ~5-10s each). Watcher
+    # logs each deep-read as it lands + glides the % 82->93 so the bar moves
+    # through the longest stretch instead of freezing at 80%.
+    _emit(82, "Scoring with AI cascade", 5,
+          f"deep-reading the {s2_in_band} closest matches in full...")
+    _s3_logged: set = set()
+    _s3_watch = _asyncio.create_task(_watch_stage(
+        scored, "stage3_score", base_pct=82, end_pct=93,
+        total=max(1, s2_in_band), label="deep read", kind="deep",
+        # W71: refine the QUALIFYING count live as the deep read re-scores
+        emit_scored=False, scored_base=0, logged_ids=_s3_logged,
+        emit_qualifying=True))
+    try:
+        scored = await stage3_deep_eval(
+            profile=profile,
+            roles=scored,
+            client=client,
+            skip_above=stage3_skip_above,
+            skip_below=effective_skip_below,
+            run_id=run_id,
+        )
+    finally:
+        _s3_watch.cancel()
+        try:
+            await _s3_watch
+        except (_asyncio.CancelledError, Exception):
+            pass
     s3_count = sum(1 for r in scored if r.stage3_score is not None)
     if log:
         print(f"[orchestrator] after Stage 3: {s3_count} deep-evaluated")
+    # W71: the deep read ends at 93%; the finalize/rank/cache stretch below used
+    # to run silently, so the bar parked at 93% and felt frozen. Narrate it.
+    _emit(93, "Scoring with AI cascade", 5, "Deep read complete · finalizing every score…")
 
     # ---- Reunite cache hits with newly-scored roles ----
     # The cache hits we identified at Phase 0 need to be merged back into
@@ -615,6 +751,9 @@ async def score_roles(
 
     qualifying = [r for r in scored if (r.final_score or 0) >= 40]
     qualifying.sort(key=lambda r: r.final_score or 0, reverse=True)
+    _emit(94, "Scoring with AI cascade", 5,
+          f"Ranking {len(qualifying):,} qualifying roles into your tiers…",
+          {"qualifying": len(qualifying)})
 
     # v0.3.25: percentile tiering is the FINAL tier authority — rank-based + floors
     # over the whole qualifying pool (replaces fragile fixed score-band cutoffs).
@@ -637,7 +776,13 @@ async def score_roles(
     for r in scored:
         if id(r) in cache_hit_keys:
             continue
-        if r.final_score is None:
+        # Skip incomplete records. final_score alone is not enough: W70's honesty
+        # path leaves an infra-failed (network/cap) role with stage2_score=None
+        # AND stage3_score=None, but _finalize_score defaults final_score to 0
+        # (not None) — so without this extra guard a transient blip would bury
+        # that role as a permanent score-0 SKIP in the 7-day JD cache, hiding it
+        # on every healthy rerun. Don't cache a role that was never really scored.
+        if r.final_score is None or (r.stage2_score is None and r.stage3_score is None):
             cache_skipped_unscored += 1
             continue
         try:

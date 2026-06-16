@@ -103,6 +103,13 @@ def _resolve_archive_dir() -> Path:
     These match where Tauri's log plugin and tester_id.txt already live,
     so users can find all app data in one place.
     """
+    # Explicit override wins (v0.3.35): test harnesses MUST isolate their
+    # archive (profile cache, runs db) so a fixture build can never become
+    # "the most recent profile" a real run picks up. Set
+    # JOBSEARCH_ARCHIVE_DIR to any path to fully sandbox engine state.
+    override = os.environ.get("JOBSEARCH_ARCHIVE_DIR")
+    if override:
+        return Path(override)
     if getattr(sys, "frozen", False):
         bundle_id = "app.jobsearch.desktop"
         try:

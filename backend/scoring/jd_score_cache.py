@@ -261,6 +261,13 @@ def store(prof_hash: str, role: Role) -> None:
     """
     if role.final_score is None:
         return
+    # W70 defense-in-depth: never persist a role that was never actually scored.
+    # An infra-failed role (network/cap) carries stage2_score=None AND
+    # stage3_score=None yet a defaulted final_score=0 — caching it would bury the
+    # role as a permanent SKIP for 7 days. The orchestrator already guards this;
+    # this is the belt-and-suspenders in case store() is called from elsewhere.
+    if role.stage2_score is None and role.stage3_score is None:
+        return
     jd_text = role.job_description_full or role.job_description_essence or ""
     if len(jd_text) < 100:
         return  # don't cache garbage / partial fetches

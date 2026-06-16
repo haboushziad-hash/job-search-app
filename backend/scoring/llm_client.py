@@ -347,6 +347,12 @@ class GeminiClient(LLMClient):
         # how much "ghost" cost we're estimating per run.
 
         def _is_retryable(err_str: str) -> bool:
+            # W70: the Worker proxy's OWN caps (per-UUID daily call cap, global
+            # spend ceiling) are distinct from a transient provider 429 —
+            # retrying just hammers a closed door for ~150s before failing. Treat
+            # them as non-retryable so the run stops promptly and honestly.
+            if "daily_cap_exceeded" in err_str or "global_budget_exhausted" in err_str:
+                return False
             return any(s in err_str for s in (
                 "503", "429", "500", "502", "504",
                 "UNAVAILABLE", "quota", "RESOURCE_EXHAUSTED",

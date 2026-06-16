@@ -76,15 +76,20 @@ async def run_search(
     # `detail` arg is optional granular text shown under the active step
     # (e.g. "Scoring 47 of 120 with Flash") — falls back to "" when the
     # caller doesn't provide one.
-    def _emit(pct: int, stage: str, step_index: int, detail: str = "") -> None:
+    def _emit(pct: int, stage: str, step_index: int, detail: str = "",
+              counts: Optional[dict] = None) -> None:
         if progress is None:
             return
         try:
-            # Best-effort 4-arg call; fall back to 3-arg for older callers
+            # Best-effort 5-arg call (pct, stage, idx, detail, counts); fall
+            # back through 4-arg then 3-arg for older callers.
             try:
-                progress(pct, stage, step_index, detail)
+                progress(pct, stage, step_index, detail, counts)
             except TypeError:
-                progress(pct, stage, step_index)
+                try:
+                    progress(pct, stage, step_index, detail)
+                except TypeError:
+                    progress(pct, stage, step_index)
         except Exception as e:
             if log:
                 print(f"[progress] callback raised (ignored): {e}")
@@ -209,6 +214,30 @@ async def run_search(
     if getattr(profile, "remote_only", False):
         user_filters["remote_only"] = True
 
+    # live scrape progress: climb the bar 5->30%, name each board as it lands,
+    # AND feed the running raw-role count so the UI's "scraped" tile climbs in
+    # real time (instead of sitting frozen at 5% / 0 for the whole multi-minute
+    # scrape). roles_so_far is the cumulative PRE-dedup count across finished
+    # boards — honest ("we pulled this many"); the funnel narrows downstream.
+    # Captures the final cumulative PRE-dedup raw total so we can later report
+    # how many duplicates were collapsed (scraped_total - unique).
+    _scrape_tally = {"raw": 0}
+    _collapse: dict = {}   # scrape_all fills this with the itemized collapse breakdown
+
+    def _on_board(done: int, total: int, name: str, roles_so_far: int = 0, n_roles: int = 0) -> None:
+        # W70: the per-board STATUS line reports THIS board's own finds (n_roles),
+        # which is what a reader expects ("Lever found 542"), not the running total
+        # that confusingly looked like each board found everything. The live
+        # "scraped" tile still climbs on the cumulative roles_so_far.
+        if roles_so_far > _scrape_tally["raw"]:
+            _scrape_tally["raw"] = roles_so_far
+        _emit(
+            min(30, 5 + round(done / max(1, total) * 25)),
+            "Scraping job boards", 2,
+            f"{name} · {n_roles:,} found · {done}/{total} boards",
+            {"scraped": roles_so_far},
+        )
+
     raw_roles = await scrape_all(
         keywords=keywords,
         sources=sources,
@@ -217,6 +246,8 @@ async def run_search(
         health_out=scrape_health,
         extra_jsearch_keywords=expanded_jsearch_kw if len(expanded_jsearch_kw) > len(keywords) else None,
         user_filters=user_filters or None,
+        on_board=_on_board,
+        collapse_out=_collapse,
     )
     # Note: scrape_health gets attached to summary below, after score_roles
     # creates the summary object. Don't try to write to summary here.
@@ -227,11 +258,63 @@ async def run_search(
         if zero_sources:
             print(f"[scraper] [!] ZERO-ROLE SOURCES (investigate): {zero_sources}")
 
+    # W70 honesty: tell a NETWORK OUTAGE apart from a genuinely empty result.
+    # If we scraped zero roles AND every single attempted board ERRORED (not
+    # "succeeded with 0 results"), that's the engine losing internet mid-scrape
+    # (or the proxy being down), NOT "the boards came up dry". Fail the run with
+    # a clear message so the user retries instead of seeing a false empty summit.
+    total_sources = len(scrape_health)
+    errored_sources = sum(1 for h in scrape_health.values() if h.get("errored"))
+    if not raw_roles and total_sources > 0 and errored_sources == total_sources:
+        raise RuntimeError(
+            f"Could not reach any of the {total_sources} job boards (every source "
+            f"errored). This is almost always a dropped internet connection or a "
+            f"proxy outage, not an empty search. Nothing was scored; please check "
+            f"your connection and start a fresh climb."
+        )
+
     # ---- 2. Salary enrichment ----
-    _emit(
-        25, "Filtering + verifying liveness", 3,
-        f"Filtering {len(raw_roles):,} scraped roles by salary, location, and applied list...",
-    )
+    # Spell out the dedup step — it's the single biggest drop (aggregators like
+    # GoogleJobs/JSearch re-index the same ATS postings), and previously it was
+    # invisible: the user saw "68k scraped" then "11.8k unique" with no reason.
+    _unique = len(raw_roles)
+    _dupes = max(0, _scrape_tally["raw"] - _unique)
+    # Itemize the collapse bucket so the proportions are HONEST: duplicate reposts
+    # (aggregators re-indexing the same ATS posting) dominate; "off-topic" is the
+    # sanity-filter drop; the per-company trim is a tiny sliver that only bites a
+    # Workday mega-tenant (Accenture-scale). The old single line lumped all three
+    # under "duplicates, off-topic, per-company-capped", which made the cap sound
+    # like a headline reason. Each line carries the SAME structural `kind` the feed
+    # already colors, so no frontend change is needed.
+    if _collapse and _dupes > 0:
+        _run = int(_collapse.get("raw") or _scrape_tally["raw"])
+        _dup = int(_collapse.get("duplicates", 0))
+        _off = int(_collapse.get("off_topic", 0))
+        _cap = int(_collapse.get("company_capped", 0))
+        if _dup > 0:
+            _run -= _dup
+            _emit(31, "Filtering + verifying liveness", 3,
+                  f"− {_dup:,} duplicate reposts (same job listed on several boards)  →  {_run:,} left",
+                  {"kind": "flt_dedup"})
+        if _off > 0:
+            _run -= _off
+            _emit(32, "Filtering + verifying liveness", 3,
+                  f"− {_off:,} off-topic (keyword matched, wrong field)  →  {_run:,} left",
+                  {"kind": "flt_role"})
+        if _cap > 0:
+            _run -= _cap
+            _emit(32, "Filtering + verifying liveness", 3,
+                  f"− {_cap:,} trimmed where one company posted 50+ matching roles  →  {_run:,} left",
+                  {"kind": "flt_cap"})
+        _emit(33, "Filtering + verifying liveness", 3,
+              f"{_unique:,} unique roles to filter", {"kind": "flt_cleared"})
+    elif _dupes > 0:
+        _emit(31, "Filtering + verifying liveness", 3,
+              f"− {_dupes:,} merged or set aside (duplicate + off-topic listings)  →  {_unique:,} unique roles",
+              {"kind": "flt_dedup"})
+    else:
+        _emit(31, "Filtering + verifying liveness", 3,
+              f"{_unique:,} unique roles to filter", {"kind": "flt_dedup"})
     if log:
         print(f"\n[2/9] Enriching salary data from JDs...")
     enrich_salaries(raw_roles, log=log)
@@ -249,17 +332,46 @@ async def run_search(
     # ---- 3. Hard filters ----
     if log:
         print(f"\n[3/9] Applying hard filters...")
+    _hf_counts: dict = {}
     filtered = apply_hard_filters(
         raw_roles,
         profile=profile,
         max_age_days=posted_within_days,
         applied_keys=applied_keys,
         log=log,
+        counts_out=_hf_counts,
     )
 
     # Tag each surviving role with its single most-relevant matched keyword
     # so the dashboard can show "via {keyword}" to explain why this surfaced.
     _tag_matched_keywords(filtered, profile)
+
+    # Itemized, color-coded filter funnel: subtract each reason ONE LINE AT A
+    # TIME with a running total, so the drop from unique -> cleared reads as a
+    # clear story instead of one dense "set aside X: a·b·c" line. Each step
+    # carries a `kind` the climb feed colors distinctly. Fixed (not size-sorted)
+    # order so it's predictable run to run. Zero-count reasons are skipped.
+    _drop_labels = [
+        ("dropped_location",       "outside your locations",  "flt_location"),
+        ("dropped_title_function", "wrong role type",         "flt_role"),
+        ("dropped_salary",         "below your salary floor", "flt_salary"),
+        ("dropped_posted_date",    "posting too old",         "flt_stale"),
+        ("dropped_incomplete",     "missing title or link",   "flt_incomplete"),
+        ("dropped_already_applied","already applied",         "flt_applied"),
+        ("dropped_company_cap",    "per-company limit",        "flt_cap"),
+    ]
+    _running = len(raw_roles)
+    for _k, _lbl, _kind in _drop_labels:
+        _n = _hf_counts.get(_k, 0)
+        if _n <= 0:
+            continue
+        _running -= _n
+        _emit(33, "Filtering + verifying liveness", 3,
+              f"− {_n:,} {_lbl}  →  {_running:,} remain", {"kind": _kind})
+    # Final line updates the SURVIVED FILTERS tile + closes the funnel in green.
+    _emit(34, "Filtering + verifying liveness", 3,
+          f"✓ {len(filtered):,} of {len(raw_roles):,} unique roles cleared every filter",
+          {"survived": len(filtered), "kind": "flt_cleared"})
 
     # ---- 4. Liveness check ----
     # v0.2.0: removed the v0.1.4 "skip if JD already fetched" optimization.
@@ -283,11 +395,44 @@ async def run_search(
     if log:
         print(f"\n[4/9] Verifying liveness on all {len(filtered)} roles "
               f"(v0.2.0: no longer skipping based on JD presence)...")
-    alive = await verify_liveness(filtered, drop_dead=True, log=log)
+    # W71: live "verified X/Y" so this multi-minute phase doesn't read as frozen.
+    # Throttled to ~5 lines (every 20%) instead of one per HEAD.
+    _lv_step = {"q": -1}
+    def _liveness_prog(done: int, total: int) -> None:
+        q = int((done / max(1, total)) * 5)
+        if q != _lv_step["q"]:
+            _lv_step["q"] = q
+            pct = 35 + round((done / max(1, total)) * 4)   # glide 35 -> 39 across the phase
+            _emit(pct, "Filtering + verifying liveness", 3,
+                  f"Verifying live postings · {done:,}/{total:,} checked")
+    alive = await verify_liveness(filtered, drop_dead=True, log=log, on_progress=_liveness_prog)
+    _emit(40, "Filtering + verifying liveness", 3,
+          f"liveness: {len(alive):,} postings confirmed still open",
+          {"survived": len(alive)})
 
     # ---- 4.5 Fetch missing JDs ----
     # Some scrapers (Workday) return search results without JD bodies.
     # Fetch them now for roles surviving hard filters, before scoring.
+    #
+    # v0.4.0: FIRST scrub stub "JDs" (Workday redirect-JSON artifacts, JS
+    # shells, bot-wall prose — non-empty junk that previously slipped past the
+    # FIX-21 empty-body gate and got scored blind, incl. STRONG-tier roles).
+    # Scrubbing to "" routes them through this fetch step, whose Workday-CXS /
+    # Oracle-REST paths recover the real JD for most; the rest get dropped at
+    # gate 4.6 instead of guessed at.
+    from backend.scraper.jd_stub import stub_reason
+    stub_counts: dict[str, int] = {}
+    for r in alive:
+        if r.job_description_full:
+            why = stub_reason(r.job_description_full)
+            if why:
+                stub_counts[why] = stub_counts.get(why, 0) + 1
+                r.job_description_full = ""
+                r.jd_completeness = "Missing"
+    if stub_counts and log:
+        print(f"[jd_stub] scrubbed {sum(stub_counts.values())} stub JD bodies "
+              f"(re-fetching properly): {stub_counts}")
+
     missing_jd = [r for r in alive if not r.job_description_full]
     if missing_jd:
         _emit(
@@ -296,7 +441,7 @@ async def run_search(
         )
         if log:
             print(f"\n[4.5/9] Fetching missing JDs for {len(missing_jd)} roles...")
-        await _fetch_missing_jds(missing_jd, log=log)
+        await _fetch_missing_jds(missing_jd, log=log, emit=_emit)
         # Re-run salary extraction on newly-enriched JDs
         enrich_salaries(missing_jd, log=log)
 
@@ -304,6 +449,8 @@ async def run_search(
     # User policy: a role without a JD body can't be honestly scored. Either:
     #   (a) our scraper failed to grab it (our fault — investigate per-source)
     #   (b) the posting was taken down between scrape and JD-fetch
+    #   (c) v0.4.0: the fetched body was an unreadable stub (JS shell / bot
+    #       wall / redirect artifact) that the CXS/Oracle recovery couldn't fix
     # In either case, the AI cascade can't deliver a true relevance score
     # without text to read. Drop the role rather than guess. This guarantees
     # 100% JD-any coverage in the audit/dashboard and surfaces per-source
@@ -335,6 +482,9 @@ async def run_search(
     dead_dropped = pre_dead - len(alive)
     if log and dead_dropped > 0:
         print(f"[dead_listing] dropped {dead_dropped} 'no longer hiring' roles before scoring")
+    _emit(46, "Filtering + verifying liveness", 3,
+          f"{len(alive):,} live roles ready for AI scoring",
+          {"survived": len(alive)})
 
     # ---- 5-9. Cascade scoring (embedding + Stage 1/2/3) ----
     # Hand the progress callback through; score_roles emits its own
@@ -527,6 +677,10 @@ async def run_search(
             if log:
                 print(f"[archive] persist failed (non-fatal): {e}")
 
+    # W71: the audit upload below is a network call that can park the bar at 95%
+    # on a big run; nudge to 98 so the final stretch keeps visibly moving.
+    if config.AUDIT_UPLOAD_URL and archive is not None:
+        _emit(98, "Building dashboard", 6, "Saving your run…")
     # ---- Phase D: upload audit JSON to central Worker (if configured) ----
     # Fires only when AUDIT_UPLOAD_URL is set in env (production .msi builds
     # ship with this configured to point at Ziad's Worker). Local dev runs
@@ -840,7 +994,7 @@ def _hours_since(iso_ts: str) -> float:
 
 def _replay_from_cache(archive, prior_run_id: str) -> list[Role]:
     """Reconstruct Role objects from a cached run."""
-    from backend.models import score_to_tier
+    from backend.models import score_to_tier, Tier
     rows = archive.replay_cached_run(prior_run_id)
     out: list[Role] = []
     for row in rows:
@@ -863,11 +1017,17 @@ def _replay_from_cache(archive, prior_run_id: str) -> list[Role]:
             r.stage3_score = row.get("stage3_score")
             r.stage3_analysis = row.get("stage3_analysis")
             r.stage3_application_strategy = row.get("stage3_application_strategy")
-            if row.get("final_tier"):
-                try:
-                    r.final_tier = score_to_tier(r.final_score) if r.final_score else None
-                except Exception:
-                    pass
+            # Use the STORED final_tier — it already reflects the run's
+            # percentile-rank tiering + one-tier seniority demotion. Re-deriving
+            # it with score_to_tier() (absolute bands) would re-promote roles and
+            # make the per-card badges disagree with the run's own tier totals.
+            try:
+                if row.get("final_tier"):
+                    r.final_tier = Tier(row["final_tier"])
+                elif r.final_score is not None:
+                    r.final_tier = score_to_tier(r.final_score)
+            except Exception:
+                pass
             out.append(r)
         except Exception:
             continue
@@ -892,7 +1052,7 @@ def _pct(roles: list[Role], predicate) -> float:
     return 100.0 * sum(1 for r in roles if predicate(r)) / len(roles)
 
 
-async def _fetch_missing_jds(roles: list[Role], *, log: bool = True) -> None:
+async def _fetch_missing_jds(roles: list[Role], *, log: bool = True, emit=None) -> None:
     """Fetch JD bodies for roles where the scraper didn't include them.
 
     Source-aware dispatch (v0.1.3 hot-fix):
@@ -916,6 +1076,8 @@ async def _fetch_missing_jds(roles: list[Role], *, log: bool = True) -> None:
     import asyncio
     from backend.scraper.client import ScraperClient
     from backend.scraper.greenhouse import _strip_html
+    from backend.scraper.jd_stub import stub_reason
+    from backend.scraper.oracle_jd import fetch_oracle_jd, is_oracle_job_url
 
     if not roles:
         return
@@ -926,56 +1088,153 @@ async def _fetch_missing_jds(roles: list[Role], *, log: bool = True) -> None:
         or getattr(r, "source", None) == "Workday"
         or "myworkdayjobs.com" in (r.job_url or "")
     )]
-    other_roles = [r for r in roles if r not in workday_roles]
+    # v0.4.0: Oracle Recruiting Cloud SPAs — generic GET returns only the page
+    # title; the instance's REST API returns the full posting (see oracle_jd).
+    oracle_roles = [r for r in roles
+                    if r not in workday_roles and is_oracle_job_url(r.job_url or "")]
+    other_roles = [r for r in roles
+                   if r not in workday_roles and r not in oracle_roles]
 
     semaphore = asyncio.Semaphore(8)
 
+    # W71h: live JD-fetch progress. Previously this stage fired ONE "Fetching
+    # missing JDs for N roles" line then ran a single big gather() with zero
+    # feedback until it finished — the climb feed "went dark" for the whole fetch.
+    # Mirror the W67 scoring watcher: each role flips a transient `_jd_done`
+    # sentinel when its fetch settles (success OR failure OR already-had-one), and
+    # a background poller streams a climbing "fetched: Title · Company" count.
+    # `_jd_done` is a leading-underscore attr (pydantic extra="allow") so it does
+    # NOT leak into model_dump()/the JD cache. emit=None (desktop/scripts) = no-op.
+    _total_jd = len(roles)
+    _jd_logged: set = set()
+    for _r in roles:
+        _r._jd_done = False
+
+    def _jd_lines() -> list:
+        lines = []
+        for r in roles:
+            rid = id(r)
+            if rid in _jd_logged or not getattr(r, "_jd_done", False):
+                continue
+            _jd_logged.add(rid)
+            if not (r.job_description_full or "").strip():
+                continue   # only name roles we actually pulled a body for
+            title = (getattr(r, "job_title", "") or "role").strip()[:46]
+            company = (getattr(r, "company", "") or "").strip()[:34]
+            lines.append("fetched: " + title + (f" · {company}" if company else ""))
+        return lines
+
+    async def _watch_jd():
+        try:
+            while True:
+                await asyncio.sleep(1.2)
+                n = sum(1 for r in roles if getattr(r, "_jd_done", False))
+                pct = 42 + int(3 * (n / max(1, _total_jd)))   # glide 42 -> 45
+                try:
+                    emit(pct, "Filtering + verifying liveness", 3,
+                         f"job descriptions fetched: {n} of {_total_jd}",
+                         {"log": _jd_lines(), "kind": "jd"})
+                except TypeError:
+                    pass   # an older 3/4-arg emit: no live count, but the run is fine
+        except asyncio.CancelledError:
+            return
+
     async def _fetch_workday(scraper, role: Role) -> None:
         """Use WorkdayScraper.fetch_jd which hits the CXS JSON endpoint."""
-        if not role.job_url or role.job_description_full:
-            return
-        async with semaphore:
-            try:
-                jd = await scraper.fetch_jd(role)
-                role.job_description_full = jd or ""
-                role.jd_completeness = (
-                    "Full" if len(role.job_description_full) > 500
-                    else ("Partial" if role.job_description_full else "Missing")
-                )
-            except Exception:
-                pass
+        try:
+            if not role.job_url or role.job_description_full:
+                return
+            async with semaphore:
+                try:
+                    jd = await scraper.fetch_jd(role)
+                    role.job_description_full = jd or ""
+                    role.jd_completeness = (
+                        "Full" if len(role.job_description_full) > 500
+                        else ("Partial" if role.job_description_full else "Missing")
+                    )
+                except Exception:
+                    pass
+        finally:
+            role._jd_done = True   # settled (fetched, failed, or already had a body)
+
+    async def _fetch_oracle(client: ScraperClient, role: Role) -> None:
+        """Oracle Recruiting Cloud REST fetch (SPA pages have no inline JD)."""
+        try:
+            if not role.job_url or role.job_description_full:
+                return
+            async with semaphore:
+                jd = await fetch_oracle_jd(client, role.job_url)
+                if jd:
+                    role.job_description_full = jd
+                    role.jd_completeness = "Full" if len(jd) > 500 else "Partial"
+        finally:
+            role._jd_done = True
 
     async def _fetch_generic(client: ScraperClient, role: Role) -> None:
         """Generic HTTP GET + HTML strip. Works for Greenhouse/Lever/Ashby/etc."""
-        if not role.job_url or role.job_description_full:
-            return
-        async with semaphore:
-            try:
-                response = await client.get(role.job_url)
-                text = _strip_html(response.text)
-                role.job_description_full = text
-                role.jd_completeness = (
-                    "Full" if len(text) > 500
-                    else ("Partial" if text else "Missing")
-                )
-            except Exception:
-                pass
+        try:
+            if not role.job_url or role.job_description_full:
+                return
+            async with semaphore:
+                try:
+                    response = await client.get(role.job_url)
+                    text = _strip_html(response.text)
+                    # v0.4.0: never store a stub (JS shell / bot wall / redirect
+                    # artifact) as the JD — leave the role JD-less so the FIX-21
+                    # gate drops it instead of letting it be scored blind.
+                    if stub_reason(text):
+                        return
+                    role.job_description_full = text
+                    role.jd_completeness = (
+                        "Full" if len(text) > 500
+                        else ("Partial" if text else "Missing")
+                    )
+                except Exception:
+                    pass
+        finally:
+            role._jd_done = True
 
     async with ScraperClient() as client:
-        # Workday batch — uses the scraper's own CXS-aware fetch_jd
+        # W70 speed: run all three JD-fetch groups CONCURRENTLY rather than one
+        # group fully finishing before the next starts. The shared Semaphore(8)
+        # still caps total in-flight fetches (so per-host load is unchanged) and
+        # ScraperClient's per-domain pacing still protects each host — the only
+        # change is that a slow Workday tenant no longer blocks the Oracle and
+        # generic fetches from making progress. Build every task, gather once.
+        wd_tasks = []
         if workday_roles:
             from backend.scraper.workday import WorkdayScraper
             wd_scraper = WorkdayScraper(client=client)
             wd_tasks = [_fetch_workday(wd_scraper, r) for r in workday_roles]
-            await asyncio.gather(*wd_tasks)
+        oc_tasks = [_fetch_oracle(client, r) for r in oracle_roles] if oracle_roles else []
+        other_tasks = [_fetch_generic(client, r) for r in other_roles] if other_roles else []
+        _jd_watch = asyncio.create_task(_watch_jd()) if emit else None
+        try:
+            await asyncio.gather(*wd_tasks, *oc_tasks, *other_tasks)
+        finally:
+            if _jd_watch:
+                _jd_watch.cancel()
+                try:
+                    await _jd_watch
+                except (asyncio.CancelledError, Exception):
+                    pass
 
-        # Everything else — generic HTML fetch
-        if other_roles:
-            other_tasks = [_fetch_generic(client, r) for r in other_roles]
-            await asyncio.gather(*other_tasks)
+    # Final flush so the live count lands on N/N (the cancel can clip the last tick).
+    if emit:
+        try:
+            _done = sum(1 for r in roles if getattr(r, "_jd_done", False))
+            emit(45, "Filtering + verifying liveness", 3,
+                 f"job descriptions fetched: {_done} of {_total_jd}",
+                 {"log": _jd_lines(), "kind": "jd"})
+        except TypeError:
+            pass
+        except Exception:
+            pass
 
     enriched = sum(1 for r in roles if r.job_description_full)
     wd_enriched = sum(1 for r in workday_roles if r.job_description_full)
+    oc_enriched = sum(1 for r in oracle_roles if r.job_description_full)
     if log:
         print(f"[fetch_jds] enriched {enriched}/{len(roles)} roles with full JD bodies "
-              f"(Workday via CXS: {wd_enriched}/{len(workday_roles)})")
+              f"(Workday via CXS: {wd_enriched}/{len(workday_roles)}, "
+              f"Oracle via REST: {oc_enriched}/{len(oracle_roles)})")

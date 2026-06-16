@@ -24,7 +24,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+import secrets as _secrets
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
@@ -155,7 +156,14 @@ class RunState(BaseModel):
     current_step_detail: str = ""      # granular live text shown under the active step
                                         # ("Scoring 47 of 120 with Flash...")
     total_steps: int = 6
+    # SEC-A: per-run capability token. In web mode a run may only be read/cancelled
+    # by the client that started it (it holds this token, returned from /search/run).
+    # NEVER serialized back out — excluded from every model_dump.
+    access_token: str = ""
+    owner_label: str = ""             # best-effort "who ran it" for the admin dashboard (not a security boundary)
     roles_scraped: int = 0
+    roles_after_filter: int = 0       # live "survived filters" count (climbs/refines during the filter stage)
+    roles_scored: int = 0             # live count of roles given an AI score so far (climbs during the scoring tail)
     roles_qualifying: int = 0
     tier_strong: int = 0
     tier_good: int = 0
@@ -164,6 +172,11 @@ class RunState(BaseModel):
     error: Optional[str] = None
     final_roles: list[dict[str, Any]] = Field(default_factory=list)
     summary: Optional[dict[str, Any]] = None
+    # Append-only progress log: every meaningful event during the run, each
+    # tagged with a monotonic `seq` so a polling client can dedup and keep its
+    # own full scrollback. Capped to the most recent entries in the payload.
+    log: list[dict[str, Any]] = Field(default_factory=list)
+    log_seq: int = 0
 
     class Config:
         arbitrary_types_allowed = True
@@ -183,13 +196,195 @@ app = FastAPI(
     version=_APP_VERSION,
 )
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],   # safe — server only listens on 127.0.0.1
-    allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# CORS + Private Network Access handled in ONE middleware (see _cors_pna below).
+# Starlette's CORSMiddleware rejects (400) the PNA preflight Chrome sends when an
+# HTTPS site calls this local engine, so we do it ourselves instead.
+def _cors_allow_origin(origin: str) -> str:
+    """Which Origin may read responses cross-site.
+    - DESKTOP/local mode (_WEB_ON False): reflect anything — the only caller is the
+      Tauri webview / localhost, and the 127.0.0.1 engine needs PNA to be reachable.
+    - WEB mode (public engine behind the tunnel): allow ONLY our own web origins.
+      Reflecting arbitrary origins + Allow-Private-Network on a public engine let any
+      website read a victim's ungated responses (SEC2). Non-browser clients ignore
+      CORS anyway — the real gate is the token/invite + per-user auth."""
+    if not _WEB_ON:
+        return origin or "*"
+    try:
+        from urllib.parse import urlparse
+        h = (urlparse(origin).hostname or "").lower()
+    except Exception:
+        return ""
+    ok = (h == "findmesomedamnjobz.com" or h.endswith(".findmesomedamnjobz.com")
+          or h == "fmsdj-site.pages.dev" or h.endswith(".fmsdj-site.pages.dev")
+          or h in ("localhost", "127.0.0.1"))
+    return origin if (ok and origin) else ""
+
+
+@app.middleware("http")
+async def _cors_pna(request: Any, call_next: Any) -> Any:
+    origin = request.headers.get("origin") or ""
+    allow = _cors_allow_origin(origin)
+    if request.method == "OPTIONS" and request.headers.get("access-control-request-method"):
+        from starlette.responses import Response
+        acrh = request.headers.get("access-control-request-headers") or "*"
+        hdrs = {
+            "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": acrh,
+            "Access-Control-Max-Age": "600",
+            "Vary": "Origin",
+        }
+        if allow:
+            hdrs["Access-Control-Allow-Origin"] = allow
+        if not _WEB_ON:
+            hdrs["Access-Control-Allow-Private-Network"] = "true"   # only the local desktop engine is a PNA target
+        return Response(status_code=200, headers=hdrs)
+    response = await call_next(request)
+    if allow:
+        response.headers["Access-Control-Allow-Origin"] = allow
+    if not _WEB_ON:
+        response.headers["Access-Control-Allow-Private-Network"] = "true"
+    response.headers["Vary"] = "Origin"
+    return response
+
+# ----------------------------------------------------------------------------
+# v0.3.40 WEB-REMOTE GATEWAY (opt-in via env vars). Lets the OWNER expose this
+# local backend through a Cloudflare Tunnel so a website can run searches on
+# the owner's machine ("the website is a remote control"). EVERYTHING here is
+# OFF unless the env vars are set, so the shipped DESKTOP app is 100% unaffected
+# (it never sets these). Only the owner's standalone "server" backend turns
+# them on.
+#   WEB_ACCESS_TOKEN             required X-Web-Token header on gated endpoints
+#   WEB_MAX_CONCURRENT_SEARCHES  reject /search/run with 429 when N already run
+#   WEB_INVITE_CODES            comma-list of valid invite codes (X-Invite hdr)
+# ----------------------------------------------------------------------------
+import os as _os_web
+_WEB_TOKEN = (_os_web.environ.get("WEB_ACCESS_TOKEN") or "").strip()
+_WEB_MAXCONC = int(_os_web.environ.get("WEB_MAX_CONCURRENT_SEARCHES") or "0")
+_WEB_INVITES = {c.strip() for c in (_os_web.environ.get("WEB_INVITE_CODES") or "").split(",") if c.strip()}
+# v0.3.41 SECURITY (cross-tenant run-id authorization gap): the gateway is now
+# DEFAULT-DENY. Every endpoint requires the configured web auth EXCEPT the
+# handful allow-listed below. We allow-list what's PUBLIC instead of black-
+# listing what's SENSITIVE, because a black-list (the old `_WEB_GATED` that only
+# named /search/run + /profile/build) silently springs a leak the moment a new
+# run-id-keyed endpoint is added and nobody remembers to gate it. That is exactly
+# how /runs, /search/status/{id}, /search/results/{id}, /runs/{id}, /runs/{id}/
+# audit, /search/cancel/{id}, /admin/cost (which handed out live run_ids), the
+# destructive /reset, and the profile read-back family ended up reachable with NO
+# auth on the public engine — leaking and mutating other users' data.
+#   /health — liveness + version probe; carries no user/run data, and the
+#             Cloudflare tunnel + uptime checks hit it without a token.
+# OPTIONS preflights are always allowed (browsers send no auth headers on them).
+# Note FastAPI's own /docs, /redoc, /openapi.json are deliberately NOT public, so
+# the web engine never hands an anonymous caller a map of every route.
+_WEB_PUBLIC = frozenset({"/health"})
+_WEB_ON = bool(_WEB_TOKEN or _WEB_MAXCONC or _WEB_INVITES)
+# Resilience (W70): hard wall-clock budget per run. A normal climb is 15-25 min;
+# a stuck job board, a hung socket under the per-request timeout, or any stage
+# that never raises could otherwise leave the task alive and the user's progress
+# bar climbing forever with status stuck on "running" (no terminal state). The
+# watchdog guarantees EVERY run reaches completed / failed / cancelled. Override
+# with WEB_RUN_DEADLINE_SEC; default 45 min (generous headroom over a worst-case
+# real run, so it only ever fires on a genuine hang).
+_RUN_DEADLINE_SEC = int(_os_web.environ.get("WEB_RUN_DEADLINE_SEC") or "2700")
+
+
+class _WatchdogTimeout(Exception):
+    """Raised ONLY when the run actually blew past _RUN_DEADLINE_SEC. Kept
+    distinct from asyncio.TimeoutError because on Python 3.13
+    asyncio.TimeoutError IS the builtin TimeoutError IS socket.timeout — so a
+    transient network/embedding timeout bubbling out of a stage would otherwise
+    be misread as a 45-minute hang (and lose its traceback). We only convert to
+    this when the wall-clock deadline genuinely elapsed."""
+
+
+def _require_owner() -> None:
+    """Guard for OWNER-MACHINE-ONLY operations: wipe-all (/reset), change the
+    storage folder, and the spend/admin/cross-user readouts. When the engine is in
+    WEB mode (public/tunnelled), NO remote caller may invoke these — even with a
+    valid invite/token — because they're destructive or leak operator/other-user
+    data. Desktop/local mode (_WEB_ON False) is unaffected: the owner runs them
+    from their own machine."""
+    if _WEB_ON:
+        raise HTTPException(status_code=403, detail="owner_only")
+
+
+import ipaddress as _ipaddr
+from urllib.parse import urlparse as _urlparse
+
+def _is_safe_public_url(u: str) -> bool:
+    """SSRF guard for USER-SUPPLIED URLs we fetch server-side (e.g. /roles/recheck).
+    Allow only http(s) to a non-internal host. Blocks obvious internal targets by
+    name + by IP-literal range (loopback/private/link-local/reserved + cloud
+    metadata 169.254.169.254). DNS is intentionally NOT resolved here (would block
+    the event loop + add latency); the residual DNS-rebind risk is bounded because
+    these endpoints return only a dead/alive classification, never the fetched body."""
+    try:
+        p = _urlparse((u or "").strip())
+        if p.scheme not in ("http", "https"):
+            return False
+        host = (p.hostname or "").lower()
+        if not host:
+            return False
+        if host in ("localhost",) or host.endswith((".local", ".internal", ".localhost")):
+            return False
+        try:
+            ip = _ipaddr.ip_address(host)
+            if (ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved
+                    or ip.is_multicast or ip.is_unspecified):
+                return False
+        except ValueError:
+            pass   # hostname (not an IP literal) — allowed without DNS resolution
+        return True
+    except Exception:
+        return False
+
+
+def _check_run_token(request: Request, state: "RunState") -> None:
+    """SEC-A: a live run may only be read/cancelled by the client that STARTED it.
+    That client holds the access_token returned from /search/run and presents it as
+    the X-Run-Token header. Closes cross-tester reads of live runs on the shared web
+    engine. Enforced only in web mode; desktop/local (_WEB_ON False) stays open."""
+    if not _WEB_ON:
+        return
+    tok = request.headers.get("x-run-token", "")
+    if not state.access_token or not _secrets.compare_digest(tok, state.access_token):
+        raise HTTPException(status_code=403, detail="run_forbidden")
+
+
+@app.middleware("http")
+async def _web_gateway(request: Any, call_next: Any) -> Any:
+    if not _WEB_ON:
+        return await call_next(request)
+    # CORS preflights carry no auth headers (X-Invite/X-Web-Token), so they must
+    # bypass the gate, otherwise the browser's preflight to a gated endpoint 403s
+    # and the real request never fires. The actual POST still gets gated below.
+    if request.method == "OPTIONS":
+        return await call_next(request)
+    from fastapi.responses import JSONResponse
+    path = request.url.path
+    # DEFAULT-DENY: gate everything that isn't explicitly public. This single
+    # check covers all run-id-keyed reads/mutations (/search/status|results/{id},
+    # /runs/{id}[/audit], /search/cancel/{id}, DELETE /runs/{id}), the run
+    # listings (/runs, /profiles/recent), run-id mutations carried in the body
+    # (/feedback), the recon source (/admin/cost), the destructive /reset, and
+    # the profile build/read family — without enumerating each route.
+    if path not in _WEB_PUBLIC:
+        # shared-secret token: only OUR website can reach the gated surface
+        if _WEB_TOKEN and request.headers.get("x-web-token") != _WEB_TOKEN:
+            return JSONResponse({"detail": "unauthorized"}, status_code=401)
+        # invite gate (test phase): keep it to people we let in
+        if _WEB_INVITES and request.headers.get("x-invite", "").strip() not in _WEB_INVITES:
+            return JSONResponse({"detail": "invite_required"}, status_code=403)
+    # concurrency throttle: one machine can't run many 12-25min searches at once
+    if _WEB_MAXCONC > 0 and path == "/search/run" and request.method == "POST":
+        active = sum(1 for s in _RUNS.values()
+                     if getattr(s, "status", "") not in ("completed", "failed", "cancelled", "error"))
+        if active >= _WEB_MAXCONC:
+            return JSONResponse(
+                {"detail": "busy", "active": active, "limit": _WEB_MAXCONC,
+                 "message": "The server is busy running other searches — please try again in a few minutes."},
+                status_code=429)
+    return await call_next(request)
 
 
 # ----------------------------------------------------------------------------
@@ -301,15 +496,38 @@ async def profile_build(
     if not files:
         raise HTTPException(status_code=400, detail="At least one resume is required.")
 
-    # Save uploads to temp files so the parser can read by path
+    # Save uploads to temp files so the parser can read by path.
+    # SECURITY (SEC2): enforce a file-type allowlist + per-file size cap, and NEVER
+    # trust the client filename for the on-disk path — a value like '..\\..\\x' or an
+    # absolute path would escape tmpdir (arbitrary file write). We sanitize to a bare
+    # basename and re-confirm the resolved path stays inside tmpdir.
+    import re as _re_up
+    _ALLOWED_EXT = {".pdf", ".docx", ".doc", ".txt", ".rtf", ".md"}
+    _MAX_FILE_BYTES = 12 * 1024 * 1024     # 12 MB per resume
+    _MAX_FILES = 6
+    if len(files) > _MAX_FILES:
+        raise HTTPException(status_code=400, detail=f"Too many files (max {_MAX_FILES}).")
     saved_paths: list[Path] = []
     tmpdir = Path(tempfile.mkdtemp(prefix="jobsearch_"))
-    for f in files:
+    tmpdir_resolved = tmpdir.resolve()
+    for i, f in enumerate(files):
         if not f.filename:
             continue
-        suffix = Path(f.filename).suffix or ".bin"
-        path = tmpdir / f.filename
+        ext = Path(f.filename).suffix.lower()
+        if ext not in _ALLOWED_EXT:
+            raise HTTPException(status_code=400,
+                detail=f"Unsupported file type '{ext or '?'}'. Allowed: PDF, DOCX, DOC, TXT, RTF, MD.")
         content = await f.read()
+        if len(content) > _MAX_FILE_BYTES:
+            raise HTTPException(status_code=413,
+                detail=f"'{Path(f.filename).name}' is too large (max 12 MB per resume).")
+        if not content:
+            continue
+        base = Path(f.filename).name.replace("\\", "/").split("/")[-1]   # strip any dir component (cross-OS)
+        base = _re_up.sub(r"[^A-Za-z0-9._ -]", "_", base)[:90].lstrip(". ") or f"resume_{i}{ext}"
+        path = tmpdir / base
+        if path.resolve().parent != tmpdir_resolved:   # final traversal guard
+            path = tmpdir / f"resume_{i}{ext}"
         path.write_bytes(content)
         saved_paths.append(path)
 
@@ -449,7 +667,16 @@ async def profile_last_built() -> dict[str, Any]:
     re-hydrates from the result. Returns {"profile": null} when the cache
     is genuinely empty (a true first-time user) so the setup flow runs
     normally.
+
+    W70 PER-USER ISOLATION: this cache is a SINGLE, global "latest row wins"
+    store, so on the shared web engine it would hand one user another user's
+    profile. The website now reads each account's profile from its own
+    RLS-isolated Supabase row instead, so in WEB mode this global read-back must
+    not be reachable at all — 404 it. DESKTOP/local single-owner mode (one user)
+    keeps the auto-heal behavior unchanged.
     """
+    if _WEB_ON:
+        raise HTTPException(status_code=404, detail="not_found")
     try:
         from backend.profile import profile_cache
         prof = profile_cache.get_most_recent_profile()
@@ -480,8 +707,9 @@ class RunSearchRequest(BaseModel):
 
 
 @app.post("/search/run")
-async def search_run(req: RunSearchRequest) -> dict[str, Any]:
-    """Kick off a full search asynchronously. Returns run_id for polling."""
+async def search_run(req: RunSearchRequest, request: Request) -> dict[str, Any]:
+    """Kick off a full search asynchronously. Returns run_id + a per-run
+    access_token the caller must present (X-Run-Token) to read/cancel it."""
     profile = CandidateProfile(**req.profile)
 
     if req.keywords:
@@ -509,23 +737,37 @@ async def search_run(req: RunSearchRequest) -> dict[str, Any]:
             applied_keys.add((company, title))
 
     run_id = str(uuid.uuid4())
+    access_token = _secrets.token_urlsafe(24)
     state = RunState(
         run_id=run_id,
         started_at=datetime.now(timezone.utc),
         status="pending",
         current_step="Initializing",
+        access_token=access_token,
+        # best-effort attribution for the admin dashboard (NOT trusted for auth):
+        # the website sends the signed-in user's label so Ziad can tell runs apart.
+        owner_label=(request.headers.get("x-user-label", "") or "").strip()[:120],
     )
     _RUNS[run_id] = state
 
     # Merge in any applications the user has marked in their local archive
     # (cross-session persistence — keeps already-applied tracking consistent
     # across reinstalls and across multiple devices syncing the same folder).
-    try:
-        from backend.storage import get_archive
-        archive_applied = get_archive().applied_role_keys()
-        applied_keys |= archive_applied
-    except Exception:
-        pass
+    #
+    # W70 multi-user fix: the local archive is a SINGLE, process-global store.
+    # In web mode many users share this one engine, so merging the archive's
+    # applied keys would let one user's applications suppress EVERY user's roles.
+    # The website already sends each signed-in user's own applied_roles in the
+    # request body (handled above), so in web mode we trust ONLY that per-user
+    # set and skip the shared-archive merge entirely. Desktop/local (single
+    # owner) keeps the convenient cross-session merge.
+    if not _WEB_ON:
+        try:
+            from backend.storage import get_archive
+            archive_applied = get_archive().applied_role_keys()
+            applied_keys |= archive_applied
+        except Exception:
+            pass
 
     # Fire and forget; updates state in the background. Track the task
     # so we can cancel it via /search/cancel/{run_id}.
@@ -536,7 +778,27 @@ async def search_run(req: RunSearchRequest) -> dict[str, Any]:
     _RUN_TASKS[run_id] = task
     task.add_done_callback(lambda _t: _RUN_TASKS.pop(run_id, None))
 
-    return {"run_id": run_id, "status": "pending"}
+    return {"run_id": run_id, "status": "pending", "access_token": access_token}
+
+
+def _push_run_log(state: RunState, kind: str, msg: str) -> None:
+    """Append one entry to the run's append-only progress log.
+
+    Each entry gets a monotonic `seq` so the polling client can dedup + keep a
+    full scrollback even though the payload only carries the most recent slice.
+    Consecutive identical messages are collapsed so a stalled stage doesn't spam.
+    """
+    msg = (msg or "").strip()
+    if not msg:
+        return
+    if state.log and state.log[-1].get("m") == msg:
+        return
+    state.log_seq += 1
+    state.log.append({"seq": state.log_seq, "k": kind or "", "m": msg[:160]})
+    # bound the payload: keep the most recent 200 entries (the client keeps the
+    # rest of the scrollback it already received)
+    if len(state.log) > 200:
+        del state.log[:-200]
 
 
 async def _execute_search(
@@ -564,27 +826,84 @@ async def _execute_search(
         # `detail` string is the granular live text shown under the active
         # step (e.g. "Scoring 47 of 120 with Flash" — replaces the static
         # describeProgress() fallback).
-        def _on_progress(pct: int, step_label: str, step_index: int, detail: str = "") -> None:
+        def _on_progress(pct: int, step_label: str, step_index: int,
+                         detail: str = "", counts: Optional[dict] = None) -> None:
             state.progress = float(pct)
             state.current_step = step_label
             state.current_step_index = step_index
             if detail:
                 state.current_step_detail = detail
+            role_lines = (counts or {}).get("log") or []
+            if counts:
+                # Counts only ever climb (max guard) so the tiles never flicker
+                # backwards between polls. "survived" is the funnel narrowing, so
+                # it's allowed to refine downward as later filters apply.
+                if counts.get("scraped") is not None:
+                    state.roles_scraped = max(state.roles_scraped, int(counts["scraped"]))
+                if counts.get("survived") is not None:
+                    state.roles_after_filter = int(counts["survived"])
+                if counts.get("scored") is not None:
+                    state.roles_scored = max(state.roles_scored, int(counts["scored"]))
+                if counts.get("qualifying") is not None:
+                    # W71b: track the LATEST count, not the max. The watcher climbs
+                    # during Stage 2 then REFINES DOWN during the deep read as the
+                    # stricter stack + _finalize_score guards push roles below 40.
+                    # max() froze the tile at the Stage-2 peak (the "419 stuck, never
+                    # came down" report). Ignore a transient 0 so it never blinks empty.
+                    _q = int(counts["qualifying"])
+                    if _q > 0 or state.roles_qualifying == 0:
+                        state.roles_qualifying = _q
+            # Per-role lines ARE the log here; otherwise log the stage detail so
+            # the scrollback still captures every stage transition.
+            for line in role_lines:
+                _push_run_log(state, (counts or {}).get("kind") or step_label, line)
+            # W71: don't clutter the feed with the bare "deep read N of M" /
+            # "read N of M" count lines on quiet scoring ticks — they interleaved
+            # messily with the per-role names. The role names carry the detail;
+            # the % bar + SCORED tile carry the count. (Other stages still log
+            # their detail so the scrollback captures every transition.)
+            if detail and not role_lines and (counts or {}).get("kind") not in ("deep", "score", "jd"):
+                _push_run_log(state, step_label, detail)
 
-        scored, summary = await run_search(
-            profile=profile,
-            keywords=keywords,
-            sources=sources,
-            posted_within_days=posted_within_days,
-            applied_keys=applied_keys,
-            run_id=run_id,
-            cache_max_age_days=cache_max_age_days,
-            force_refresh=force_refresh,
-            log=True,
-            progress=_on_progress,
+        # Watchdog: a run that exceeds the wall-clock budget is treated as a
+        # hang. wait_for cancels the inner task and raises asyncio.TimeoutError.
+        # CAVEAT (Py 3.13): asyncio.TimeoutError IS builtin TimeoutError, so a
+        # transient socket/embedding timeout from INSIDE run_search also lands in
+        # this except. We disambiguate by elapsed time: only a genuinely elapsed
+        # deadline becomes a _WatchdogTimeout; anything that timed out early is
+        # re-raised untouched so the generic handler logs it honestly (traceback).
+        _wd_start = asyncio.get_running_loop().time()
+        try:
+            scored, summary = await asyncio.wait_for(
+                run_search(
+                    profile=profile,
+                    keywords=keywords,
+                    sources=sources,
+                    posted_within_days=posted_within_days,
+                    applied_keys=applied_keys,
+                    run_id=run_id,
+                    cache_max_age_days=cache_max_age_days,
+                    force_refresh=force_refresh,
+                    log=True,
+                    progress=_on_progress,
+                ),
+                timeout=_RUN_DEADLINE_SEC,
+            )
+        except asyncio.TimeoutError:
+            if asyncio.get_running_loop().time() - _wd_start >= _RUN_DEADLINE_SEC - 5:
+                raise _WatchdogTimeout
+            raise   # an incidental inner timeout fired early — not a hang
+
+        # max() so the live raw scraped count (pre-dedup, shown climbing during
+        # the scrape) never jumps backwards to the post-dedup summary figure.
+        state.roles_scraped = max(state.roles_scraped, summary.roles_scraped)
+        state.roles_after_filter = int(getattr(summary, "roles_after_filter", 0) or state.roles_after_filter)
+        state.roles_scored = max(
+            state.roles_scored,
+            sum(1 for r in scored
+                if getattr(r, "stage2_score", None) is not None
+                or getattr(r, "final_score", None) is not None),
         )
-
-        state.roles_scraped = summary.roles_scraped
         state.roles_qualifying = summary.roles_qualifying
         state.tier_strong = summary.tier_strong
         state.tier_good = summary.tier_good
@@ -600,6 +919,11 @@ async def _execute_search(
         state.current_step = "Done"
         state.current_step_index = 6
         state.progress = 100.0
+        _push_run_log(
+            state, "Done",
+            f"Summit reached · {summary.roles_qualifying} qualifying roles "
+            f"({summary.tier_strong} strong, {summary.tier_good} good)",
+        )
     except asyncio.CancelledError:
         # User cancelled mid-run. Mark in-memory state as cancelled and
         # propagate so any awaiters resolve cleanly.
@@ -638,6 +962,31 @@ async def _execute_search(
         # Re-raise so asyncio knows the task was cancelled (lets the
         # cancel() caller's await complete cleanly).
         raise
+    except _WatchdogTimeout:
+        # Watchdog fired: the run blew past _RUN_DEADLINE_SEC, almost always a
+        # stuck job board or a hung socket. Land in a clear terminal state so the
+        # user's bar stops climbing and they can retry, and clean up the orphaned
+        # "running" rows the same way a cancel would (the inner task was already
+        # cancelled by wait_for, so no partial archive/audit was written).
+        state.status = "failed"
+        state.error = (
+            f"Run exceeded its {_RUN_DEADLINE_SEC // 60}-minute time budget "
+            f"(likely a stuck job board). Nothing was charged for incomplete "
+            f"work; please start a fresh climb."
+        )
+        state.current_step = "Timed out"
+        try:
+            archive = _maybe_archive()
+            if archive is not None:
+                archive.cancel_run(run_id=run_id)
+        except Exception as _e:
+            print(f"[timeout] archive cleanup failed (non-fatal): {_e}")
+        try:
+            cost_tracker.finish_run(run_id, status="cancelled")
+        except Exception as _e:
+            print(f"[timeout] cost_tracker cleanup failed (non-fatal): {_e}")
+        print(f"[search] run {run_id[:8]} HUNG — watchdog timeout after "
+              f"{_RUN_DEADLINE_SEC}s")
     except Exception as e:
         state.status = "failed"
         state.error = f"{type(e).__name__}: {str(e)[:500]}"
@@ -652,7 +1001,7 @@ async def _execute_search(
 
 
 @app.post("/search/cancel/{run_id}")
-async def search_cancel(run_id: str) -> dict[str, Any]:
+async def search_cancel(run_id: str, request: Request) -> dict[str, Any]:
     """Cancel an in-progress search. The asyncio task is cancelled, which
     raises CancelledError inside run_search() at the next await — abandoning
     any partial work. No archive entry, no audit JSON, no run history is
@@ -664,6 +1013,7 @@ async def search_cancel(run_id: str) -> dict[str, Any]:
     state = _RUNS.get(run_id)
     if not state:
         raise HTTPException(status_code=404, detail="Unknown run_id")
+    _check_run_token(request, state)
     if state.status in ("completed", "failed", "cancelled"):
         raise HTTPException(
             status_code=409,
@@ -685,18 +1035,21 @@ async def search_cancel(run_id: str) -> dict[str, Any]:
 
 
 @app.get("/search/status/{run_id}")
-async def search_status(run_id: str) -> dict[str, Any]:
+async def search_status(run_id: str, request: Request) -> dict[str, Any]:
     state = _RUNS.get(run_id)
     if not state:
         raise HTTPException(status_code=404, detail="Unknown run_id")
-    return state.model_dump(mode="json", exclude={"final_roles"})
+    _check_run_token(request, state)
+    # never serialize the capability token / owner label back to the client
+    return state.model_dump(mode="json", exclude={"final_roles", "access_token", "owner_label"})
 
 
 @app.get("/search/results/{run_id}")
-async def search_results(run_id: str) -> dict[str, Any]:
+async def search_results(run_id: str, request: Request) -> dict[str, Any]:
     state = _RUNS.get(run_id)
     if not state:
         raise HTTPException(status_code=404, detail="Unknown run_id")
+    _check_run_token(request, state)
     if state.status != "completed":
         raise HTTPException(status_code=409, detail=f"Run not complete (status={state.status})")
     return {
@@ -722,7 +1075,10 @@ class RecheckRequest(BaseModel):
 @app.post("/roles/recheck")
 async def roles_recheck(req: RecheckRequest) -> dict[str, Any]:
     from backend.scraper.liveness import verify_liveness
-    urls = [u for u in (req.urls or []) if isinstance(u, str) and u.strip()][:600]
+    # SSRF guard: only fetch public http(s) URLs — drop localhost/private/metadata
+    # targets a caller could use to probe the owner's machine or LAN.
+    urls = [u for u in (req.urls or [])
+            if isinstance(u, str) and u.strip() and _is_safe_public_url(u)][:600]
     if not urls:
         return {"checked": 0, "dead": [], "uncertain": []}
     # Minimal shims — liveness only reads job_url. fetch_body_check=True also
@@ -753,6 +1109,7 @@ async def list_runs() -> dict[str, Any]:
     Returns minimal summary stats per run so the History page can render
     rows quickly. Full results are fetched on-demand via /runs/{run_id}.
     """
+    _require_owner()   # desktop-only run history; website uses Supabase
     archive = _maybe_archive()
     if archive is None:
         return {"runs": []}
@@ -814,6 +1171,7 @@ async def list_recent_profiles() -> dict[str, Any]:
     choice screen and matches what users actually maintain in practice
     (typically 1, occasionally 2 for "AI track" vs "non-AI track").
     """
+    _require_owner()   # owner-machine only when in web mode
     archive = _maybe_archive()
     if archive is None:
         return {"profiles": []}
@@ -885,6 +1243,7 @@ async def get_run_audit(run_id: str) -> dict[str, Any]:
     audit format we currently support, fields may be missing — the
     Stats page handles those gracefully on the frontend.
     """
+    _require_owner()   # desktop-only run history; website uses Supabase
     archive = _maybe_archive()
     if archive is None:
         raise HTTPException(status_code=404, detail="Archive not configured")
@@ -919,6 +1278,7 @@ async def delete_run(run_id: str) -> dict[str, Any]:
     the run is already gone, returns ok with deleted=False so the
     frontend can refresh its list without an error toast.
     """
+    _require_owner()   # desktop-only run history; website uses Supabase
     archive = _maybe_archive()
     if archive is None:
         raise HTTPException(status_code=404, detail="Archive not configured")
@@ -932,6 +1292,7 @@ async def delete_run(run_id: str) -> dict[str, Any]:
 @app.get("/runs/{run_id}")
 async def get_run(run_id: str) -> dict[str, Any]:
     """Return full role list + summary for a completed run from runs.db."""
+    _require_owner()   # desktop-only run history; website uses Supabase
     archive = _maybe_archive()
     if archive is None:
         raise HTTPException(status_code=404, detail="Archive not configured")
@@ -1222,6 +1583,7 @@ async def llm_budget() -> dict[str, Any]:
     with a synthetic response since the app uses local API keys directly
     and the Worker cap doesn't apply.
     """
+    _require_owner()   # owner-machine only when in web mode
     proxy = (config.LLM_PROXY_URL or "").rstrip("/")
     if not proxy:
         # Dev mode: no Worker cap to check, the app uses local keys.
@@ -1273,6 +1635,7 @@ async def llm_budget() -> dict[str, Any]:
 @app.get("/settings/audit-folder")
 async def get_audit_folder() -> dict[str, Any]:
     """Return the currently-configured audit folder path."""
+    _require_owner()   # leaks the operator's local filesystem path
     try:
         from backend.storage import get_archive
         return {"path": str(get_archive().folder)}
@@ -1285,6 +1648,7 @@ async def set_audit_folder_endpoint(req: AuditFolderRequest) -> dict[str, Any]:
     """Change the audit folder. Closes current archive connection and opens
     a new one at the requested path. Used when the user wants to point the
     app at a synced cloud-drive folder (OneDrive / Google Drive)."""
+    _require_owner()   # arbitrary-path storage redirect — owner machine only
     from backend.storage import set_audit_folder as _set
     try:
         archive = _set(req.path)
@@ -1321,6 +1685,7 @@ async def reset_all_data() -> dict[str, Any]:
     state — the backend doesn't reach into the webview, the frontend
     doesn't reach into runs.db.
     """
+    _require_owner()   # never wipe a shared/public engine on a remote caller's say-so
     # 1. Cancel any in-progress search tasks. Snapshot the task list first
     # because cancellation triggers done callbacks that mutate _RUN_TASKS.
     cancelled_runs: list[str] = []
@@ -1415,6 +1780,7 @@ async def list_applications() -> dict[str, Any]:
     """Return all saved/applied/hidden applications. Used by the frontend
     on first load to hydrate the UI from the archive (instead of relying
     only on Zustand's localStorage cache)."""
+    _require_owner()   # owner-machine only when in web mode
     try:
         from backend.storage import get_archive
         archive = get_archive()
@@ -1444,6 +1810,7 @@ async def list_applications() -> dict[str, Any]:
 
 @app.get("/admin/cost")
 async def admin_cost() -> dict[str, Any]:
+    _require_owner()   # owner-machine only when in web mode
     return {
         "today_usd": cost_tracker.cost_today(),
         "month_usd": cost_tracker.cost_this_month(),
